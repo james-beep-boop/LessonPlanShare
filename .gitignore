@@ -1,0 +1,43 @@
+# ─── Laravel Framework ───────────────────────────────────────
+/vendor
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*
+
+# ─── Environment files (contain secrets) ─────────────────────
+.env
+.env.backup
+.env.production
+
+# ─── Compiled / Generated ────────────────────────────────────
+/public/build
+/public/css
+/public/js
+*.cache
+
+# ─── IDE / Editor ────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── Composer ────────────────────────────────────────────────
+composer.phar
+
+# ─── npm (if ever used locally for asset compilation) ────────
+package-lock.json
+npm-debug.log
+yarn-error.log
+
+# ─── Uploaded lesson plan files (stored in storage, not repo) ─
+/storage/app/public/lessons/*
+!/storage/app/public/lessons/.gitkeep
