@@ -65,13 +65,15 @@
             </div>
 
             {{-- File Upload --}}
-            <div>
+            <div x-data="fileValidator()">
                 <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Lesson Plan File *</label>
                 <input type="file" name="file" id="file" required
                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.odt,.odp,.ods"
+                       @change="validate($event)"
                        class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
                               file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
                 <p class="text-xs text-gray-500 mt-1">Max 10 MB. Accepted: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.</p>
+                <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
                 @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -85,5 +87,32 @@
             </div>
         </form>
     </div>
+
+    {{-- Client-side file validation (size + type check before upload) --}}
+    <script>
+        function fileValidator() {
+            const maxSize = 10 * 1024 * 1024; // 10 MB
+            const allowed = ['pdf','doc','docx','ppt','pptx','xls','xlsx','txt','rtf','odt','odp','ods'];
+            return {
+                error: '',
+                validate(event) {
+                    this.error = '';
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (!allowed.includes(ext)) {
+                        this.error = 'File type ".' + ext + '" is not accepted. Please choose a supported format.';
+                        event.target.value = '';
+                        return;
+                    }
+                    if (file.size > maxSize) {
+                        const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+                        this.error = 'File is ' + sizeMB + ' MB — the limit is 10 MB. Please choose a smaller file.';
+                        event.target.value = '';
+                    }
+                }
+            };
+        }
+    </script>
 
 </x-layout>

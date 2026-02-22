@@ -133,11 +133,11 @@ and replace the `<head>` contents with:
 <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 ```
 
-**Important note about registration:** Our custom `RegisteredUserController`
-requires the "Name" field to be a valid email address. This is by design — the
-system uses the name as the user's display identifier and for email
-notifications. Make sure the registration form's "Name" field label is updated
-to say something like "Email (used as your display name)" so users understand.
+**Note about registration:** Our custom `RegisteredUserController` has a single
+"Username" field that must be a valid email address. The submitted value is stored
+in both the `name` and `email` columns automatically — there is no separate name
+field. The sign-up form is in the Alpine.js modal in `layout.blade.php`, so
+Breeze's standalone auth views are only used as a fallback.
 
 ### Step 6: Configure your local .env
 
@@ -158,7 +158,7 @@ Visit http://localhost:8000 — you should see the dashboard.
 
 ### Step 7: Test locally
 
-1. Register a test account (remember: the "Name" field must be a valid email)
+1. Register a test account (click Sign In → Sign Up; the username must be a valid email)
 2. Upload a lesson plan — you should see a dialog box confirming the upload
    and showing the renamed filename (e.g., `AP-Biology_Day5_you@email.com_20260221_143022UTC.pdf`)
 3. Check your email (if SMTP is configured locally) for the upload confirmation
@@ -484,7 +484,7 @@ rm -rf ~/sheql.com.old
 
 ## COMPLETE FILE LIST
 
-Here is every custom file in this package (27 files total):
+Here is every custom file in this package (28 files total):
 
 ```
 LessonPlanShare/
@@ -498,7 +498,8 @@ LessonPlanShare/
 │
 ├── database/migrations/
 │   ├── 2024_01_01_000001_create_lesson_plans_table.php
-│   └── 2024_01_01_000002_create_ratings_table.php   (creates votes table)
+│   ├── 2024_01_01_000002_create_ratings_table.php   (creates votes table)
+│   └── 2024_01_01_000003_add_unique_index_to_lesson_plans_name.php
 │
 ├── app/Models/
 │   ├── User.php

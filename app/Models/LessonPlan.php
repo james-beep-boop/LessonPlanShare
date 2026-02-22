@@ -243,9 +243,13 @@ class LessonPlan extends Model
     public static function generateCanonicalName(string $className, int $lessonDay, string $authorName, ?Carbon $timestamp = null): string
     {
         $ts = ($timestamp ?? Carbon::now('UTC'))->format('Ymd_His');
-        // Sanitize: replace spaces with hyphens, remove special chars
+        // Sanitize: replace spaces with hyphens, remove special chars.
+        // Fallback to 'Unknown' if sanitization produces an empty string
+        // (e.g., if a name contained only special characters).
         $cleanClass  = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', $className));
         $cleanAuthor = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', $authorName));
+        $cleanClass  = $cleanClass  !== '' ? $cleanClass  : 'Unknown';
+        $cleanAuthor = $cleanAuthor !== '' ? $cleanAuthor : 'Unknown';
         return "{$cleanClass}_Day{$lessonDay}_{$cleanAuthor}_{$ts}UTC";
     }
 
@@ -288,9 +292,8 @@ class LessonPlan extends Model
      * Recalculate and store the cached vote_score from the votes table.
      *
      * Called by VoteController::store() after every vote action (create,
-     * toggle off, or switch direction). Uses saveQuietly() to avoid
-     * triggering model events (we don't want updated_at to change
-     * just because someone voted).
+     * toggle off, or switch direction). Uses saveQuietly() to suppress
+     * model events during this background recalculation.
      *
      * The cached score is displayed on the dashboard and show pages,
      * avoiding an expensive SUM() join on every page load.

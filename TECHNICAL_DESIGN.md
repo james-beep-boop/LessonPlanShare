@@ -48,7 +48,7 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 
 ### 2.1 Data Model
 
-The application has three database tables beyond Laravel's default `users` table.
+The application has two custom database tables beyond Laravel's default `users` table.
 
 #### 2.1.1 `users` Table (Laravel Default + Customizations)
 
@@ -390,7 +390,7 @@ Vote values: +1 (upvote) or -1 (downvote).
 
 ### 6.2 Cached Vote Score
 
-To avoid expensive `SUM()` queries on every dashboard page load, each lesson plan has a `vote_score` column that caches the aggregate. After every vote action (create, delete, update), `recalculateVoteScore()` runs: it queries `SUM(value)` from the votes table and saves the result using `saveQuietly()` (to avoid updating `updated_at`).
+To avoid expensive `SUM()` queries on every dashboard page load, each lesson plan has a `vote_score` column that caches the aggregate. After every vote action (create, delete, update), `recalculateVoteScore()` runs: it queries `SUM(value)` from the votes table and saves the result using `saveQuietly()` (which suppresses model events so observers are not triggered during this background recalculation).
 
 ### 6.3 Vote Buttons Component
 
