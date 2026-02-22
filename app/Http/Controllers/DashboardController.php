@@ -60,7 +60,7 @@ class DashboardController extends Controller
             $query->orderBy('updated_at', 'desc');
         }
 
-        $plans = $query->paginate(25)->withQueryString();
+        $plans = $query->paginate(10)->withQueryString();
 
         // Get distinct class names for the filter dropdown
         $classNames = LessonPlan::select('class_name')

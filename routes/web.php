@@ -23,13 +23,13 @@ Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated Routes
+| Authenticated + Email-Verified Routes
 |--------------------------------------------------------------------------
-| These require the user to be logged in (and optionally email-verified).
-| Adjust middleware as needed: add 'verified' to require email verification.
+| These require the user to be logged in AND to have verified their email
+| address (clicked the confirmation link in the sign-up email).
 */
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // My Plans
     Route::get('/my-plans', [LessonPlanController::class, 'myPlans'])
@@ -60,7 +60,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 | Auth Routes (provided by Laravel Breeze)
 |--------------------------------------------------------------------------
-| After running `php artisan breeze:install blade`, Breeze adds its own
-| auth routes in routes/auth.php. Make sure that file is included:
+| Breeze adds login, register, password reset, and email verification
+| routes in routes/auth.php.
 */
 require __DIR__ . '/auth.php';

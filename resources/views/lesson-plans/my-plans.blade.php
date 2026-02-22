@@ -1,29 +1,29 @@
 <x-layout>
-    <x-slot:title>My Lesson Plans</x-slot>
+    <x-slot:title>My Lesson Plans — ARES Education</x-slot>
 
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">My Lesson Plans</h1>
-            <p class="text-sm text-gray-600 mt-1">Plans you have uploaded or revised.</p>
+            <p class="text-sm text-gray-500 mt-1">Plans you have uploaded or revised.</p>
         </div>
         <a href="{{ route('lesson-plans.create') }}"
-           class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
+           class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors text-center">
             + Upload New Plan
         </a>
     </div>
 
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="border border-gray-200 rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Document Name</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Class</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Day #</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Version</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Rating</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Updated</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Document Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Class</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Day #</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Version</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rating</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Updated</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -31,7 +31,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3">
                                 <a href="{{ route('lesson-plans.show', $plan) }}"
-                                   class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                   class="text-gray-900 hover:text-gray-600 font-medium underline underline-offset-2">
                                     {{ $plan->name }}
                                 </a>
                             </td>
@@ -46,7 +46,7 @@
                                 <div class="flex items-center space-x-2">
                                     @if ($plan->file_path)
                                         <a href="{{ route('lesson-plans.download', $plan) }}"
-                                           class="text-indigo-600 hover:text-indigo-800 text-xs">Download</a>
+                                           class="text-gray-900 hover:text-gray-600 text-xs underline">Download</a>
                                     @endif
                                     <form method="POST" action="{{ route('lesson-plans.destroy', $plan) }}"
                                           onsubmit="return confirm('Delete this plan?');" class="inline">
@@ -61,7 +61,7 @@
                         <tr>
                             <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                                 You haven't uploaded any lesson plans yet.
-                                <a href="{{ route('lesson-plans.create') }}" class="text-indigo-600 hover:text-indigo-800">Upload your first one!</a>
+                                <a href="{{ route('lesson-plans.create') }}" class="text-gray-900 hover:text-gray-600 underline">Upload your first one!</a>
                             </td>
                         </tr>
                     @endforelse
