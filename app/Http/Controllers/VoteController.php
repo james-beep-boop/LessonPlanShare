@@ -7,12 +7,25 @@ use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Handles upvote/downvote actions on lesson plan versions.
+ *
+ * Voting behavior:
+ * - Each user gets exactly one vote per lesson plan version.
+ * - Voting the same direction again REMOVES the vote (toggle off).
+ * - Voting the opposite direction SWITCHES the vote.
+ * - Authors cannot vote on their own plans.
+ * - The cached vote_score on the lesson plan is recalculated after each action.
+ *
+ * Only authenticated + verified users can vote (enforced by route middleware).
+ */
 class VoteController extends Controller
 {
     /**
-     * Cast an upvote or downvote on a lesson plan version.
-     * Each user gets one vote per version. Voting the same way again
-     * removes the vote (toggle behavior). Voting the opposite way switches it.
+     * Cast an upvote (+1) or downvote (-1) on a lesson plan version.
+     *
+     * @param  Request     $request     Must contain 'value' of -1 or 1.
+     * @param  LessonPlan  $lessonPlan  The plan version being voted on.
      */
     public function store(Request $request, LessonPlan $lessonPlan)
     {
@@ -20,25 +33,26 @@ class VoteController extends Controller
             'value' => 'required|integer|in:-1,1',
         ]);
 
-        // Prevent authors from voting on their own plans
+        // Guard: prevent authors from voting on their own plans
         if ($lessonPlan->author_id === Auth::id()) {
             return back()->with('error', 'You cannot vote on your own lesson plan.');
         }
 
+        // Check if the user has already voted on this version
         $existingVote = Vote::where('lesson_plan_id', $lessonPlan->id)
             ->where('user_id', Auth::id())
             ->first();
 
         if ($existingVote) {
             if ($existingVote->value === (int) $data['value']) {
-                // Same vote again — toggle it off (remove vote)
+                // Same vote direction again — toggle it off (remove the vote)
                 $existingVote->delete();
             } else {
-                // Switching from upvote to downvote or vice versa
+                // Switching direction (upvote ↔ downvote)
                 $existingVote->update(['value' => $data['value']]);
             }
         } else {
-            // New vote
+            // No existing vote — create a new one
             Vote::create([
                 'lesson_plan_id' => $lessonPlan->id,
                 'user_id'        => Auth::id(),
@@ -46,7 +60,8 @@ class VoteController extends Controller
             ]);
         }
 
-        // Recalculate cached score
+        // Recalculate the cached vote_score column on the lesson plan
+        // (avoids expensive SUM() queries on every page load)
         $lessonPlan->recalculateVoteScore();
 
         return back()->with('success', 'Vote recorded.');

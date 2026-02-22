@@ -8,34 +8,41 @@
               class="border border-gray-200 rounded-lg p-6 space-y-5">
             @csrf
 
-            {{-- Class Name --}}
+            {{-- Class Name (dropdown) --}}
             <div>
                 <label for="class_name" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
-                <input type="text" name="class_name" id="class_name" value="{{ old('class_name') }}" required
-                       placeholder="e.g., AP Biology, Algebra II, World History"
-                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                <select name="class_name" id="class_name" required
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                    <option value="">— Select a class —</option>
+                    @foreach ($classNames as $cn)
+                        <option value="{{ $cn }}" {{ old('class_name') === $cn ? 'selected' : '' }}>{{ $cn }}</option>
+                    @endforeach
+                </select>
                 @error('class_name') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            {{-- Lesson Day --}}
+            {{-- Lesson Number (dropdown 1–20) --}}
             <div>
-                <label for="lesson_day" class="block text-sm font-medium text-gray-700 mb-1">Lesson Day *</label>
-                <input type="number" name="lesson_day" id="lesson_day" value="{{ old('lesson_day') }}"
-                       required min="1" max="999"
-                       placeholder="e.g., 1, 2, 15..."
-                       class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
-                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                <label for="lesson_day" class="block text-sm font-medium text-gray-700 mb-1">Lesson Number *</label>
+                <select name="lesson_day" id="lesson_day" required
+                        class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                    <option value="">—</option>
+                    @foreach ($lessonNumbers as $num)
+                        <option value="{{ $num }}" {{ (int) old('lesson_day') === $num ? 'selected' : '' }}>{{ $num }}</option>
+                    @endforeach
+                </select>
                 @error('lesson_day') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            {{-- Author (read-only, auto-filled from login) --}}
+            {{-- Author (locked to logged-in user) --}}
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Author</label>
-                <p class="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                <p class="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-sm text-gray-700">
                     {{ auth()->user()->name }}
                 </p>
-                <p class="text-xs text-gray-500 mt-1">Automatically set to your login name.</p>
+                <p class="text-xs text-gray-500 mt-1">Plans are always uploaded under your account.</p>
             </div>
 
             {{-- Description --}}
@@ -53,7 +60,7 @@
                 <p class="text-xs font-medium text-gray-600 mb-1">Document Name (auto-generated)</p>
                 <p class="text-xs text-gray-500">
                     Your document will be named using the format:<br>
-                    <code class="bg-gray-100 px-1 rounded text-gray-700">{ClassName}_Day{N}_{YourName}_{UTC-Timestamp}</code>
+                    <code class="bg-gray-100 px-1 rounded text-gray-700">{ClassName}_Day{N}_{AuthorName}_{UTC-Timestamp}</code>
                 </p>
             </div>
 

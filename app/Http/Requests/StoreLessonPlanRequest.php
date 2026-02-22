@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Controllers\LessonPlanController;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLessonPlanRequest extends FormRequest
@@ -13,9 +14,11 @@ class StoreLessonPlanRequest extends FormRequest
 
     public function rules(): array
     {
+        $allowedClasses = implode(',', LessonPlanController::CLASS_NAMES);
+
         $rules = [
-            'class_name'  => 'required|string|max:100',
-            'lesson_day'  => 'required|integer|min:1|max:999',
+            'class_name'  => "required|string|in:{$allowedClasses}",
+            'lesson_day'  => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:2000',
             'file'        => [
                 'file',
@@ -35,9 +38,12 @@ class StoreLessonPlanRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'class_name.required' => 'Please enter the class name (e.g., AP Biology, Algebra II).',
-            'lesson_day.required' => 'Please enter the lesson day number.',
-            'file.max'            => 'The uploaded file must be smaller than 10 MB.',
+            'class_name.required' => 'Please select a class name.',
+            'class_name.in'       => 'Please select one of the available class names.',
+            'lesson_day.required' => 'Please select a lesson number.',
+            'lesson_day.min'      => 'Lesson number must be between 1 and 20.',
+            'lesson_day.max'      => 'Lesson number must be between 1 and 20.',
+'file.max'            => 'The uploaded file must be smaller than 10 MB.',
             'file.mimes'          => 'Allowed file types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.',
             'file.required'       => 'Please attach a file to your lesson plan.',
         ];
