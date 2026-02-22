@@ -38,9 +38,11 @@ class DashboardController extends Controller
             $query->where('class_name', $className);
         }
 
-        // Sorting
+        // Sorting (validate direction to prevent SQL errors from bad input)
         $sortField = $request->input('sort', 'updated_at');
-        $sortOrder = $request->input('order', 'desc');
+        $sortOrder = in_array(strtolower($request->input('order', 'desc')), ['asc', 'desc'])
+            ? strtolower($request->input('order', 'desc'))
+            : 'desc';
 
         $allowedSorts = [
             'name', 'class_name', 'lesson_day', 'version_number',

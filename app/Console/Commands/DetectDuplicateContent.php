@@ -62,12 +62,13 @@ class DetectDuplicateContent extends Command
             $keeper = $plans->first();
             $dupes  = $plans->slice(1);
 
+            $keeperAuthor = $keeper->author?->name ?? '?';
             $this->line("  Hash: {$hash}");
-            $this->line("    Keeping: [{$keeper->id}] {$keeper->name} by {$keeper->author->name ?? '?'}");
+            $this->line("    Keeping: [{$keeper->id}] {$keeper->name} by {$keeperAuthor}");
 
             foreach ($dupes as $dupe) {
-                $authorEmail = $dupe->author->email ?? null;
-                $authorName  = $dupe->author->name ?? 'Unknown';
+                $authorEmail = $dupe->author?->email;
+                $authorName  = $dupe->author?->name ?? 'Unknown';
 
                 $this->line("    Removing: [{$dupe->id}] {$dupe->name} by {$authorName}");
 
@@ -88,7 +89,7 @@ class DetectDuplicateContent extends Command
                             recipientName:   $authorName,
                             deletedPlanName: $dupe->name,
                             keptPlanName:    $keeper->name,
-                            keptAuthorName:  $keeper->author->name ?? 'another user',
+                            keptAuthorName:  $keeperAuthor,
                         ));
                         $this->line("      Notified {$authorEmail}");
                     } catch (\Exception $e) {

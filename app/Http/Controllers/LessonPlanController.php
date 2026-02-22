@@ -202,11 +202,21 @@ class LessonPlanController extends Controller
             abort(403, 'You can only delete your own lesson plans.');
         }
 
+        // Prevent deleting a root plan that has child versions — this would
+        // break version-family linkage (original_id FK becomes NULL).
+        if ($lessonPlan->is_original && $lessonPlan->children()->exists()) {
+            return back()->with('error',
+                'This is the original version and other versions are based on it. '
+                . 'Please delete the newer versions first.');
+        }
+
         // Delete the file from storage
         if ($lessonPlan->file_path && Storage::disk('public')->exists($lessonPlan->file_path)) {
             Storage::disk('public')->delete($lessonPlan->file_path);
         }
 
+        // Clean up votes before deleting the record
+        $lessonPlan->votes()->delete();
         $lessonPlan->delete();
 
         return redirect()->route('my-plans')

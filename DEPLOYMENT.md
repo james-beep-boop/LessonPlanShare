@@ -3,6 +3,14 @@
 This guide walks you through setting up the project from scratch and deploying
 it to DreamHost shared hosting at www.sheql.com.
 
+**Important:** This GitHub repository contains only the custom application files
+(controllers, models, views, routes, migrations, etc.). It is **not** a complete
+Laravel project by itself — it does not include `composer.json`, `artisan`,
+`bootstrap/`, `config/`, or `vendor/`. You must first create a fresh Laravel
+project (Part 1, Step 1), then copy these files into it (Step 4). The result
+is a full, deployable Laravel application that you push to GitHub and clone
+onto your server.
+
 ---
 
 ## BEFORE YOU START: Credentials Checklist
@@ -230,9 +238,11 @@ home directory:
 
 ```bash
 cd ~
+php -r "copy('https://composer.github.io/installer.sig', 'installer.sig');"
 php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-php composer-setup.php
-php -r "unlink('composer-setup.php');"
+php -r "if (trim(file_get_contents('installer.sig')) !== hash_file('sha384', 'composer-setup.php')) { echo 'ERROR: Invalid installer signature' . PHP_EOL; unlink('composer-setup.php'); unlink('installer.sig'); exit(1); }"
+php composer-setup.php --quiet
+php -r "unlink('composer-setup.php'); unlink('installer.sig');"
 ```
 
 Now `~/composer.phar` is your Composer. Create an alias so you can just
@@ -293,6 +303,10 @@ DB_DATABASE=sheql_lessons
 DB_USERNAME=your_db_username
 DB_PASSWORD=your_db_password
 
+SESSION_DRIVER=file
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=lax
+
 MAIL_MAILER=smtp
 MAIL_HOST=mail.sheql.com
 MAIL_PORT=587
@@ -352,10 +366,11 @@ mkdir -p ~/LessonPlanShare/storage/app/public/lessons
 chmod 775 ~/LessonPlanShare/storage/app/public/lessons
 ```
 
-### Step 15: Cache configuration for production
+### Step 15: Clear and rebuild caches for production
 
 ```bash
 cd ~/LessonPlanShare
+php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -394,10 +409,10 @@ php artisan lessons:detect-duplicates             # actually delete duplicates
 
 Visit https://www.sheql.com in your browser. You should see the dashboard.
 
-Try registering an account — if email is set up correctly, you'll receive
-a verification email at the address you register with. When you upload a
-lesson plan, you should see a dialog box showing the canonical filename, and
-you should receive a confirmation email.
+Try registering an account. When you upload a lesson plan, you should see
+a dialog box showing the canonical filename, and you should receive a
+confirmation email at the address you registered with (if SMTP is configured
+correctly).
 
 ---
 
@@ -414,6 +429,7 @@ git pull
 
 composer install --no-dev --optimize-autoloader
 php artisan migrate
+php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -508,9 +524,12 @@ LessonPlanShare/
 
 **500 Error / Blank page:**
 - Check the log: `tail -50 ~/LessonPlanShare/storage/logs/laravel.log`
-- Temporarily enable debug mode: edit `.env` and set `APP_DEBUG=true`
+- Temporarily enable debug mode: edit `.env`, set `APP_DEBUG=true`, then run
+  `php artisan optimize:clear` (this clears the config cache so the change
+  takes effect)
 - Verify permissions: `chmod -R 775 ~/LessonPlanShare/storage ~/LessonPlanShare/bootstrap/cache`
-- After fixing, remember to set `APP_DEBUG=false` and run `php artisan config:cache`
+- After fixing, set `APP_DEBUG=false` and rebuild caches:
+  `php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
 **CSS not loading / page looks broken:**
 - Make sure you removed all `@vite(...)` references from Breeze layout files
@@ -551,8 +570,28 @@ LessonPlanShare/
 - Use it as the password when prompted during `git clone`
 - Or set up an SSH key: `ssh-keygen -t ed25519` then add the public key to GitHub
 
+**`.env` changes not taking effect:**
+- If you previously ran `php artisan config:cache`, Laravel reads from the
+  cached config and ignores `.env`. You must clear the cache first:
+  `php artisan optimize:clear` then rebuild with `php artisan config:cache`
+
 **Duplicate detection cron not running:**
 - Verify the cron entry: `crontab -l`
 - Check the PHP path is correct: `which php`
 - Look at the log: `cat ~/LessonPlanShare/storage/logs/dedup.log`
 - Test manually: `cd ~/LessonPlanShare && php artisan lessons:detect-duplicates --dry-run`
+
+---
+
+## PRODUCTION SECURITY CHECKLIST
+
+After deployment, verify these settings are in place:
+
+- `APP_ENV=production` in `.env`
+- `APP_DEBUG=false` in `.env`
+- `SESSION_SECURE_COOKIE=true` in `.env` (requires HTTPS)
+- `SESSION_SAME_SITE=lax` in `.env`
+- `.env` file is **not** committed to git (check with `git status`)
+- `storage/` and `bootstrap/cache/` are writable (775)
+- Config cache is rebuilt after any `.env` change
+- Cron uses absolute paths (check with `crontab -l`)
