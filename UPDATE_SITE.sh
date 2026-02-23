@@ -11,9 +11,14 @@
 #  What it does:
 #    1. Clones the latest custom files from GitHub (shallow clone)
 #    2. Copies them over the existing Laravel project
-#    3. Removes stale custom files that no longer exist in the repo
+#    3. Removes explicitly listed stale files (safe — never touches Laravel core)
 #    4. Runs any new database migrations
 #    5. Rebuilds production caches
+#
+#  IMPORTANT: This repo is an OVERLAY — it only contains custom files, not all
+#  of Laravel. The server has a full Laravel + Breeze install. The stale file
+#  cleanup uses an explicit list (not automatic detection) to avoid accidentally
+#  deleting Laravel core files like AppServiceProvider, Breeze controllers, etc.
 # ============================================================================
 
 set -e
@@ -38,49 +43,26 @@ cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
 cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
 cp /tmp/LPC/UPDATE_SITE.sh ~/LessonPlanShare/ 2>/dev/null || true
 
-# ── Stale file cleanup ──
-# Remove custom files from the server that no longer exist in the repo.
-# This prevents deleted files from lingering on the production server.
-# Only checks directories we manage (app/, resources/, routes/, public/, database/).
-# NEVER touches .env, vendor/, node_modules/, storage/app/, or bootstrap/.
-echo "  Checking for stale files..."
-STALE_COUNT=0
-
-for dir in app resources routes database; do
-    if [ -d "/tmp/LPC/$dir" ] && [ -d ~/LessonPlanShare/$dir ]; then
-        # Find files in the server's directory
-        cd ~/LessonPlanShare
-        find "$dir" -type f 2>/dev/null | while read -r file; do
-            if [ ! -f "/tmp/LPC/$file" ]; then
-                echo "    Removing stale: $file"
-                rm -f ~/LessonPlanShare/"$file"
-                STALE_COUNT=$((STALE_COUNT + 1))
-            fi
-        done
+# ── Stale file cleanup (explicit list) ──
+# When a file is removed from the repo, add it here so it gets cleaned up
+# on the server too. This is safer than automatic detection because our repo
+# is an overlay that doesn't contain Laravel's core files.
+#
+# To add a file: append a line like:
+#   remove_if_exists "path/relative/to/LessonPlanShare"
+echo "  Cleaning up removed files..."
+remove_if_exists() {
+    local f=~/LessonPlanShare/"$1"
+    if [ -f "$f" ]; then
+        echo "    Removed: $1"
+        rm -f "$f"
     fi
-done
+}
 
-# Clean up stale files in public/ (but protect storage symlink and .htaccess)
-if [ -d "/tmp/LPC/public" ] && [ -d ~/LessonPlanShare/public ]; then
-    cd ~/LessonPlanShare
-    find public -type f ! -name '.htaccess' 2>/dev/null | while read -r file; do
-        if [ ! -f "/tmp/LPC/$file" ]; then
-            # Don't remove the storage symlink target or index.php (from Laravel core)
-            case "$file" in
-                public/storage|public/storage/*|public/index.php|public/robots.txt|public/favicon.ico)
-                    ;;
-                *)
-                    echo "    Removing stale: $file"
-                    rm -f ~/LessonPlanShare/"$file"
-                    ;;
-            esac
-        fi
-    done
-fi
-
-# Remove empty directories left behind (but not the directories themselves at top level)
-find ~/LessonPlanShare/app ~/LessonPlanShare/resources ~/LessonPlanShare/public \
-     -type d -empty -delete 2>/dev/null || true
+# Files removed 2026-02-23:
+remove_if_exists "DEPLOY_DREAMHOST.sh"
+remove_if_exists "Claude_Lesson_Deployment_Findings_2_22.docx"
+remove_if_exists "public/images/ARES_Logo_300.jpg"
 
 # Clean up temp
 rm -rf /tmp/LPC
