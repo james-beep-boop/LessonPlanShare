@@ -97,17 +97,18 @@ cd ~
 git clone https://github.com/james-beep-boop/LessonPlanShare.git LessonPlanCustom
 
 echo "  Overlaying custom files..."
-# Copy all custom files, overwriting Laravel defaults where needed
-cp -r ~/LessonPlanCustom/LessonPlanShare/app/* ~/LessonPlanShare/app/ 2>/dev/null || true
-cp -r ~/LessonPlanCustom/LessonPlanShare/database/* ~/LessonPlanShare/database/ 2>/dev/null || true
-cp -r ~/LessonPlanCustom/LessonPlanShare/resources/* ~/LessonPlanShare/resources/ 2>/dev/null || true
-cp -r ~/LessonPlanCustom/LessonPlanShare/routes/* ~/LessonPlanShare/routes/ 2>/dev/null || true
-cp -r ~/LessonPlanCustom/LessonPlanShare/public/* ~/LessonPlanShare/public/ 2>/dev/null || true
-cp -r ~/LessonPlanCustom/LessonPlanShare/storage/* ~/LessonPlanShare/storage/ 2>/dev/null || true
-cp ~/LessonPlanCustom/LessonPlanShare/.env.example ~/LessonPlanShare/.env.example
-cp ~/LessonPlanCustom/LessonPlanShare/.gitignore ~/LessonPlanShare/.gitignore
-cp ~/LessonPlanCustom/LessonPlanShare/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
-cp ~/LessonPlanCustom/LessonPlanShare/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
+# Copy all custom files, overwriting Laravel defaults where needed.
+# Note: the GitHub repo has files at the root (not in a subfolder).
+cp -r ~/LessonPlanCustom/app/* ~/LessonPlanShare/app/ 2>/dev/null || true
+cp -r ~/LessonPlanCustom/database/* ~/LessonPlanShare/database/ 2>/dev/null || true
+cp -r ~/LessonPlanCustom/resources/* ~/LessonPlanShare/resources/ 2>/dev/null || true
+cp -r ~/LessonPlanCustom/routes/* ~/LessonPlanShare/routes/ 2>/dev/null || true
+cp -r ~/LessonPlanCustom/public/* ~/LessonPlanShare/public/ 2>/dev/null || true
+cp -r ~/LessonPlanCustom/storage/* ~/LessonPlanShare/storage/ 2>/dev/null || true
+cp ~/LessonPlanCustom/.env.example ~/LessonPlanShare/.env.example
+cp ~/LessonPlanCustom/.gitignore ~/LessonPlanShare/.gitignore
+cp ~/LessonPlanCustom/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
+cp ~/LessonPlanCustom/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
 
 echo "  ✓ Custom files overlaid"
 
@@ -239,11 +240,11 @@ echo "  Laravel project), use this update script:"
 echo ""
 echo "    cd ~"
 echo "    git clone https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC"
-echo "    cp -r /tmp/LPC/LessonPlanShare/app/* ~/LessonPlanShare/app/"
-echo "    cp -r /tmp/LPC/LessonPlanShare/database/* ~/LessonPlanShare/database/"
-echo "    cp -r /tmp/LPC/LessonPlanShare/resources/* ~/LessonPlanShare/resources/"
-echo "    cp -r /tmp/LPC/LessonPlanShare/routes/* ~/LessonPlanShare/routes/"
-echo "    cp -r /tmp/LPC/LessonPlanShare/public/* ~/LessonPlanShare/public/"
+echo "    cp -r /tmp/LPC/app/* ~/LessonPlanShare/app/"
+echo "    cp -r /tmp/LPC/database/* ~/LessonPlanShare/database/"
+echo "    cp -r /tmp/LPC/resources/* ~/LessonPlanShare/resources/"
+echo "    cp -r /tmp/LPC/routes/* ~/LessonPlanShare/routes/"
+echo "    cp -r /tmp/LPC/public/* ~/LessonPlanShare/public/"
 echo "    rm -rf /tmp/LPC"
 echo "    cd ~/LessonPlanShare"
 echo "    php artisan migrate --force"

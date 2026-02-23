@@ -24,18 +24,18 @@ echo "  Fetching latest from GitHub..."
 rm -rf /tmp/LPC
 git clone --quiet https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC
 
-# Overlay custom files
+# Overlay custom files (repo has files at the root, not in a subfolder)
 echo "  Copying updated files..."
-cp -r /tmp/LPC/LessonPlanShare/app/* ~/LessonPlanShare/app/ 2>/dev/null || true
-cp -r /tmp/LPC/LessonPlanShare/database/* ~/LessonPlanShare/database/ 2>/dev/null || true
-cp -r /tmp/LPC/LessonPlanShare/resources/* ~/LessonPlanShare/resources/ 2>/dev/null || true
-cp -r /tmp/LPC/LessonPlanShare/routes/* ~/LessonPlanShare/routes/ 2>/dev/null || true
-cp -r /tmp/LPC/LessonPlanShare/public/* ~/LessonPlanShare/public/ 2>/dev/null || true
-cp -r /tmp/LPC/LessonPlanShare/storage/* ~/LessonPlanShare/storage/ 2>/dev/null || true
-cp /tmp/LPC/LessonPlanShare/.env.example ~/LessonPlanShare/.env.example 2>/dev/null || true
-cp /tmp/LPC/LessonPlanShare/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
-cp /tmp/LPC/LessonPlanShare/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
-cp /tmp/LPC/LessonPlanShare/UPDATE_SITE.sh ~/LessonPlanShare/ 2>/dev/null || true
+cp -r /tmp/LPC/app/* ~/LessonPlanShare/app/ 2>/dev/null || true
+cp -r /tmp/LPC/database/* ~/LessonPlanShare/database/ 2>/dev/null || true
+cp -r /tmp/LPC/resources/* ~/LessonPlanShare/resources/ 2>/dev/null || true
+cp -r /tmp/LPC/routes/* ~/LessonPlanShare/routes/ 2>/dev/null || true
+cp -r /tmp/LPC/public/* ~/LessonPlanShare/public/ 2>/dev/null || true
+cp -r /tmp/LPC/storage/* ~/LessonPlanShare/storage/ 2>/dev/null || true
+cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example 2>/dev/null || true
+cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
+cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
+cp /tmp/LPC/UPDATE_SITE.sh ~/LessonPlanShare/ 2>/dev/null || true
 
 # Clean up temp
 rm -rf /tmp/LPC
