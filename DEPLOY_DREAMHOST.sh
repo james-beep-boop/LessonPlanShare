@@ -47,10 +47,10 @@ else
     echo "[1/10] Composer already available ✓"
 fi
 
-# Make sure composer alias works for the rest of this script
-if [ -f ~/composer.phar ]; then
-    alias composer="php ~/composer.phar"
-    COMPOSER_CMD="php ~/composer.phar"
+# Make sure composer works for the rest of this script.
+# Use $HOME instead of ~ because ~ doesn't expand inside quotes in all shells.
+if [ -f "$HOME/composer.phar" ]; then
+    COMPOSER_CMD="php $HOME/composer.phar"
 else
     COMPOSER_CMD="composer"
 fi
