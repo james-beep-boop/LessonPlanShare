@@ -83,6 +83,16 @@
         </div>
     </form>
 
+    {{-- Upload button (visible to signed-in users) --}}
+    @auth
+        <div class="mb-6 flex justify-end">
+            <a href="{{ route('lesson-plans.create') }}"
+               class="inline-flex items-center px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                + Upload New Lesson Plan
+            </a>
+        </div>
+    @endauth
+
     {{-- Results Table --}}
     <div class="border border-gray-200 rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
@@ -108,7 +118,7 @@
                                    class="inline-flex items-center hover:text-gray-900 {{ $isActive ? 'text-gray-900' : '' }}">
                                     {{ $label }}
                                     @if ($isActive)
-                                        <span class="ml-1">{{ $sortOrder === 'asc' ? '&#9650;' : '&#9660;' }}</span>
+                                        <span class="ml-1">{!! $sortOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
                                     @endif
                                 </a>
                             </th>

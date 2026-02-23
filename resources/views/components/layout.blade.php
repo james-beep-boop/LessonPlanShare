@@ -29,16 +29,19 @@
                     </p>
                 </a>
 
-                {{-- Right: Stats link + Auth --}}
+                {{-- Right: username, Stats, Sign Out (or Sign In for guests) --}}
                 <div class="flex items-center pt-2 space-x-5">
-                    {{-- Stats link — visible to all visitors, placed left of auth controls --}}
+                    @auth
+                        <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
+                    @endauth
+
+                    {{-- Stats link — visible to all visitors --}}
                     <a href="{{ route('stats') }}"
                        class="text-base sm:text-lg font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
                         Stats
                     </a>
 
                     @auth
-                        <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit"

@@ -27,17 +27,40 @@
             @csrf
             @method('PUT')
 
-            {{-- Class Name (dropdown) --}}
-            <div>
-                <label for="class_name" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
-                <select name="class_name" id="class_name" required
+            {{-- Class Name (dropdown with "Other" option for new classes) --}}
+            @php
+                $currentClass = old('class_name', $lessonPlan->class_name);
+                $isKnownClass = in_array($currentClass, $classNames);
+            @endphp
+            <div x-data="{
+                    selected: '{{ $isKnownClass ? $currentClass : '__other__' }}',
+                    custom: '{{ !$isKnownClass ? $currentClass : '' }}',
+                    isOther: {{ !$isKnownClass && $currentClass ? 'true' : 'false' }}
+                 }">
+                <label for="edit_class_name_select" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
+                <select id="edit_class_name_select"
+                        x-model="selected"
+                        @change="isOther = (selected === '__other__'); if (!isOther) custom = '';"
                         class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     <option value="">— Select a class —</option>
                     @foreach ($classNames as $cn)
-                        <option value="{{ $cn }}" {{ old('class_name', $lessonPlan->class_name) === $cn ? 'selected' : '' }}>{{ $cn }}</option>
+                        <option value="{{ $cn }}">{{ $cn }}</option>
                     @endforeach
+                    <option value="__other__">Other (enter new class name)</option>
                 </select>
+
+                <div x-show="isOther" x-cloak class="mt-2">
+                    <input type="text" x-model="custom"
+                           placeholder="Enter new class name"
+                           maxlength="100"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                  focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                </div>
+
+                <input type="hidden" name="class_name"
+                       :value="isOther ? custom : selected">
+
                 @error('class_name') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
