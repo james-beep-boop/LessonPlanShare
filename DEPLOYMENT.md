@@ -105,6 +105,7 @@ resources/views/emails/lesson-plan-uploaded.blade.php   →  (NEW)
 resources/views/emails/duplicate-content-removed.blade.php  →  (NEW)
 
 routes/web.php                                          →  (REPLACE)
+routes/auth.php                                         →  (REPLACE — standard Breeze auth routes)
 .gitignore                                              →  (REPLACE)
 .env.example                                            →  (REPLACE)
 ```
@@ -408,7 +409,7 @@ After making code changes locally and pushing to GitHub:
 **What the update script does:**
 1. Clones the latest code from GitHub into `/tmp/LPC` (shallow clone with `--depth 1`)
 2. Copies custom files over the existing Laravel installation
-3. Removes stale files — any custom files on the server that no longer exist in the repo are deleted (protects `.env`, `vendor/`, `storage/app/`, and other Laravel core files)
+3. Removes stale files via an explicit removal list (never automatic detection — the repo only contains custom overlay files, so automatic comparison would delete Laravel core files)
 4. Runs any new database migrations
 5. Rebuilds production caches (config, route, view)
 
@@ -503,7 +504,8 @@ LessonPlanShare/
 │       └── my-plans.blade.php
 │
 └── routes/
-    └── web.php
+    ├── web.php
+    └── auth.php                                       (Breeze auth routes)
 ```
 
 ---

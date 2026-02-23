@@ -70,7 +70,7 @@ The application has two custom database tables beyond Laravel's default `users` 
 | Column | Type | Notes |
 |---|---|---|
 | id | bigint unsigned PK | Auto-increment |
-| class_name | varchar(255) | Subject name from restricted list |
+| class_name | varchar(255) | Subject name (free-text; dropdown offers existing names + "Other") |
 | lesson_day | unsigned int | Lesson number (1–20) |
 | description | text nullable | Free-text description of the plan |
 | name | varchar(255) | Auto-generated canonical name |
@@ -251,9 +251,12 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 - **Total Lesson Plans** — total count of all plan records, counting each revision as one
 - **Favorite Lesson Plan** — the plan with the highest net vote score (upvotes minus downvotes). Displays the plan name as a clickable link to the preview page, the author's email, and the rating in green. If no plans have positive votes, shows "No votes yet."
 
+**Upload Button** (visible to authenticated users only):
+- A prominent "+ Upload New Lesson Plan" button (gray-900) is displayed right-aligned above the results table. This is the primary entry point for uploading new content.
+
 **Search & Filter Bar** (contained in a bordered card):
 - **Search** (text input): Free-text search across document name, class name, description, and author name. Uses SQL `LIKE %term%` queries.
-- **Class** (dropdown): Filters by class name. Options are dynamically populated from the distinct `class_name` values that exist in the database (not from the upload whitelist).
+- **Class** (dropdown): Filters by class name. Options are dynamically populated from the distinct `class_name` values that exist in the database.
 - **Show all versions** (checkbox): When unchecked (default), shows only the latest version of each plan family. When checked, shows every version as a separate row.
 - **Search** button (gray-900) and **Clear** link.
 
@@ -303,7 +306,7 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 **Layout:** Centered, max-width 2xl form in a bordered card. Requires authentication + verified email.
 
 **Form fields:**
-1. **Class Name** (required dropdown): Options from a PHP constant — currently: English, History, Mathematics, Science. To add subjects, append to the `LessonPlanController::CLASS_NAMES` array.
+1. **Class Name** (required, Alpine.js combo widget): A dropdown lists all existing class names from the database, plus an "Other (enter new class name)" option. Selecting "Other" reveals a text input for entering a custom class name (max 100 characters). A hidden `<input>` submits the actual value (either the dropdown selection or the custom text). This allows teachers to create new subjects without requiring code changes.
 2. **Lesson Number** (required dropdown): Numbers 1 through 20. Small (w-32) dropdown.
 3. **Author** (read-only display): Shows the logged-in user's email address in a gray-50 bordered box. Text: "Plans are always uploaded under your account." Author is always `Auth::id()`.
 4. **Description** (optional textarea): 4 rows, max 2000 characters.
@@ -525,10 +528,9 @@ The application uses a clean, monochromatic black-and-white design language with
 
 **Left side:** "ARES Education" heading (`text-3xl sm:text-4xl font-bold text-gray-900`) + "Kenya Lesson Plan Repository" subtitle (`text-base sm:text-lg text-gray-500`). All wrapped in a link to the dashboard. No logo image.
 
-**Right side:**
-- **Stats** link (`text-base sm:text-lg font-medium`; underlined when active) — visible to everyone
-- Authenticated: user's email address (hidden on small screens) + "Sign Out" link (`text-base sm:text-lg`)
-- Guest: "Sign In" button (`text-base sm:text-lg font-medium`; no background, just text)
+**Right side** (reading left to right):
+- Authenticated: user's email address (hidden on small screens), **Stats** link (`text-base sm:text-lg font-medium`; underlined when active), "Sign Out" link (`text-base sm:text-lg`)
+- Guest: **Stats** link, "Sign In" button (`text-base sm:text-lg font-medium`; no background, just text)
 
 **Navigation** (below branding, only when authenticated): "Browse All", "My Plans", "+ Upload Plan" — horizontal links with active state indicated by underline.
 
@@ -594,7 +596,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 
 | Field | Rules |
 |---|---|
-| class_name | required, string, must be one of the values in `LessonPlanController::CLASS_NAMES` |
+| class_name | required, string, max 100 characters |
 | lesson_day | required, integer, min 1, max 20 |
 | description | nullable, string, max 2000 characters |
 | file | required, max 1024 KB (1 MB), mimes: pdf,doc,docx,ppt,pptx,xls,xlsx,txt,rtf,odt,odp,ods |
@@ -660,7 +662,7 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 - All user input is validated server-side via Form Request classes
 - Sort column and direction are validated against whitelists
 - File uploads are validated for size (1 MB max) and MIME type
-- Class names are restricted to a PHP constant whitelist
+- Class names are validated as strings (max 100 characters); new names can be entered via the "Other" option
 
 ### 12.3 Authorization
 
@@ -724,15 +726,9 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 
 ## 14. Configuration Constants
 
-### 14.1 Allowed Class Names
+### 14.1 Class Names
 
-Defined in `LessonPlanController::CLASS_NAMES`:
-
-```php
-public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
-```
-
-To add new subjects, append to this array. The `StoreLessonPlanRequest` validation references this constant dynamically.
+Class names are not restricted to a fixed list. The upload and edit forms present a dropdown of all existing class names currently in the database, plus an "Other" option that allows teachers to type any new class name (max 100 characters). The initial seed classes (English, History, Mathematics, Science) are defined in `LessonPlanController::CLASS_NAMES` and used to populate the dropdown when no plans exist yet. Once plans are uploaded, the dropdown is populated dynamically from `DISTINCT class_name` in the `lesson_plans` table.
 
 ### 14.2 Lesson Number Range
 
