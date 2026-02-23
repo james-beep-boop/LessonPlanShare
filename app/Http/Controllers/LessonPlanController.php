@@ -41,7 +41,7 @@ class LessonPlanController extends Controller
      * The StoreLessonPlanRequest validation references this constant
      * to enforce the allowed values server-side.
      */
-    public const CLASS_NAMES = ['English', 'Mathematics', 'Science'];
+    public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
 
     /**
      * My Plans: list all plans authored by the current user.

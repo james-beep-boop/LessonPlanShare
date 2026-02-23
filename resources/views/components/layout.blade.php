@@ -20,18 +20,13 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div class="flex items-start justify-between">
                 {{-- Left: Logo + Branding --}}
-                <a href="{{ route('dashboard') }}" class="flex items-center space-x-4">
-                    <img src="{{ asset('images/ARES_Logo_300.jpg') }}"
-                         alt="ARES Education"
-                         class="h-14 sm:h-16 w-auto">
-                    <div>
-                        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
-                            ARES Education
-                        </h1>
-                        <p class="text-base sm:text-lg text-gray-500 mt-1">
-                            Lesson Plan Archive
-                        </p>
-                    </div>
+                <a href="{{ route('dashboard') }}" class="inline-block">
+                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
+                        ARES Education
+                    </h1>
+                    <p class="text-base sm:text-lg text-gray-500 mt-1">
+                        Lesson Plan Archive
+                    </p>
                 </a>
 
                 {{-- Right: Stats link + Auth --}}
