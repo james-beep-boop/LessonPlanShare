@@ -70,6 +70,19 @@ class DetectDuplicateContent extends Command
                 $authorEmail = $dupe->author?->email;
                 $authorName  = $dupe->author?->name ?? 'Unknown';
 
+                // ── Lineage protection ──
+                // Skip deletion if this plan is referenced as a parent or
+                // original by other plans. Deleting it would SET NULL those
+                // foreign keys and orphan the version family linkage.
+                $hasChildren = LessonPlan::where('parent_id', $dupe->id)
+                    ->orWhere('original_id', $dupe->id)
+                    ->exists();
+
+                if ($hasChildren) {
+                    $this->warn("    Skipping: [{$dupe->id}] {$dupe->name} — has dependent versions");
+                    continue;
+                }
+
                 $this->line("    Removing: [{$dupe->id}] {$dupe->name} by {$authorName}");
 
                 if ($this->option('dry-run')) {
@@ -97,7 +110,7 @@ class DetectDuplicateContent extends Command
                     }
                 }
 
-                // Delete the duplicate record
+                // Delete the duplicate record (safe — no dependents)
                 $dupe->votes()->delete();
                 $dupe->delete();
                 $totalRemoved++;

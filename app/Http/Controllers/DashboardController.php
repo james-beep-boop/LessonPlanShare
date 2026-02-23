@@ -70,18 +70,14 @@ class DashboardController extends Controller
             ? strtolower($request->input('order', 'desc'))
             : 'desc';
 
-        // Whitelist of allowed sort columns to prevent arbitrary column access
+        // Whitelist of allowed sort columns — must match visible dashboard columns.
+        // (Document Name and Author columns were removed from the dashboard table.)
         $allowedSorts = [
-            'name', 'class_name', 'lesson_day', 'version_number',
-            'vote_score', 'updated_at', 'created_at',
+            'class_name', 'lesson_day', 'version_number',
+            'vote_score', 'updated_at',
         ];
 
-        if ($sortField === 'author') {
-            // Sort by author name requires a JOIN to the users table
-            $query->join('users', 'lesson_plans.author_id', '=', 'users.id')
-                  ->orderBy('users.name', $sortOrder)
-                  ->select('lesson_plans.*');  // avoid column name collisions
-        } elseif (in_array($sortField, $allowedSorts)) {
+        if (in_array($sortField, $allowedSorts)) {
             $query->orderBy($sortField, $sortOrder);
         } else {
             // Unknown sort field — fall back to most-recent

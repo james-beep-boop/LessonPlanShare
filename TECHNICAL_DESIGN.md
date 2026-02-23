@@ -1,8 +1,8 @@
-# ARES Education Lesson Plan Archive — Technical Design Document
+# ARES Education — Kenya Lesson Plan Repository: Technical Design Document
 
-**Version:** 1.0
+**Version:** 2.0
 **Date:** February 2026
-**Status:** Implemented
+**Status:** Deployed at www.sheql.com
 
 ---
 
@@ -10,11 +10,11 @@
 
 ### 1.1 Purpose
 
-The ARES Education Lesson Plan Archive is a web application that allows high school teachers to upload, share, version, rate, and download lesson plan documents. It serves a small group of educators affiliated with the ARES Education program, providing a centralized repository for collaborative lesson planning.
+The ARES Education Kenya Lesson Plan Repository is a web application that allows high school teachers to upload, share, version, rate, and download lesson plan documents. It serves a small group of educators affiliated with the ARES Education program in Kenya, providing a centralized repository for collaborative lesson planning.
 
 ### 1.2 Target Users
 
-A closed community of 5–30 high school teachers who share lesson plan documents with each other. All users know each other as colleagues; the system is not designed for the general public, though the browsing/download interface is publicly accessible.
+A closed community of 5–30 high school teachers who share lesson plan documents with each other. All users know each other as colleagues; the system is not designed for the general public, though the browsing/download interface is publicly accessible without authentication.
 
 ### 1.3 Hosting Environment
 
@@ -28,6 +28,7 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 - SMTP email via DreamHost mail server (mail.sheql.com, port 587, TLS)
 - HTTPS via DreamHost's free Let's Encrypt integration
 - Cron jobs available for scheduled commands
+- Limited memory on shared hosting (requires `--depth 1` for git clone operations)
 
 ### 1.4 Technology Stack
 
@@ -36,7 +37,7 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 | Backend Framework | Laravel 12 | PHP framework with built-in auth, ORM, migrations |
 | Authentication | Laravel Breeze (Blade) | Lightweight auth scaffolding; no SPA complexity |
 | CSS Framework | Tailwind CSS via CDN | No build step required; instant styling |
-| JavaScript | Alpine.js via CDN | Lightweight reactivity for modals; no build step |
+| JavaScript | Alpine.js via CDN | Lightweight reactivity for modals and toggles; no build step |
 | Database | MySQL 8.0 | DreamHost-provided; standard Laravel support |
 | File Storage | Local disk (`storage/app/public`) | Simplest option for shared hosting |
 | Email | SMTP (DreamHost) | Direct SMTP; no third-party mail service needed |
@@ -128,7 +129,7 @@ Version 3:         original_id = 1,    parent_id = 2
 
 ### 2.3 Canonical Naming
 
-Every uploaded document is renamed to a canonical format:
+Every uploaded document is renamed to a canonical format, regardless of the original upload filename:
 
 ```
 {ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC.{ext}
@@ -149,7 +150,7 @@ Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.pdf`
 - Files are stored at `storage/app/public/lessons/{canonical_name}.{ext}`
 - The `storage:link` artisan command creates a symlink from `public/storage` → `storage/app/public`
 - Files are served via the public disk for direct download
-- Maximum file size: 10 MB (enforced by validation and PHP settings)
+- Maximum file size: 1 MB (enforced by validation rule `max:1024` and client-side JavaScript)
 - Accepted formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS
 
 ### 2.5 Duplicate Content Detection
@@ -172,17 +173,19 @@ The command supports a `--dry-run` flag for preview-only execution.
 
 1. User clicks "Sign In" button in the header → Alpine.js modal opens on the "Sign In" panel.
 2. User clicks "Sign Up" link within the modal → switches to the "Create Account" panel.
-3. Registration form fields: Username (email address), Password, Confirm Password.
+3. Registration form fields: Username (email address), Password, Confirm Password. All password fields have a "Show/Hide" toggle button.
 4. On submit, the `RegisteredUserController` validates the email, creates the User record (setting `name` = `email`), fires the `Registered` event (which sends a verification email), and logs the user in.
 5. The user is redirected to the email verification notice page. They cannot access authenticated routes until they click the link in their verification email.
+6. If validation fails (e.g., password mismatch), the user is redirected to the standalone `/register` page (not the modal), which provides the same form in a full-page layout.
 
 ### 3.2 Authentication Flow
 
 1. User clicks "Sign In" button → modal opens on the "Sign In" panel.
-2. Form fields: Username (email), Password.
+2. Form fields: Username (email), Password (with Show/Hide toggle).
 3. Standard Laravel Breeze login; on success, redirects to dashboard.
 4. On failure, modal reopens with validation error messages.
 5. The modal remembers which panel (login/register) was active via a hidden `_auth_mode` field, so validation errors reopen the correct panel.
+6. If validation fails and redirects to `/login`, a standalone login page renders the same form in a full-page layout.
 
 ### 3.3 Authorization Rules
 
@@ -207,13 +210,15 @@ Authorization is enforced via Laravel middleware (`['auth', 'verified']`) on rou
 
 ### 4.1 Public Routes
 
+Route parameters use Laravel route model binding (`{lessonPlan}` resolves to a `LessonPlan` model instance automatically).
+
 | Method | URI | Controller@Method | Name | Description |
 |---|---|---|---|---|
 | GET | `/` | DashboardController@index | `dashboard` | Main page with counters, searchable/sortable plan table |
 | GET | `/stats` | DashboardController@stats | `stats` | Detailed archive statistics page |
-| GET | `/lesson-plans/{id}` | LessonPlanController@show | `lesson-plans.show` | Single plan detail page |
-| GET | `/lesson-plans/{id}/preview` | LessonPlanController@preview | `lesson-plans.preview` | Document preview with embedded viewer |
-| GET | `/lesson-plans/{id}/download` | LessonPlanController@download | `lesson-plans.download` | File download |
+| GET | `/lesson-plans/{lessonPlan}` | LessonPlanController@show | `lesson-plans.show` | Single plan detail page |
+| GET | `/lesson-plans/{lessonPlan}/preview` | LessonPlanController@preview | `lesson-plans.preview` | Document preview with embedded viewer |
+| GET | `/lesson-plans/{lessonPlan}/download` | LessonPlanController@download | `lesson-plans.download` | File download |
 
 ### 4.2 Authenticated + Verified Routes
 
@@ -222,20 +227,22 @@ Authorization is enforced via Laravel middleware (`['auth', 'verified']`) on rou
 | GET | `/my-plans` | LessonPlanController@myPlans | `my-plans` | Logged-in user's own plans |
 | GET | `/lesson-plans-create` | LessonPlanController@create | `lesson-plans.create` | Upload form |
 | POST | `/lesson-plans` | LessonPlanController@store | `lesson-plans.store` | Process new upload |
-| GET | `/lesson-plans/{id}/new-version` | LessonPlanController@edit | `lesson-plans.new-version` | New version form |
-| PUT | `/lesson-plans/{id}` | LessonPlanController@update | `lesson-plans.update` | Process new version |
-| DELETE | `/lesson-plans/{id}` | LessonPlanController@destroy | `lesson-plans.destroy` | Delete a plan |
-| POST | `/lesson-plans/{id}/vote` | VoteController@store | `votes.store` | Cast/toggle vote |
+| GET | `/lesson-plans/{lessonPlan}/new-version` | LessonPlanController@edit | `lesson-plans.new-version` | New version form |
+| PUT | `/lesson-plans/{lessonPlan}` | LessonPlanController@update | `lesson-plans.update` | Process new version |
+| DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` | Delete a plan |
+| POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` | Cast/toggle vote |
 
 ### 4.3 Auth Routes (Breeze)
 
-Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification notice/send/verify.
+Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification notice/send/verify. Standalone fallback views exist at `auth/login.blade.php` and `auth/register.blade.php` for cases where Breeze redirects outside the modal (e.g., validation failure).
 
 ---
 
 ## 5. Page-by-Page Specifications
 
 ### 5.1 Dashboard (Home Page — `/`)
+
+**Browser tab title:** "ARES: Lesson Plans"
 
 **Layout:** Full-width table with counters, search/filter bar, and results table. Public — no login required to browse.
 
@@ -251,16 +258,14 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 - **Search** button (gray-900) and **Clear** link.
 
 **Results Table** columns (all sortable by clicking the header):
-1. **Document Name** — clickable link to the plan detail page; displays the canonical name
-2. **Class** — subject name
-3. **Day #** — lesson number (centered)
-4. **Version** — displayed as "v1", "v2", etc. (centered)
-5. **Author** — email address of the plan's author
-6. **Rating** — vote score with green up-arrow (positive), red down-arrow (negative), or plain zero; uses the `vote-buttons` component in readonly mode
-7. **Updated** — date in "Mon D, YYYY" format
-8. **File** — "Preview" link (opens document in embedded viewer) if file exists, dash otherwise
+1. **Class** — subject name
+2. **Day #** — lesson number (centered)
+3. **Version** — displayed as "v1", "v2", etc. (centered)
+4. **Rating** — vote score with colored indicator; uses the `vote-buttons` component in readonly mode
+5. **Updated** — date only in "Mon D, YYYY" format (no time)
+6. **Actions** — two buttons: "View" (gray-100, links to plan detail page) and "Download" (gray-900, direct file download; only shown if file exists)
 
-**Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sorting by "Author" requires a JOIN to the `users` table. Sort direction is validated server-side to only allow `asc` or `desc`.
+**Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`.
 
 **Pagination:** 10 rows per page. Standard Laravel pagination links. A summary line below the table shows "Showing X–Y of Z plans".
 
@@ -298,17 +303,18 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 **Layout:** Centered, max-width 2xl form in a bordered card. Requires authentication + verified email.
 
 **Form fields:**
-1. **Class Name** (required dropdown): Options from a PHP constant — currently: English, Mathematics, Science. To add subjects, append to the `LessonPlanController::CLASS_NAMES` array.
+1. **Class Name** (required dropdown): Options from a PHP constant — currently: English, History, Mathematics, Science. To add subjects, append to the `LessonPlanController::CLASS_NAMES` array.
 2. **Lesson Number** (required dropdown): Numbers 1 through 20. Small (w-32) dropdown.
 3. **Author** (read-only display): Shows the logged-in user's email address in a gray-50 bordered box. Text: "Plans are always uploaded under your account." Author is always `Auth::id()`.
 4. **Description** (optional textarea): 4 rows, max 2000 characters.
 5. **Document Name** (info box): Gray-50 box showing the naming format: `{ClassName}_Day{N}_{AuthorName}_{UTC-Timestamp}`.
-6. **Lesson Plan File** (required file input): Styled file input. Max 10 MB. Accepted MIME types listed in helper text.
+6. **Lesson Plan File** (required file input): Styled file input. Max 1 MB. Accepted MIME types listed in helper text. Client-side JavaScript validates file size before submission and shows an error if the file exceeds 1 MB.
 7. **Upload Lesson Plan** button (gray-900) + **Cancel** link.
 
 **On submit:**
 - Validates all fields via `StoreLessonPlanRequest`
 - Generates canonical name from fields + current UTC timestamp
+- Renames the uploaded file to the canonical name regardless of original filename
 - Checks for duplicate canonical name (rejects if exists)
 - Stores file with canonical name in `storage/app/public/lessons/`
 - Computes SHA-256 hash
@@ -379,25 +385,29 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 - Iframe height: `75vh` (minimum 500px)
 - Below the iframe: a gray-50 footer bar with a note about Google Docs Viewer and a secondary download link
 
+**Privacy note:** Because the Google Docs Viewer fetches the file via its public URL, the document's content is transmitted to Google's servers for rendering. Users should be aware that previewed documents are not private. The download button provides direct access without third-party involvement.
+
 **Fallback:** If the plan has no file attached, redirects to the detail page with an error flash message.
 
 ### 5.8 Auth Modal
 
-A single Alpine.js modal dialog that handles both sign-in and registration. (Note: this section was originally 5.6 before the Stats and Preview pages were added.) It is injected into the layout for all guest (unauthenticated) visitors.
+A single Alpine.js modal dialog that handles both sign-in and registration. It is injected into the layout for all guest (unauthenticated) visitors.
 
 **Trigger:** Clicking the "Sign In" button in the top-right header dispatches an Alpine.js event (`open-auth-modal`) that opens the modal.
 
 **Sign In Panel:**
-- Fields: Username (email input), Password
+- Fields: Username (email input), Password (with Show/Hide toggle button)
 - Submit button: "Sign In" (full-width, gray-900)
 - Footer: "New User? Sign Up" — switches to register panel
 
 **Create Account Panel:**
-- Fields: Username (email, with hint "must be a valid email"), Password, Confirm Password
+- Fields: Username (email, with hint "must be a valid email"), Password (with Show/Hide toggle), Confirm Password (with Show/Hide toggle). The Password and Confirm Password fields share a single toggle state.
 - Submit button: "Sign Up" (full-width, gray-900)
 - Footer: "Already have an account? Sign In" — switches to login panel
 
 **Error handling:** If login/register fails validation, the modal reopens automatically (the `open` state is set to `true` when `$errors->any()` is true). The hidden `_auth_mode` field preserves which panel was active.
+
+**Standalone fallback pages:** `auth/login.blade.php` and `auth/register.blade.php` provide full-page equivalents of the modal panels, used when Breeze redirects to `/login` or `/register` (e.g., after validation failure). These pages use the same `<x-layout>` wrapper and include the same Show/Hide password toggles.
 
 ### 5.9 Upload Success Dialog
 
@@ -490,7 +500,7 @@ Standard Laravel/Breeze email verification. Triggered by the `Registered` event 
 
 ### 8.1 Design Language
 
-The application uses a clean, monochromatic black-and-white design language with minimal color.
+The application uses a clean, monochromatic black-and-white design language with minimal color. No logo image — text-only branding.
 
 **Primary color:** `gray-900` (#111827) — used for buttons, headings, active navigation, important text
 **Background:** Pure white (`bg-white`)
@@ -513,23 +523,24 @@ The application uses a clean, monochromatic black-and-white design language with
 
 **Structure:** Top-level `<header>` with a bottom border (`border-b border-gray-200`).
 
-**Left side:** ARES logo image (`h-14 sm:h-16`) + "ARES Education" heading (`text-3xl sm:text-4xl font-bold text-gray-900`) + "Lesson Plan Archive" subtitle (`text-base sm:text-lg text-gray-500`). All wrapped in a link to the dashboard.
+**Left side:** "ARES Education" heading (`text-3xl sm:text-4xl font-bold text-gray-900`) + "Kenya Lesson Plan Repository" subtitle (`text-base sm:text-lg text-gray-500`). All wrapped in a link to the dashboard. No logo image.
 
 **Right side:**
-- **Stats** link (visible to everyone, positioned left of auth controls; underlined when active)
-- Authenticated: user's email address (hidden on small screens) + "Sign Out" link
-- Guest: "Sign In" button (no background, just text)
+- **Stats** link (`text-base sm:text-lg font-medium`; underlined when active) — visible to everyone
+- Authenticated: user's email address (hidden on small screens) + "Sign Out" link (`text-base sm:text-lg`)
+- Guest: "Sign In" button (`text-base sm:text-lg font-medium`; no background, just text)
 
 **Navigation** (below branding, only when authenticated): "Browse All", "My Plans", "+ Upload Plan" — horizontal links with active state indicated by underline.
 
 ### 8.4 Footer
 
-Simple centered text: "© {year} ARES Education" in `text-gray-400`. Separated from content by `border-t border-gray-200` and `mt-16` margin.
+Simple centered text: "© {year} ARES Education — Kenya Lesson Plan Repository" in `text-gray-400`. Separated from content by `border-t border-gray-200` and `mt-16` margin.
 
 ### 8.5 Form Styling
 
 - Labels: `text-sm font-medium text-gray-700 mb-1`
 - Inputs/selects: `border border-gray-300 rounded-md px-3 py-2 text-sm` with gray-400 focus ring
+- Password inputs: Include a "Show/Hide" toggle button positioned absolutely within the input field (Alpine.js controlled)
 - File inputs: Custom Tailwind file input styling with gray-100 background
 - Error messages: `text-red-600 text-xs mt-1`
 - Primary buttons: `bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700`
@@ -550,7 +561,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 
 ### 8.8 Responsive Behavior
 
-- Header collapses: logo + text stack, user email hidden on mobile
+- Header collapses: branding text stacks vertically, user email hidden on mobile
 - Navigation links wrap with `flex-wrap gap-4`
 - Dashboard search bar fields wrap responsively
 - Table uses horizontal scroll on small screens (`overflow-x-auto`)
@@ -568,9 +579,10 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 **Behavior:**
 1. Back-fills `file_hash` for any records where it is NULL (reads the file from disk and computes SHA-256)
 2. Groups all lesson plans by `file_hash` and identifies groups with more than one record
-3. For each group, keeps the record with the lowest `id` (earliest upload) and marks all others for deletion
-4. For each duplicate to be deleted: deletes the stored file, emails the author, deletes associated votes, deletes the database record
-5. With `--dry-run`: shows what would happen but takes no action
+3. For each group, keeps the record with the lowest `id` (earliest upload) and marks later duplicates for deletion
+4. **Lineage protection:** Skips any duplicate that has dependent versions (other plans reference it via `parent_id` or `original_id`), preventing orphaned version families
+5. For each safe-to-remove duplicate: deletes the stored file, emails the author, deletes associated votes, deletes the database record
+6. With `--dry-run`: shows what would happen but takes no action
 
 **Scheduling:** Recommended to run daily at 2:00 AM via cron.
 
@@ -585,7 +597,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | class_name | required, string, must be one of the values in `LessonPlanController::CLASS_NAMES` |
 | lesson_day | required, integer, min 1, max 20 |
 | description | nullable, string, max 2000 characters |
-| file | required, max 10240 KB, mimes: pdf,doc,docx,ppt,pptx,xls,xlsx,txt,rtf,odt,odp,ods |
+| file | required, max 1024 KB (1 MB), mimes: pdf,doc,docx,ppt,pptx,xls,xlsx,txt,rtf,odt,odp,ods |
 
 ### 10.2 Voting
 
@@ -604,7 +616,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 
 | Parameter | Validation |
 |---|---|
-| sort | Must be in whitelist: name, class_name, lesson_day, version_number, vote_score, updated_at, created_at, author |
+| sort | Must be in whitelist: `class_name`, `lesson_day`, `version_number`, `vote_score`, `updated_at` (matches visible dashboard columns) |
 | order | Must be 'asc' or 'desc' (case-insensitive); defaults to 'desc' |
 
 ---
@@ -614,6 +626,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 ### 11.1 Upload Errors
 
 - **Duplicate canonical name:** Redirects back with error message explaining the collision; suggests waiting a moment and trying again. (This only occurs if the same class/day/author uploads within the same second.)
+- **File too large:** Client-side JavaScript checks file size before form submission and shows an inline error. Server-side validation also rejects files over 1 MB with message "The uploaded file must be smaller than 1 MB."
 - **File validation failure:** Standard Laravel validation; field-level error messages displayed below each form field.
 - **Email failure:** Logged but not shown to the user; the upload itself succeeds.
 
@@ -646,7 +659,7 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 
 - All user input is validated server-side via Form Request classes
 - Sort column and direction are validated against whitelists
-- File uploads are validated for size and MIME type
+- File uploads are validated for size (1 MB max) and MIME type
 - Class names are restricted to a PHP constant whitelist
 
 ### 12.3 Authorization
@@ -660,6 +673,7 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 - Uploaded files are stored outside the web root (in `storage/app/public/lessons/`)
 - Files are served through Laravel's `Storage::download()` method
 - SHA-256 hashing detects duplicate content
+- All uploaded files are renamed to canonical format — original filenames are discarded
 
 ### 12.5 Production Settings
 
@@ -671,8 +685,6 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 ---
 
 ## 13. File Inventory
-
-See `DEPLOYMENT.md` for the complete file listing and deployment instructions.
 
 ### 13.1 Controllers
 
@@ -695,7 +707,7 @@ See `DEPLOYMENT.md` for the complete file listing and deployment instructions.
 
 | File | Responsibility |
 |---|---|
-| `components/layout.blade.php` | Master layout: header, logo, Stats link, auth modal, upload dialog, footer |
+| `components/layout.blade.php` | Master layout: header, branding, Stats link, auth modal, upload dialog, footer |
 | `components/vote-buttons.blade.php` | Reusable vote display/interaction component |
 | `dashboard.blade.php` | Main public page with counters, search/filter/sort table |
 | `stats.blade.php` | Archive statistics page with detailed breakdowns |
@@ -704,6 +716,8 @@ See `DEPLOYMENT.md` for the complete file listing and deployment instructions.
 | `lesson-plans/create.blade.php` | Upload form for new plans |
 | `lesson-plans/edit.blade.php` | New version form (based on existing plan) |
 | `lesson-plans/my-plans.blade.php` | Authenticated user's own plan list |
+| `auth/login.blade.php` | Standalone login page (fallback for modal) |
+| `auth/register.blade.php` | Standalone registration page (fallback for modal) |
 | `auth/verify-email.blade.php` | Email verification notice page |
 
 ---
@@ -715,7 +729,7 @@ See `DEPLOYMENT.md` for the complete file listing and deployment instructions.
 Defined in `LessonPlanController::CLASS_NAMES`:
 
 ```php
-public const CLASS_NAMES = ['English', 'Mathematics', 'Science'];
+public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
 ```
 
 To add new subjects, append to this array. The `StoreLessonPlanRequest` validation references this constant dynamically.
@@ -735,7 +749,7 @@ To add new subjects, append to this array. The `StoreLessonPlanRequest` validati
 
 | Setting | Value |
 |---|---|
-| Max file size | 10 MB (10240 KB) |
+| Max file size | 1 MB (1024 KB) |
 | Accepted MIME types | pdf, doc, docx, ppt, pptx, xls, xlsx, txt, rtf, odt, odp, ods |
 
 ---
@@ -754,6 +768,6 @@ To add new subjects, append to this array. The `StoreLessonPlanRequest` validati
 | Library | CDN URL | Purpose |
 |---|---|---|
 | Tailwind CSS | `https://cdn.tailwindcss.com` | Utility-first CSS framework |
-| Alpine.js 3.x | `https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js` | Lightweight JS reactivity for modals |
+| Alpine.js 3.x | `https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js` | Lightweight JS reactivity for modals, show/hide toggles |
 
 No `package.json`, no `node_modules`, no Vite, no Webpack.
