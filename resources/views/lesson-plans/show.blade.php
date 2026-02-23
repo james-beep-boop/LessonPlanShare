@@ -65,8 +65,12 @@
                     {{-- Action Buttons --}}
                     <div class="flex flex-wrap items-center gap-3 mt-6 pt-4 border-t border-gray-100">
                         @if ($lessonPlan->file_path)
-                            <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                            <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
                                class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                                Preview File
+                            </a>
+                            <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                               class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                 Download File
                             </a>
                         @endif

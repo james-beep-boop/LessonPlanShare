@@ -15,8 +15,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
+
 Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])
     ->name('lesson-plans.show');
+
+Route::get('/lesson-plans/{lessonPlan}/preview', [LessonPlanController::class, 'preview'])
+    ->name('lesson-plans.preview');
 
 Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 'download'])
     ->name('lesson-plans.download');

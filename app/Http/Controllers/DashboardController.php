@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Dashboard controller — the main public-facing page of the application.
@@ -98,6 +99,90 @@ class DashboardController extends Controller
             ->orderBy('class_name')
             ->pluck('class_name');
 
-        return view('dashboard', compact('plans', 'classNames', 'sortField', 'sortOrder'));
+        // ── Dashboard counters ──
+        // Unique classes: how many distinct class names have at least one plan
+        $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
+
+        // Total plans: every version counts as one (not just latest)
+        $totalPlanCount = LessonPlan::count();
+
+        // Favorite plan: the single plan with the highest net vote score
+        // (upvotes minus downvotes). Ties broken by most recent. Eager-load author.
+        $favoritePlan = LessonPlan::with('author')
+            ->orderByDesc('vote_score')
+            ->orderByDesc('updated_at')
+            ->first();
+
+        return view('dashboard', compact(
+            'plans', 'classNames', 'sortField', 'sortOrder',
+            'uniqueClassCount', 'totalPlanCount', 'favoritePlan'
+        ));
+    }
+
+    /**
+     * Display the Stats page with detailed archive statistics.
+     *
+     * Public route — anyone can view statistics, no auth required.
+     * Computes aggregate data about the lesson plan archive including:
+     * - Total plans and unique classes (same as dashboard counters)
+     * - Total contributors (distinct authors)
+     * - Plans per class (bar-chart-style breakdown)
+     * - Top 5 highest-rated plans
+     * - Top 5 most prolific contributors
+     * - Most revised plan family (most versions)
+     */
+    public function stats()
+    {
+        // ── Basic counters ──
+        $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
+        $totalPlanCount   = LessonPlan::count();
+        $contributorCount = LessonPlan::distinct('author_id')->count('author_id');
+
+        // ── Plans per class ──
+        // Returns a collection of objects with class_name and plan_count
+        $plansPerClass = LessonPlan::select('class_name', DB::raw('COUNT(*) as plan_count'))
+            ->groupBy('class_name')
+            ->orderByDesc('plan_count')
+            ->get();
+
+        // ── Top 5 highest-rated plans ──
+        $topRated = LessonPlan::with('author')
+            ->where('vote_score', '>', 0)
+            ->orderByDesc('vote_score')
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get();
+
+        // ── Top 5 most prolific contributors ──
+        // Counts how many plans each author has uploaded (all versions)
+        $topContributors = LessonPlan::select('author_id', DB::raw('COUNT(*) as upload_count'))
+            ->with('author')
+            ->groupBy('author_id')
+            ->orderByDesc('upload_count')
+            ->limit(5)
+            ->get();
+
+        // ── Most revised plan family ──
+        // The root plan whose family has the most versions
+        $mostRevised = LessonPlan::select(
+                DB::raw('COALESCE(original_id, id) as root_id'),
+                DB::raw('COUNT(*) as version_count')
+            )
+            ->groupBy('root_id')
+            ->orderByDesc('version_count')
+            ->first();
+
+        $mostRevisedPlan = null;
+        if ($mostRevised && $mostRevised->version_count > 1) {
+            $mostRevisedPlan = LessonPlan::with('author')->find($mostRevised->root_id);
+            if ($mostRevisedPlan) {
+                $mostRevisedPlan->family_version_count = $mostRevised->version_count;
+            }
+        }
+
+        return view('stats', compact(
+            'uniqueClassCount', 'totalPlanCount', 'contributorCount',
+            'plansPerClass', 'topRated', 'topContributors', 'mostRevisedPlan'
+        ));
     }
 }

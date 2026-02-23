@@ -189,7 +189,9 @@ The command supports a `--dry-run` flag for preview-only execution.
 | Action | Who Can Do It |
 |---|---|
 | Browse all plans (dashboard) | Anyone (public) |
+| View archive statistics | Anyone (public) |
 | View a single plan | Anyone (public) |
+| Preview a document | Anyone (public) |
 | Download a file | Anyone (public) |
 | Upload a new plan | Authenticated + verified email |
 | Create a new version | Authenticated + verified email |
@@ -207,8 +209,10 @@ Authorization is enforced via Laravel middleware (`['auth', 'verified']`) on rou
 
 | Method | URI | Controller@Method | Name | Description |
 |---|---|---|---|---|
-| GET | `/` | DashboardController@index | `dashboard` | Main page with searchable/sortable plan table |
+| GET | `/` | DashboardController@index | `dashboard` | Main page with counters, searchable/sortable plan table |
+| GET | `/stats` | DashboardController@stats | `stats` | Detailed archive statistics page |
 | GET | `/lesson-plans/{id}` | LessonPlanController@show | `lesson-plans.show` | Single plan detail page |
+| GET | `/lesson-plans/{id}/preview` | LessonPlanController@preview | `lesson-plans.preview` | Document preview with embedded viewer |
 | GET | `/lesson-plans/{id}/download` | LessonPlanController@download | `lesson-plans.download` | File download |
 
 ### 4.2 Authenticated + Verified Routes
@@ -233,7 +237,12 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 
 ### 5.1 Dashboard (Home Page — `/`)
 
-**Layout:** Full-width table with search/filter bar above it. Public — no login required to browse.
+**Layout:** Full-width table with counters, search/filter bar, and results table. Public — no login required to browse.
+
+**Dashboard Counters** (bordered card above the search bar):
+- **Unique Classes** — count of distinct class names in the database (large bold number)
+- **Total Lesson Plans** — total count of all plan records, counting each revision as one
+- **Favorite Lesson Plan** — the plan with the highest net vote score (upvotes minus downvotes). Displays the plan name as a clickable link to the preview page, the author's email, and the rating in green. If no plans have positive votes, shows "No votes yet."
 
 **Search & Filter Bar** (contained in a bordered card):
 - **Search** (text input): Free-text search across document name, class name, description, and author name. Uses SQL `LIKE %term%` queries.
@@ -249,7 +258,7 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 5. **Author** — email address of the plan's author
 6. **Rating** — vote score with green up-arrow (positive), red down-arrow (negative), or plain zero; uses the `vote-buttons` component in readonly mode
 7. **Updated** — date in "Mon D, YYYY" format
-8. **File** — "Download" link if file exists, dash otherwise
+8. **File** — "Preview" link (opens document in embedded viewer) if file exists, dash otherwise
 
 **Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sorting by "Author" requires a JOIN to the `users` table. Sort direction is validated server-side to only allow `asc` or `desc`.
 
@@ -266,7 +275,8 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 - Description text (or "No description provided" in italic)
 - Detail grid (2 columns): Class, Lesson Day, Version, Author, File (name + formatted size), Uploaded date
 - Action buttons:
-  - **Download File** (gray-900 button) — always visible if file exists
+  - **Preview File** (gray-900 button) — opens document in embedded viewer; visible if file exists
+  - **Download File** (gray-100 outlined button) — direct file download; visible if file exists
   - **Create New Version** (gray-100 outlined button) — visible only to authenticated users
   - **Delete** (red-50 button) — visible only to the plan's author; confirms via browser `confirm()` dialog
 
@@ -335,9 +345,45 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 
 **Empty state:** "You haven't uploaded any lesson plans yet. Upload your first one!" with a link to the upload form.
 
-### 5.6 Auth Modal
+### 5.6 Stats Page (`/stats`)
 
-A single Alpine.js modal dialog that handles both sign-in and registration. It is injected into the layout for all guest (unauthenticated) visitors.
+**Layout:** Centered max-width 4xl page with summary counters and four detail cards in a 2×2 grid. Public — no login required.
+
+**Summary Counters** (3-column grid of bordered cards):
+- **Total Lesson Plans** — count of all plan records
+- **Unique Classes** — count of distinct class names
+- **Contributors** — count of distinct author IDs
+
+**Detail Cards** (2-column grid):
+1. **Plans per Class** — each class name with a proportional horizontal bar showing plan count relative to the largest class. Bar width is percentage-based.
+2. **Top Rated Plans** — top 5 plans with positive vote scores, sorted by `vote_score DESC` then `updated_at DESC`. Each entry shows class/day as a link to the detail page, author name, and green score badge.
+3. **Top Contributors** — top 5 authors by total uploads (all versions counted). Numbered list with upload count.
+4. **Most Revised Plan** — the plan family with the most versions. Shows class/day as a link, original author, and version count. Only shown if at least one family has more than 1 version.
+
+**Footer:** "Back to Browse" link to dashboard.
+
+### 5.7 Document Preview Page (`/lesson-plans/{id}/preview`)
+
+**Layout:** Centered max-width 5xl page with header bar and embedded document viewer. Public — no login required.
+
+**Header Bar:**
+- "Preview" label in uppercase gray text above the plan title
+- Plan title: "{Class Name} — Day {N}"
+- Subtext: version number, author, filename
+- Action buttons: **Download File** (gray-900 primary), **View Details** (gray-100 outlined, links to show page), **Back** link
+
+**Document Viewer:**
+- Uses Google Docs Viewer to render `.doc`/`.docx` files in an iframe without server-side conversion
+- The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true`
+- The file must be publicly accessible via its storage URL for the viewer to work
+- Iframe height: `75vh` (minimum 500px)
+- Below the iframe: a gray-50 footer bar with a note about Google Docs Viewer and a secondary download link
+
+**Fallback:** If the plan has no file attached, redirects to the detail page with an error flash message.
+
+### 5.8 Auth Modal
+
+A single Alpine.js modal dialog that handles both sign-in and registration. (Note: this section was originally 5.6 before the Stats and Preview pages were added.) It is injected into the layout for all guest (unauthenticated) visitors.
 
 **Trigger:** Clicking the "Sign In" button in the top-right header dispatches an Alpine.js event (`open-auth-modal`) that opens the modal.
 
@@ -353,7 +399,7 @@ A single Alpine.js modal dialog that handles both sign-in and registration. It i
 
 **Error handling:** If login/register fails validation, the modal reopens automatically (the `open` state is set to `true` when `$errors->any()` is true). The hidden `_auth_mode` field preserves which panel was active.
 
-### 5.7 Upload Success Dialog
+### 5.9 Upload Success Dialog
 
 An Alpine.js modal that appears after a successful upload/new version. Triggered by the `upload_success` session flash.
 
@@ -364,7 +410,7 @@ An Alpine.js modal that appears after a successful upload/new version. Triggered
 - "A confirmation email has been sent to your address."
 - "OK" button (gray-900) — closes the dialog
 
-### 5.8 Flash Messages
+### 5.10 Flash Messages
 
 Three types of flash messages appear below the header:
 - **Success** (green border/background): e.g., "Lesson plan deleted." or "Vote recorded."
@@ -470,6 +516,7 @@ The application uses a clean, monochromatic black-and-white design language with
 **Left side:** ARES logo image (`h-14 sm:h-16`) + "ARES Education" heading (`text-3xl sm:text-4xl font-bold text-gray-900`) + "Lesson Plan Archive" subtitle (`text-base sm:text-lg text-gray-500`). All wrapped in a link to the dashboard.
 
 **Right side:**
+- **Stats** link (visible to everyone, positioned left of auth controls; underlined when active)
 - Authenticated: user's email address (hidden on small screens) + "Sign Out" link
 - Guest: "Sign In" button (no background, just text)
 
@@ -631,8 +678,8 @@ See `DEPLOYMENT.md` for the complete file listing and deployment instructions.
 
 | File | Responsibility |
 |---|---|
-| `DashboardController` | Public homepage: search, filter, sort, paginate lesson plans |
-| `LessonPlanController` | CRUD for lesson plans: upload, show, new version, delete, download |
+| `DashboardController` | Public homepage (search, filter, sort, counters) + Stats page |
+| `LessonPlanController` | CRUD for lesson plans: upload, show, preview, new version, delete, download |
 | `VoteController` | Cast/toggle votes on lesson plan versions |
 | `Auth/RegisteredUserController` | Custom registration: single email field serves as name + email |
 
@@ -648,10 +695,12 @@ See `DEPLOYMENT.md` for the complete file listing and deployment instructions.
 
 | File | Responsibility |
 |---|---|
-| `components/layout.blade.php` | Master layout: header, logo, auth modal, upload dialog, footer |
+| `components/layout.blade.php` | Master layout: header, logo, Stats link, auth modal, upload dialog, footer |
 | `components/vote-buttons.blade.php` | Reusable vote display/interaction component |
-| `dashboard.blade.php` | Main public page with search/filter/sort table |
-| `lesson-plans/show.blade.php` | Plan detail page with voting and version history |
+| `dashboard.blade.php` | Main public page with counters, search/filter/sort table |
+| `stats.blade.php` | Archive statistics page with detailed breakdowns |
+| `lesson-plans/show.blade.php` | Plan detail page with preview button, voting, version history |
+| `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer + download button |
 | `lesson-plans/create.blade.php` | Upload form for new plans |
 | `lesson-plans/edit.blade.php` | New version form (based on existing plan) |
 | `lesson-plans/my-plans.blade.php` | Authenticated user's own plan list |

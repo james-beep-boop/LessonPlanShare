@@ -1,6 +1,46 @@
 <x-layout>
     <x-slot:title>ARES Education — Lesson Plan Archive</x-slot>
 
+    {{-- ── Dashboard Counters + Favorite ── --}}
+    <div class="mb-8 border border-gray-200 rounded-lg p-4 sm:p-5">
+        <div class="flex flex-wrap gap-6 items-start">
+
+            {{-- Counter: Unique Classes --}}
+            <div class="text-center px-4">
+                <p class="text-3xl font-bold text-gray-900">{{ $uniqueClassCount }}</p>
+                <p class="text-xs text-gray-500 mt-1">Unique {{ Str::plural('Class', $uniqueClassCount) }}</p>
+            </div>
+
+            {{-- Counter: Total Lesson Plans --}}
+            <div class="text-center px-4">
+                <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
+                <p class="text-xs text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
+            </div>
+
+            {{-- Divider --}}
+            <div class="hidden sm:block w-px h-14 bg-gray-200"></div>
+
+            {{-- Favorite Lesson Plan --}}
+            <div class="flex-1 min-w-[200px]">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Favorite Lesson Plan</p>
+                @if ($favoritePlan && $favoritePlan->vote_score > 0)
+                    <a href="{{ route('lesson-plans.preview', $favoritePlan) }}"
+                       class="text-sm font-medium text-gray-900 hover:text-gray-600 underline underline-offset-2">
+                        {{ $favoritePlan->name }}
+                    </a>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        by {{ $favoritePlan->author->name ?? 'Unknown' }}
+                        &middot;
+                        <span class="text-green-600 font-medium">+{{ $favoritePlan->vote_score }}</span> rating
+                    </p>
+                @else
+                    <p class="text-sm text-gray-400 italic">No votes yet</p>
+                @endif
+            </div>
+
+        </div>
+    </div>
+
     {{-- Search & Filter Bar --}}
     <form method="GET" action="{{ route('dashboard') }}" class="mb-8 border border-gray-200 rounded-lg p-4 sm:p-5">
         <div class="flex flex-wrap gap-3 items-end">
@@ -97,9 +137,9 @@
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             <td class="px-4 py-3">
                                 @if ($plan->file_path)
-                                    <a href="{{ route('lesson-plans.download', $plan) }}"
+                                    <a href="{{ route('lesson-plans.preview', $plan) }}"
                                        class="text-gray-900 hover:text-gray-600 text-xs font-medium underline">
-                                        Download
+                                        Preview
                                     </a>
                                 @else
                                     <span class="text-gray-400 text-xs">—</span>

@@ -484,13 +484,14 @@ rm -rf ~/sheql.com.old
 
 ## COMPLETE FILE LIST
 
-Here is every custom file in this package (28 files total):
+Here is every custom file in this package (31 files total):
 
 ```
 LessonPlanShare/
 ├── .env.example
 ├── .gitignore
 ├── DEPLOYMENT.md
+├── TECHNICAL_DESIGN.md
 ├── storage/app/public/lessons/.gitkeep
 │
 ├── public/images/
@@ -508,8 +509,8 @@ LessonPlanShare/
 │
 ├── app/Http/Controllers/
 │   ├── Auth/RegisteredUserController.php
-│   ├── DashboardController.php
-│   ├── LessonPlanController.php
+│   ├── DashboardController.php                      (index + stats pages)
+│   ├── LessonPlanController.php                     (CRUD + preview + download)
 │   └── VoteController.php
 │
 ├── app/Http/Requests/
@@ -528,7 +529,8 @@ LessonPlanShare/
 │   ├── components/
 │   │   ├── layout.blade.php
 │   │   └── vote-buttons.blade.php
-│   ├── dashboard.blade.php
+│   ├── dashboard.blade.php                          (main page with counters)
+│   ├── stats.blade.php                              (dedicated statistics page)
 │   ├── emails/
 │   │   ├── lesson-plan-uploaded.blade.php
 │   │   └── duplicate-content-removed.blade.php
@@ -536,6 +538,7 @@ LessonPlanShare/
 │       ├── create.blade.php
 │       ├── show.blade.php
 │       ├── edit.blade.php
+│       ├── preview.blade.php                        (document viewer with download)
 │       └── my-plans.blade.php
 │
 └── routes/

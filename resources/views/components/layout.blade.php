@@ -34,10 +34,16 @@
                     </div>
                 </a>
 
-                {{-- Right: Auth --}}
-                <div class="flex items-center pt-1">
+                {{-- Right: Stats link + Auth --}}
+                <div class="flex items-center pt-1 space-x-4">
+                    {{-- Stats link — visible to all visitors, placed left of auth controls --}}
+                    <a href="{{ route('stats') }}"
+                       class="text-sm font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                        Stats
+                    </a>
+
                     @auth
-                        <span class="text-sm text-gray-600 mr-4 hidden sm:inline">{{ auth()->user()->name }}</span>
+                        <span class="text-sm text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit"

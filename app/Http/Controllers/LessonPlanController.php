@@ -254,6 +254,28 @@ class LessonPlanController extends Controller
     }
 
     /**
+     * Show a document preview page with an embedded viewer.
+     *
+     * Public route — anyone can preview files. Uses Google Docs Viewer
+     * to render .doc/.docx files in the browser without requiring any
+     * server-side conversion. The preview page includes a download button
+     * for users who want to save the file locally.
+     *
+     * If the plan has no file attached, redirects to the detail page.
+     */
+    public function preview(LessonPlan $lessonPlan)
+    {
+        if (!$lessonPlan->file_path) {
+            return redirect()->route('lesson-plans.show', $lessonPlan)
+                ->with('error', 'This plan does not have a file attached.');
+        }
+
+        $lessonPlan->load('author');
+
+        return view('lesson-plans.preview', compact('lessonPlan'));
+    }
+
+    /**
      * Download the file attached to a lesson plan.
      *
      * Public route — anyone can download. The file is served with the
