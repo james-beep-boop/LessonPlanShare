@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'ARES Education — Lesson Plan Archive' }}</title>
+    <title>{{ $title ?? 'ARES: Lesson Plans' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
@@ -25,24 +25,24 @@
                         ARES Education
                     </h1>
                     <p class="text-base sm:text-lg text-gray-500 mt-1">
-                        Lesson Plan Archive
+                        Kenya Lesson Plan Repository
                     </p>
                 </a>
 
                 {{-- Right: Stats link + Auth --}}
-                <div class="flex items-center pt-1 space-x-4">
+                <div class="flex items-center pt-2 space-x-5">
                     {{-- Stats link — visible to all visitors, placed left of auth controls --}}
                     <a href="{{ route('stats') }}"
-                       class="text-sm font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                       class="text-base sm:text-lg font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
                         Stats
                     </a>
 
                     @auth
-                        <span class="text-sm text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
+                        <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit"
-                                    class="text-sm text-gray-500 hover:text-gray-900 underline">
+                                    class="text-base sm:text-lg text-gray-500 hover:text-gray-900 underline">
                                 Sign Out
                             </button>
                         </form>
@@ -50,7 +50,7 @@
                         <button
                             x-data
                             @click="$dispatch('open-auth-modal', { mode: 'login' })"
-                            class="text-sm font-medium text-gray-900 hover:text-gray-600 cursor-pointer">
+                            class="text-base sm:text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer">
                             Sign In
                         </button>
                     @endauth
@@ -129,13 +129,18 @@
                             @enderror
                         </div>
 
-                        <div class="mb-6">
+                        <div class="mb-6" x-data="{ show: false }">
                             <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">
                                 Password
                             </label>
-                            <input type="password" id="login-password" name="password" required
-                                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            <div class="relative">
+                                <input :type="show ? 'text' : 'password'" id="login-password" name="password" required
+                                       class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
+                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                <button type="button" @click="show = !show"
+                                        class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                                        x-text="show ? 'Hide' : 'Show'"></button>
+                            </div>
                             @error('password')
                                 <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -158,7 +163,7 @@
                 </div>
 
                 {{-- ── Register panel ── --}}
-                <div x-show="mode === 'register'">
+                <div x-show="mode === 'register'" x-data="{ showPw: false }">
                     <h2 class="text-xl font-semibold text-gray-900 mb-6">Create Account</h2>
 
                     <form method="POST" action="{{ route('register') }}">
@@ -182,18 +187,28 @@
                             <label for="reg-password" class="block text-sm font-medium text-gray-700 mb-1">
                                 Password
                             </label>
-                            <input type="password" id="reg-password" name="password" required
-                                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            <div class="relative">
+                                <input :type="showPw ? 'text' : 'password'" id="reg-password" name="password" required
+                                       class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
+                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                <button type="button" @click="showPw = !showPw"
+                                        class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                                        x-text="showPw ? 'Hide' : 'Show'"></button>
+                            </div>
                         </div>
 
                         <div class="mb-6">
                             <label for="reg-password-confirm" class="block text-sm font-medium text-gray-700 mb-1">
                                 Confirm Password
                             </label>
-                            <input type="password" id="reg-password-confirm" name="password_confirmation" required
-                                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            <div class="relative">
+                                <input :type="showPw ? 'text' : 'password'" id="reg-password-confirm" name="password_confirmation" required
+                                       class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
+                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                <button type="button" @click="showPw = !showPw"
+                                        class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                                        x-text="showPw ? 'Hide' : 'Show'"></button>
+                            </div>
                             @error('password')
                                 <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -284,7 +299,7 @@
     ────────────────────────────────────────────────────────────── --}}
     <footer class="border-t border-gray-200 mt-16">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-gray-400">
-            &copy; {{ date('Y') }} ARES Education
+            &copy; {{ date('Y') }} ARES Education &mdash; Kenya Lesson Plan Repository
         </div>
     </footer>
 

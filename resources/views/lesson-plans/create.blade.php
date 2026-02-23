@@ -72,7 +72,7 @@
                        @change="validate($event)"
                        class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
                               file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
-                <p class="text-xs text-gray-500 mt-1">Max 10 MB. Accepted: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.</p>
+                <p class="text-xs text-gray-500 mt-1">Max 1 MB. Accepted: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.</p>
                 <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
                 @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
@@ -91,7 +91,7 @@
     {{-- Client-side file validation (size + type check before upload) --}}
     <script>
         function fileValidator() {
-            const maxSize = 10 * 1024 * 1024; // 10 MB
+            const maxSize = 1 * 1024 * 1024; // 1 MB
             const allowed = ['pdf','doc','docx','ppt','pptx','xls','xlsx','txt','rtf','odt','odp','ods'];
             return {
                 error: '',
@@ -107,7 +107,7 @@
                     }
                     if (file.size > maxSize) {
                         const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-                        this.error = 'File is ' + sizeMB + ' MB — the limit is 10 MB. Please choose a smaller file.';
+                        this.error = 'File is ' + sizeMB + ' MB — the limit is 1 MB. Please choose a smaller file.';
                         event.target.value = '';
                     }
                 }

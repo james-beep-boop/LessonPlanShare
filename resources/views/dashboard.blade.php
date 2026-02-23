@@ -1,5 +1,5 @@
 <x-layout>
-    <x-slot:title>ARES Education — Lesson Plan Archive</x-slot>
+    <x-slot:title>ARES: Lesson Plans</x-slot>
 
     {{-- ── Dashboard Counters + Favorite ── --}}
     <div class="mb-8 border border-gray-200 rounded-lg p-4 sm:p-5">
@@ -91,11 +91,9 @@
                     <tr>
                         @php
                             $cols = [
-                                'name'           => 'Document Name',
                                 'class_name'     => 'Class',
                                 'lesson_day'     => 'Day #',
                                 'version_number' => 'Version',
-                                'author'         => 'Author',
                                 'vote_score'     => 'Rating',
                                 'updated_at'     => 'Updated',
                             ];
@@ -115,40 +113,35 @@
                                 </a>
                             </th>
                         @endforeach
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($plans as $plan)
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3">
-                                <a href="{{ route('lesson-plans.show', $plan) }}"
-                                   class="text-gray-900 hover:text-gray-600 font-medium underline underline-offset-2">
-                                    {{ $plan->name }}
-                                </a>
-                            </td>
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">v{{ $plan->version_number }}</td>
-                            <td class="px-4 py-3 text-gray-700">{{ $plan->author->name ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                <a href="{{ route('lesson-plans.show', $plan) }}"
+                                   class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md mr-1">
+                                    View
+                                </a>
                                 @if ($plan->file_path)
-                                    <a href="{{ route('lesson-plans.preview', $plan) }}"
-                                       class="text-gray-900 hover:text-gray-600 text-xs font-medium underline">
-                                        Preview
+                                    <a href="{{ route('lesson-plans.download', $plan) }}"
+                                       class="inline-block px-3 py-1 text-xs font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md">
+                                        Download
                                     </a>
-                                @else
-                                    <span class="text-gray-400 text-xs">—</span>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>

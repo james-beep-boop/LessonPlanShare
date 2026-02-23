@@ -22,7 +22,7 @@ class StoreLessonPlanRequest extends FormRequest
             'description' => 'nullable|string|max:2000',
             'file'        => [
                 'file',
-                'max:10240', // 10 MB limit for DreamHost shared hosting
+                'max:1024', // 1 MB limit
                 'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,rtf,odt,odp,ods',
             ],
         ];
@@ -43,7 +43,7 @@ class StoreLessonPlanRequest extends FormRequest
             'lesson_day.required' => 'Please select a lesson number.',
             'lesson_day.min'      => 'Lesson number must be between 1 and 20.',
             'lesson_day.max'      => 'Lesson number must be between 1 and 20.',
-'file.max'            => 'The uploaded file must be smaller than 10 MB.',
+'file.max'            => 'The uploaded file must be smaller than 1 MB.',
             'file.mimes'          => 'Allowed file types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.',
             'file.required'       => 'Please attach a file to your lesson plan.',
         ];
