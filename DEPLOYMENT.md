@@ -74,6 +74,7 @@ app/Models/LessonPlan.php            →  app/Models/LessonPlan.php (NEW)
 app/Models/Vote.php                  →  app/Models/Vote.php (NEW)
 
 app/Http/Controllers/Auth/RegisteredUserController.php  →  (REPLACE Breeze's)
+app/Http/Controllers/Auth/VerifyEmailController.php     →  (REPLACE Breeze's)
 app/Http/Controllers/DashboardController.php            →  (NEW)
 app/Http/Controllers/LessonPlanController.php           →  (NEW)
 app/Http/Controllers/VoteController.php                 →  (NEW)
@@ -179,7 +180,7 @@ Visit http://localhost:8000 — you should see the dashboard.
 4. Note the password
 
 SMTP settings for DreamHost:
-- Host: `mail.sheql.com`
+- Host: `smtp.dreamhost.com` (do NOT use `mail.sheql.com` — it causes a TLS certificate mismatch)
 - Port: `587`
 - Encryption: `TLS`
 - Username: `david@sheql.com` (the full email address)
@@ -287,7 +288,7 @@ SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
 
 MAIL_MAILER=smtp
-MAIL_HOST=mail.sheql.com
+MAIL_HOST=smtp.dreamhost.com
 MAIL_PORT=587
 MAIL_USERNAME=david@sheql.com
 MAIL_PASSWORD=your_email_password_here
@@ -469,6 +470,7 @@ LessonPlanShare/
 │
 ├── app/Http/Controllers/
 │   ├── Auth/RegisteredUserController.php
+│   ├── Auth/VerifyEmailController.php                  (session-free verification)
 │   ├── DashboardController.php                         (index + stats pages)
 │   ├── LessonPlanController.php                        (CRUD + preview + download)
 │   └── VoteController.php

@@ -483,14 +483,14 @@ Sent to the author of a deleted duplicate when the `DetectDuplicateContent` comm
 
 ### 7.3 Email Verification
 
-Standard Laravel/Breeze email verification. Triggered by the `Registered` event after registration. Uses the same SMTP configuration.
+Triggered by the `Registered` event after registration. Uses the same SMTP configuration. The verification link route does NOT require the user to be logged in — a custom `VerifyEmailController` validates the signed URL, looks up the user by ID, verifies the hash, marks the email as verified, logs the user in, and redirects to the dashboard. This ensures the link works even when clicked in a new tab or different browser where no session exists.
 
 ### 7.4 SMTP Configuration
 
 | Setting | Value |
 |---|---|
 | Driver | smtp |
-| Host | mail.sheql.com |
+| Host | smtp.dreamhost.com |
 | Port | 587 |
 | Encryption | TLS |
 | Username | david@sheql.com (full email address) |
@@ -696,6 +696,7 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 | `LessonPlanController` | CRUD for lesson plans: upload, show, preview, new version, delete, download |
 | `VoteController` | Cast/toggle votes on lesson plan versions |
 | `Auth/RegisteredUserController` | Custom registration: single email field serves as name + email |
+| `Auth/VerifyEmailController` | Custom email verification: works without active session (validates signed URL, logs user in) |
 
 ### 13.2 Models
 
