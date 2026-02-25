@@ -42,6 +42,13 @@
                            hover:bg-gray-700 transition-colors">
                 Sign In
             </button>
+
+            <div class="mt-3 text-center">
+                <a href="{{ route('password.request') }}"
+                   class="text-xs text-gray-500 hover:text-gray-900 underline">
+                    Forgot your password?
+                </a>
+            </div>
         </form>
 
         <div class="mt-6 pt-4 border-t border-gray-200 text-center">

@@ -151,7 +151,7 @@ Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.pdf`
 - The `storage:link` artisan command creates a symlink from `public/storage` → `storage/app/public`
 - Files are served via the public disk for direct download
 - Maximum file size: 1 MB (enforced by validation rule `max:1024` and client-side JavaScript)
-- Accepted formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS
+- Accepted formats: DOC, DOCX, TXT, RTF, ODT
 
 ### 2.5 Duplicate Content Detection
 
@@ -234,7 +234,7 @@ Route parameters use Laravel route model binding (`{lessonPlan}` resolves to a `
 
 ### 4.3 Auth Routes (Breeze)
 
-Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification notice/send/verify. Standalone fallback views exist at `auth/login.blade.php` and `auth/register.blade.php` for cases where Breeze redirects outside the modal (e.g., validation failure).
+Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification notice/send/verify. Standalone fallback views exist at `auth/login.blade.php` and `auth/register.blade.php` for cases where Breeze redirects outside the modal (e.g., validation failure). Password reset views at `auth/forgot-password.blade.php` and `auth/reset-password.blade.php` handle the "Forgot your password?" flow. A "Forgot your password?" link appears below the Sign In button in both the modal and the standalone login page.
 
 ---
 
@@ -599,7 +599,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | class_name | required, string, max 100 characters |
 | lesson_day | required, integer, min 1, max 20 |
 | description | nullable, string, max 2000 characters |
-| file | required, max 1024 KB (1 MB), mimes: pdf,doc,docx,ppt,pptx,xls,xlsx,txt,rtf,odt,odp,ods |
+| file | required, max 1024 KB (1 MB), mimes: doc,docx,txt,rtf,odt |
 
 ### 10.2 Voting
 
@@ -721,6 +721,8 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 | `lesson-plans/my-plans.blade.php` | Authenticated user's own plan list |
 | `auth/login.blade.php` | Standalone login page (fallback for modal) |
 | `auth/register.blade.php` | Standalone registration page (fallback for modal) |
+| `auth/forgot-password.blade.php` | Password reset request form (enter email) |
+| `auth/reset-password.blade.php` | Set new password form (from email link) |
 | `auth/verify-email.blade.php` | Email verification notice page |
 
 ---
@@ -747,7 +749,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | Setting | Value |
 |---|---|
 | Max file size | 1 MB (1024 KB) |
-| Accepted MIME types | pdf, doc, docx, ppt, pptx, xls, xlsx, txt, rtf, odt, odp, ods |
+| Accepted MIME types | doc, docx, txt, rtf, odt |
 
 ---
 

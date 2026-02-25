@@ -20,7 +20,7 @@ class StoreLessonPlanRequest extends FormRequest
             'file'        => [
                 'file',
                 'max:1024', // 1 MB limit
-                'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,rtf,odt,odp,ods',
+                'mimes:doc,docx,txt,rtf,odt',
             ],
         ];
 
@@ -41,7 +41,7 @@ class StoreLessonPlanRequest extends FormRequest
             'lesson_day.min'      => 'Lesson number must be between 1 and 20.',
             'lesson_day.max'      => 'Lesson number must be between 1 and 20.',
             'file.max'            => 'The uploaded file must be smaller than 1 MB.',
-            'file.mimes'          => 'Allowed file types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.',
+            'file.mimes'          => 'Allowed file types: DOC, DOCX, TXT, RTF, ODT.',
             'file.required'       => 'Please attach a file to your lesson plan.',
         ];
     }

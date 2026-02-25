@@ -90,11 +90,11 @@
             <div x-data="fileValidator()">
                 <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Lesson Plan File *</label>
                 <input type="file" name="file" id="file" required
-                       accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.odt,.odp,.ods"
+                       accept=".doc,.docx,.txt,.rtf,.odt"
                        @change="validate($event)"
                        class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
                               file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
-                <p class="text-xs text-gray-500 mt-1">Max 1 MB. Accepted: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, RTF, ODT, ODP, ODS.</p>
+                <p class="text-xs text-gray-500 mt-1">Max 1 MB. Accepted: DOC, DOCX, TXT, RTF, ODT.</p>
                 <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
                 @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>

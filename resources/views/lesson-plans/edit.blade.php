@@ -101,7 +101,7 @@
             <div x-data="fileValidator()">
                 <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Revised Lesson Plan File *</label>
                 <input type="file" name="file" id="file" required
-                       accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.odt,.odp,.ods"
+                       accept=".doc,.docx,.txt,.rtf,.odt"
                        @change="validate($event)"
                        class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
                               file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">

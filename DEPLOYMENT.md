@@ -96,6 +96,8 @@ resources/views/dashboard.blade.php                     →  (REPLACE Breeze's)
 resources/views/stats.blade.php                         →  (NEW)
 resources/views/auth/login.blade.php                    →  (REPLACE or NEW)
 resources/views/auth/register.blade.php                 →  (REPLACE or NEW)
+resources/views/auth/forgot-password.blade.php          →  (REPLACE Breeze's)
+resources/views/auth/reset-password.blade.php           →  (REPLACE Breeze's)
 resources/views/auth/verify-email.blade.php             →  (NEW)
 resources/views/lesson-plans/create.blade.php           →  (NEW)
 resources/views/lesson-plans/show.blade.php             →  (NEW)
@@ -489,6 +491,8 @@ LessonPlanShare/
 │   ├── auth/
 │   │   ├── login.blade.php                             (standalone login fallback)
 │   │   ├── register.blade.php                          (standalone register fallback)
+│   │   ├── forgot-password.blade.php                   (password reset request)
+│   │   ├── reset-password.blade.php                    (set new password)
 │   │   └── verify-email.blade.php                      (email verification page)
 │   ├── components/
 │   │   ├── layout.blade.php                            (master layout with auth modal)
