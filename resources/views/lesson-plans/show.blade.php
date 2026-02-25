@@ -141,7 +141,7 @@
                         @foreach ($versions as $version)
                             <div class="flex items-start space-x-3 {{ $version->id === $lessonPlan->id ? 'bg-gray-50 -mx-2 px-2 py-1.5 rounded-md' : '' }}">
                                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
-                                    v{{ $version->version_number }}
+                                    {{ $version->version_number }}
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     @if ($version->id === $lessonPlan->id)

@@ -1,6 +1,6 @@
 # ARES Education — Kenya Lesson Plan Repository: Technical Design Document
 
-**Version:** 2.0
+**Version:** 3.0
 **Date:** February 2026
 **Status:** Deployed at www.sheql.com
 
@@ -14,7 +14,7 @@ The ARES Education Kenya Lesson Plan Repository is a web application that allows
 
 ### 1.2 Target Users
 
-A closed community of 5–30 high school teachers who share lesson plan documents with each other. All users know each other as colleagues; the system is not designed for the general public, though the browsing/download interface is publicly accessible without authentication.
+A closed community of 5–30 high school teachers who share lesson plan documents with each other. All users know each other as colleagues; the system is not designed for the general public, though the browsing interface is publicly accessible without authentication.
 
 ### 1.3 Hosting Environment
 
@@ -25,7 +25,7 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 - No Node.js runtime; no build tools (Vite, Webpack)
 - No Redis or Memcached; file-based sessions and cache
 - No background workers (queues); all operations are synchronous
-- SMTP email via DreamHost mail server (mail.sheql.com, port 587, TLS)
+- SMTP email via DreamHost mail server (smtp.dreamhost.com, port 587, TLS)
 - HTTPS via DreamHost's free Let's Encrypt integration
 - Cron jobs available for scheduled commands
 - Limited memory on shared hosting (requires `--depth 1` for git clone operations)
@@ -45,13 +45,11 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 
 ---
 
-## 2. Information Architecture
+## 2. Data Model
 
-### 2.1 Data Model
+> **Modularity note:** Each table is described independently. Changes to one table should NOT require reading any other table's description, except where foreign keys are explicitly noted.
 
-The application has two custom database tables beyond Laravel's default `users` table.
-
-#### 2.1.1 `users` Table (Laravel Default + Customizations)
+### 2.1 `users` Table (Laravel Default + Customizations)
 
 | Column | Type | Notes |
 |---|---|---|
@@ -65,7 +63,9 @@ The application has two custom database tables beyond Laravel's default `users` 
 
 **Design decision — name equals email:** The registration form has a single "Username" field that accepts an email address. The submitted value is stored in both the `name` and `email` columns. This simplifies the UI while maintaining compatibility with Laravel's auth system, which expects a `name` column. The User model implements `MustVerifyEmail`, requiring users to click a confirmation email link before accessing authenticated routes.
 
-#### 2.1.2 `lesson_plans` Table
+**Author display name:** When displayed in the UI (dashboard Author column, plan detail pages, stats), the author name is derived from the email address by stripping the `@` symbol and `.` characters. For example, `david@sheql.com` displays as `davidsheqlcom`.
+
+### 2.2 `lesson_plans` Table
 
 | Column | Type | Notes |
 |---|---|---|
@@ -92,7 +92,7 @@ The application has two custom database tables beyond Laravel's default `users` 
 - `original_id` → `lesson_plans.id` (SET NULL on delete)
 - `parent_id` → `lesson_plans.id` (SET NULL on delete)
 
-#### 2.1.3 `votes` Table
+### 2.3 `votes` Table
 
 | Column | Type | Notes |
 |---|---|---|
@@ -108,7 +108,24 @@ The application has two custom database tables beyond Laravel's default `users` 
 - `lesson_plan_id` → `lesson_plans.id` (CASCADE on delete)
 - `user_id` → `users.id` (CASCADE on delete)
 
-### 2.2 Version Family Model
+### 2.4 `favorites` Table (NEW — not yet implemented)
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigint unsigned PK | Auto-increment |
+| user_id | bigint unsigned FK | The user who favorited |
+| lesson_plan_id | bigint unsigned FK | The plan that was favorited |
+| created_at | timestamp | When the favorite was added |
+
+**Constraints:** UNIQUE index on `[user_id, lesson_plan_id]` (one favorite per user per plan)
+
+**Foreign keys:**
+- `user_id` → `users.id` (CASCADE on delete)
+- `lesson_plan_id` → `lesson_plans.id` (CASCADE on delete)
+
+**Behavior:** Toggled via AJAX POST to `/lesson-plans/{id}/favorite`. Authenticated users only. Returns JSON `{ favorited: true/false }` for frontend toggle without page reload.
+
+### 2.5 Version Family Model
 
 Lesson plans use a tree-based versioning system:
 
@@ -127,7 +144,9 @@ Version 3:         original_id = 1,    parent_id = 2
 
 **Deletion guard:** The root plan cannot be deleted if child versions exist, because `original_id` uses `onDelete('set null')`, which would orphan the family linkage. Users must delete children first.
 
-### 2.3 Canonical Naming
+**Different-user versioning:** When a user who is NOT the original author creates a new version, the system creates a completely new plan (version 1) with no `original_id` or `parent_id` link. This "breaks the link" — the new plan starts its own independent version family.
+
+### 2.6 Canonical Naming
 
 Every uploaded document is renamed to a canonical format, regardless of the original upload filename:
 
@@ -135,7 +154,7 @@ Every uploaded document is renamed to a canonical format, regardless of the orig
 {ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC.{ext}
 ```
 
-Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.pdf`
+Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.docx`
 
 **Sanitization rules:**
 - Spaces → hyphens
@@ -145,7 +164,7 @@ Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.pdf`
 
 **Uniqueness:** The combination of class + day + author + second-resolution timestamp ensures unique names. A server-side guard rejects uploads if an identical canonical name already exists (which can only happen if the same user uploads the same class/day within the same second).
 
-### 2.4 File Storage
+### 2.7 File Storage
 
 - Files are stored at `storage/app/public/lessons/{canonical_name}.{ext}`
 - The `storage:link` artisan command creates a symlink from `public/storage` → `storage/app/public`
@@ -153,7 +172,7 @@ Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.pdf`
 - Maximum file size: 1 MB (enforced by validation rule `max:1024` and client-side JavaScript)
 - Accepted formats: DOC, DOCX, TXT, RTF, ODT
 
-### 2.5 Duplicate Content Detection
+### 2.8 Duplicate Content Detection
 
 A SHA-256 hash of each uploaded file's contents is computed and stored in `file_hash`. An artisan command (`lessons:detect-duplicates`) runs on a cron schedule to:
 
@@ -168,6 +187,8 @@ The command supports a `--dry-run` flag for preview-only execution.
 ---
 
 ## 3. Authentication and Authorization
+
+> **Modularity note:** This section covers how users register, log in, reset passwords, and verify email. Changes here should NOT require reading any other section.
 
 ### 3.1 Registration Flow
 
@@ -187,18 +208,42 @@ The command supports a `--dry-run` flag for preview-only execution.
 5. The modal remembers which panel (login/register) was active via a hidden `_auth_mode` field, so validation errors reopen the correct panel.
 6. If validation fails and redirects to `/login`, a standalone login page renders the same form in a full-page layout.
 
-### 3.3 Authorization Rules
+### 3.3 Password Reset Flow
+
+1. User clicks "Forgot your password?" link (available in both the sign-in modal and the standalone login page).
+2. This navigates to `/forgot-password` — a standalone form requesting the user's email address.
+3. On submit, Laravel sends a password reset email via the standard Breeze `PasswordResetLinkController`.
+4. The user clicks the reset link in their email → opens `/reset-password/{token}` with their email pre-filled.
+5. User enters a new password + confirmation → submits → Laravel's `NewPasswordController` handles the reset.
+6. On success, user is redirected to login with a status message.
+
+### 3.4 Email Verification (Custom — Session-Free)
+
+The email verification link does NOT require the user to be logged in. This is critical because the link often opens in a new browser tab or a different browser where no session exists.
+
+**Custom `VerifyEmailController`** (replaces Breeze's default):
+1. Validates the signed URL (Laravel's `signed` middleware)
+2. Finds the user by ID from the URL parameter
+3. Verifies the hash matches the user's email
+4. Marks the email as verified
+5. Logs the user in automatically
+6. Redirects to dashboard with a success message
+
+The route uses `signed` and `throttle:6,1` middleware but NOT `auth` middleware.
+
+### 3.5 Authorization Rules
 
 | Action | Who Can Do It |
 |---|---|
 | Browse all plans (dashboard) | Anyone (public) |
 | View archive statistics | Anyone (public) |
-| View a single plan | Anyone (public) |
-| Preview a document | Anyone (public) |
-| Download a file | Anyone (public) |
+| View a single plan's detail page | Authenticated + verified email |
+| Preview a document | Authenticated + verified email |
+| Download a file | Authenticated + verified email |
 | Upload a new plan | Authenticated + verified email |
 | Create a new version | Authenticated + verified email |
 | Vote on a plan | Authenticated + verified email (not the author) |
+| Favorite a plan | Authenticated + verified email |
 | Delete a plan | Authenticated + verified email (only the plan's author) |
 | View "My Plans" | Authenticated + verified email |
 
@@ -206,80 +251,68 @@ Authorization is enforced via Laravel middleware (`['auth', 'verified']`) on rou
 
 ---
 
-## 4. Application Routes
+## 4. Dashboard (Home Page — `/`)
 
-### 4.1 Public Routes
-
-Route parameters use Laravel route model binding (`{lessonPlan}` resolves to a `LessonPlan` model instance automatically).
-
-| Method | URI | Controller@Method | Name | Description |
-|---|---|---|---|---|
-| GET | `/` | DashboardController@index | `dashboard` | Main page with counters, searchable/sortable plan table |
-| GET | `/stats` | DashboardController@stats | `stats` | Detailed archive statistics page |
-| GET | `/lesson-plans/{lessonPlan}` | LessonPlanController@show | `lesson-plans.show` | Single plan detail page |
-| GET | `/lesson-plans/{lessonPlan}/preview` | LessonPlanController@preview | `lesson-plans.preview` | Document preview with embedded viewer |
-| GET | `/lesson-plans/{lessonPlan}/download` | LessonPlanController@download | `lesson-plans.download` | File download |
-
-### 4.2 Authenticated + Verified Routes
-
-| Method | URI | Controller@Method | Name | Description |
-|---|---|---|---|---|
-| GET | `/my-plans` | LessonPlanController@myPlans | `my-plans` | Logged-in user's own plans |
-| GET | `/lesson-plans-create` | LessonPlanController@create | `lesson-plans.create` | Upload form |
-| POST | `/lesson-plans` | LessonPlanController@store | `lesson-plans.store` | Process new upload |
-| GET | `/lesson-plans/{lessonPlan}/new-version` | LessonPlanController@edit | `lesson-plans.new-version` | New version form |
-| PUT | `/lesson-plans/{lessonPlan}` | LessonPlanController@update | `lesson-plans.update` | Process new version |
-| DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` | Delete a plan |
-| POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` | Cast/toggle vote |
-
-### 4.3 Auth Routes (Breeze)
-
-Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification notice/send/verify. Standalone fallback views exist at `auth/login.blade.php` and `auth/register.blade.php` for cases where Breeze redirects outside the modal (e.g., validation failure). Password reset views at `auth/forgot-password.blade.php` and `auth/reset-password.blade.php` handle the "Forgot your password?" flow. A "Forgot your password?" link appears below the Sign In button in both the modal and the standalone login page.
-
----
-
-## 5. Page-by-Page Specifications
-
-### 5.1 Dashboard (Home Page — `/`)
+> **Modularity note:** This section fully describes the main public page. Changes here should NOT require reading any other section except the Data Model (Section 2) for column references.
 
 **Browser tab title:** "ARES: Lesson Plans"
 
 **Layout:** Full-width table with counters, search/filter bar, and results table. Public — no login required to browse.
 
-**Dashboard Counters** (bordered card above the search bar):
+### 4.1 Dashboard Counters
+
+Bordered card above the search bar with three metrics:
 - **Unique Classes** — count of distinct class names in the database (large bold number)
 - **Total Lesson Plans** — total count of all plan records, counting each revision as one
 - **Favorite Lesson Plan** — the plan with the highest net vote score (upvotes minus downvotes). Displays the plan name as a clickable link to the preview page, the author's email, and the rating in green. If no plans have positive votes, shows "No votes yet."
 
-**Upload Button** (visible to authenticated users only):
-- A prominent "+ Upload New Lesson Plan" button (gray-900) is displayed right-aligned above the results table. This is the primary entry point for uploading new content.
+### 4.2 Upload Button
 
-**Search & Filter Bar** (contained in a bordered card):
+Visible to authenticated users only. A prominent "+ Upload New Lesson Plan" button (gray-900) displayed right-aligned above the results table.
+
+### 4.3 Search & Filter Bar
+
+Contained in a bordered card:
 - **Search** (text input): Free-text search across document name, class name, description, and author name. Uses SQL `LIKE %term%` queries.
 - **Class** (dropdown): Filters by class name. Options are dynamically populated from the distinct `class_name` values that exist in the database.
 - **Show all versions** (checkbox): When unchecked (default), shows only the latest version of each plan family. When checked, shows every version as a separate row.
 - **Search** button (gray-900) and **Clear** link.
 
-**Results Table** columns (all sortable by clicking the header):
-1. **Class** — subject name
-2. **Day #** — lesson number (centered)
-3. **Version** — displayed as "v1", "v2", etc. (centered)
-4. **Rating** — vote score with colored indicator; uses the `vote-buttons` component in readonly mode
-5. **Updated** — date only in "Mon D, YYYY" format (no time)
-6. **Actions** — two buttons: "View" (gray-100, links to plan detail page) and "Download" (gray-900, direct file download; only shown if file exists)
+### 4.4 Results Table
 
-**Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`.
+Eight columns, all sortable by clicking the header:
+
+| # | Column | Alignment | Content |
+|---|---|---|---|
+| 1 | **Class** | left | Subject name |
+| 2 | **Day #** | center | Lesson number |
+| 3 | **Author** | left | Author display name (email with `@` and `.` stripped) |
+| 4 | **Version** | center | Integer only — NO "v" prefix (e.g., `1`, `2`, `3`) |
+| 5 | **Rating** | center | Vote score with colored indicator; readonly `vote-buttons` component. Display format: "Vote 👍 👎" with the score |
+| 6 | **Updated** | left | Date only in "Mon D, YYYY" format (no time) |
+| 7 | **Actions** | center | Single button: "View/Edit" (gray-100, links to plan detail page). **Greyed out and non-clickable for guests** (not logged in). No Download button on the dashboard. |
+| 8 | **Favorite** | center | Checkbox for authenticated users (AJAX toggle). **Greyed out for guests** (not logged in). |
+
+**Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`. Sort whitelist: `class_name`, `lesson_day`, `author_name`, `version_number`, `vote_score`, `updated_at`. Note: sorting by `author_name` requires a JOIN to the `users` table.
 
 **Pagination:** 10 rows per page. Standard Laravel pagination links. A summary line below the table shows "Showing X–Y of Z plans".
 
-### 5.2 Plan Detail Page (`/lesson-plans/{id}`)
+---
 
-**Layout:** Two-column grid on large screens (2/3 + 1/3), stacks vertically on mobile. Public — no login required.
+## 5. Plan Detail Page (`/lesson-plans/{id}`)
 
-**Left Column — Plan Details Card:**
-- Header: "{Class Name} — Day {N}" as the page heading
-- Subheading: "Version {N} · by {author} · {date} UTC"
-- Monospace canonical name below the subheading
+> **Modularity note:** This section fully describes the single-plan detail page. Changes here should NOT require reading any other section.
+
+**Access:** Requires authentication + verified email.
+
+**Layout:** Two-column grid on large screens (2/3 + 1/3), stacks vertically on mobile.
+
+### 5.1 Left Column — Lesson Plan Details Card
+
+- Header: "Lesson Plan Details" as the card heading
+- Subheading: "{Class Name} — Day {N}"
+- Info line: "Version {N} · by {author} · {date} UTC"
+- Monospace canonical name below the info line
 - Description text (or "No description provided" in italic)
 - Detail grid (2 columns): Class, Lesson Day, Version, Author, File (name + formatted size), Uploaded date
 - Action buttons:
@@ -288,33 +321,44 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
   - **Create New Version** (gray-100 outlined button) — visible only to authenticated users
   - **Delete** (red-50 button) — visible only to the plan's author; confirms via browser `confirm()` dialog
 
-**Left Column — Community Rating Card:**
+### 5.2 Left Column — Community Rating Card
+
 - Large vote score number (green if positive, red if negative, gray if zero)
 - Text: "{N} upvotes, {N} downvotes"
+- Vote display label: "Vote 👍 👎"
 - **If authenticated and not the author:** Interactive upvote/downvote buttons (chevron arrows). The active vote direction is highlighted (green background for upvote, red for downvote). Clicking the same direction again removes the vote (toggle off). Clicking the opposite direction switches the vote. A helper text appears when a vote is active: "Click the same arrow again to remove your vote."
 - **If authenticated and is the author:** Text: "You cannot vote on your own lesson plan."
 - **If not authenticated:** "Sign in to vote on this plan." with a clickable "Sign in" link that opens the auth modal.
 
-**Right Column — Version History Card:**
+### 5.3 Right Column — Version History Card
+
 - Lists all versions in the plan's family, ordered by version number ascending
-- Each entry shows: circular badge with "v{N}", class + day label, author, date, vote score
+- Each entry shows: circular badge with version number (no "v" prefix), class + day label, author, date, vote score
 - The current version is highlighted with a gray background
 - Other versions are clickable links to their detail pages
 
-### 5.3 Upload Form (`/lesson-plans-create`)
+---
 
-**Layout:** Centered, max-width 2xl form in a bordered card. Requires authentication + verified email.
+## 6. Upload Form (`/lesson-plans-create`)
 
-**Form fields:**
+> **Modularity note:** This section fully describes the upload form. Changes here should NOT require reading any other section.
+
+**Access:** Requires authentication + verified email.
+
+**Layout:** Centered, max-width 2xl form in a bordered card.
+
+### 6.1 Form Fields
+
 1. **Class Name** (required, Alpine.js combo widget): A dropdown lists all existing class names from the database, plus an "Other (enter new class name)" option. Selecting "Other" reveals a text input for entering a custom class name (max 100 characters). A hidden `<input>` submits the actual value (either the dropdown selection or the custom text). This allows teachers to create new subjects without requiring code changes.
 2. **Lesson Number** (required dropdown): Numbers 1 through 20. Small (w-32) dropdown.
 3. **Author** (read-only display): Shows the logged-in user's email address in a gray-50 bordered box. Text: "Plans are always uploaded under your account." Author is always `Auth::id()`.
 4. **Description** (optional textarea): 4 rows, max 2000 characters.
 5. **Document Name** (info box): Gray-50 box showing the naming format: `{ClassName}_Day{N}_{AuthorName}_{UTC-Timestamp}`.
-6. **Lesson Plan File** (required file input): Styled file input. Max 1 MB. Accepted MIME types listed in helper text. Client-side JavaScript validates file size before submission and shows an error if the file exceeds 1 MB.
+6. **Lesson Plan File** (required file input): Styled file input. Max 1 MB. Accepted types: DOC, DOCX, TXT, RTF, ODT. Client-side JavaScript validates file size before submission and shows an error if the file exceeds 1 MB.
 7. **Upload Lesson Plan** button (gray-900) + **Cancel** link.
 
-**On submit:**
+### 6.2 On Submit
+
 - Validates all fields via `StoreLessonPlanRequest`
 - Generates canonical name from fields + current UTC timestamp
 - Renames the uploaded file to the canonical name regardless of original filename
@@ -325,7 +369,13 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 - Sends confirmation email to the uploader (wrapped in try/catch; failure is logged, not blocking)
 - Redirects to plan detail page with upload-success dialog
 
-### 5.4 New Version Form (`/lesson-plans/{id}/new-version`)
+---
+
+## 7. New Version Form (`/lesson-plans/{id}/new-version`)
+
+> **Modularity note:** This section fully describes the new-version form. Changes here should NOT require reading any other section except Section 6 (Upload Form) for shared behavior.
+
+**Access:** Requires authentication + verified email.
 
 **Layout:** Same as Upload Form, but with an additional instruction box at the top.
 
@@ -339,49 +389,44 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 
 **On submit:**
 - Same validation and naming as Upload Form
-- Creates record with `original_id` = root of parent's family, `parent_id` = parent's id
-- `version_number` = `MAX(version_number)` in the family + 1
+- If the uploading user IS the same author as the parent: creates record with `original_id` = root of parent's family, `parent_id` = parent's id, `version_number` = `MAX(version_number)` in the family + 1
+- If the uploading user is NOT the same author: creates a brand new plan (version 1) with no `original_id` or `parent_id`. This "breaks the link" — a completely independent plan.
 
-### 5.5 My Plans (`/my-plans`)
+---
 
-**Layout:** Table similar to dashboard, filtered to only plans where `author_id = Auth::id()`. Requires authentication + verified email.
+## 8. My Plans (`/my-plans`)
+
+> **Modularity note:** This section fully describes the "My Plans" page. Changes here should NOT require reading any other section.
+
+**Access:** Requires authentication + verified email.
 
 **Header:** "My Lesson Plans" heading + "+ Upload New Plan" button (gray-900).
 
-**Table columns:** Document Name (linked), Class, Day #, Version, Rating (readonly), Updated, Actions (Download link + Delete button).
+**Table columns:** Document Name (linked), Class, Day #, Version (integer, no "v"), Rating (readonly), Updated, Actions (Download link + Delete button).
 
 **Pagination:** 25 per page. Sorted by `updated_at DESC`.
 
 **Empty state:** "You haven't uploaded any lesson plans yet. Upload your first one!" with a link to the upload form.
 
-### 5.6 Stats Page (`/stats`)
+---
 
-**Layout:** Centered max-width 4xl page with summary counters and four detail cards in a 2×2 grid. Public — no login required.
+## 9. Document Preview Page (`/lesson-plans/{id}/preview`)
 
-**Summary Counters** (3-column grid of bordered cards):
-- **Total Lesson Plans** — count of all plan records
-- **Unique Classes** — count of distinct class names
-- **Contributors** — count of distinct author IDs
+> **Modularity note:** This section fully describes the document preview page. Changes here should NOT require reading any other section.
 
-**Detail Cards** (2-column grid):
-1. **Plans per Class** — each class name with a proportional horizontal bar showing plan count relative to the largest class. Bar width is percentage-based.
-2. **Top Rated Plans** — top 5 plans with positive vote scores, sorted by `vote_score DESC` then `updated_at DESC`. Each entry shows class/day as a link to the detail page, author name, and green score badge.
-3. **Top Contributors** — top 5 authors by total uploads (all versions counted). Numbered list with upload count.
-4. **Most Revised Plan** — the plan family with the most versions. Shows class/day as a link, original author, and version count. Only shown if at least one family has more than 1 version.
+**Access:** Requires authentication + verified email.
 
-**Footer:** "Back to Browse" link to dashboard.
+**Layout:** Centered max-width 5xl page with header bar and embedded document viewer.
 
-### 5.7 Document Preview Page (`/lesson-plans/{id}/preview`)
+### 9.1 Header Bar
 
-**Layout:** Centered max-width 5xl page with header bar and embedded document viewer. Public — no login required.
-
-**Header Bar:**
 - "Preview" label in uppercase gray text above the plan title
 - Plan title: "{Class Name} — Day {N}"
 - Subtext: version number, author, filename
 - Action buttons: **Download File** (gray-900 primary), **View Details** (gray-100 outlined, links to show page), **Back** link
 
-**Document Viewer:**
+### 9.2 Document Viewer
+
 - Uses Google Docs Viewer to render `.doc`/`.docx` files in an iframe without server-side conversion
 - The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true`
 - The file must be publicly accessible via its storage URL for the viewer to work
@@ -392,7 +437,42 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 
 **Fallback:** If the plan has no file attached, redirects to the detail page with an error flash message.
 
-### 5.8 Auth Modal
+### 9.3 Deferred Feature: In-Browser Editing
+
+In-browser editing is intentionally deferred to a future version. When implemented, it would add Edit, Undo, Discard, and Save buttons to the preview page. The Save button would: increment version if the same author saves, or create a new independent plan if a different user saves. This section is a placeholder for future planning.
+
+---
+
+## 10. Stats Page (`/stats`)
+
+> **Modularity note:** This section fully describes the stats page. Changes here should NOT require reading any other section.
+
+**Access:** Public — no login required.
+
+**Layout:** Centered max-width 4xl page with summary counters and four detail cards in a 2×2 grid.
+
+### 10.1 Summary Counters
+
+3-column grid of bordered cards:
+- **Total Lesson Plans** — count of all plan records
+- **Unique Classes** — count of distinct class names
+- **Contributors** — count of distinct author IDs
+
+### 10.2 Detail Cards
+
+2-column grid:
+1. **Plans per Class** — each class name with a proportional horizontal bar showing plan count relative to the largest class. Bar width is percentage-based.
+2. **Top Rated Plans** — top 5 plans with positive vote scores, sorted by `vote_score DESC` then `updated_at DESC`. Each entry shows class/day as a link to the detail page, author name, and green score badge.
+3. **Top Contributors** — top 5 authors by total uploads (all versions counted). Numbered list with upload count.
+4. **Most Revised Plan** — the plan family with the most versions. Shows class/day as a link, original author, and version count. Only shown if at least one family has more than 1 version.
+
+**Footer:** "Back to Browse" link to dashboard.
+
+---
+
+## 11. Auth Modal
+
+> **Modularity note:** This section describes the sign-in/sign-up modal dialog. Changes here should NOT require reading any other section.
 
 A single Alpine.js modal dialog that handles both sign-in and registration. It is injected into the layout for all guest (unauthenticated) visitors.
 
@@ -401,6 +481,7 @@ A single Alpine.js modal dialog that handles both sign-in and registration. It i
 **Sign In Panel:**
 - Fields: Username (email input), Password (with Show/Hide toggle button)
 - Submit button: "Sign In" (full-width, gray-900)
+- Below submit: "Forgot your password?" link (navigates to `/forgot-password`)
 - Footer: "New User? Sign Up" — switches to register panel
 
 **Create Account Panel:**
@@ -410,9 +491,13 @@ A single Alpine.js modal dialog that handles both sign-in and registration. It i
 
 **Error handling:** If login/register fails validation, the modal reopens automatically (the `open` state is set to `true` when `$errors->any()` is true). The hidden `_auth_mode` field preserves which panel was active.
 
-**Standalone fallback pages:** `auth/login.blade.php` and `auth/register.blade.php` provide full-page equivalents of the modal panels, used when Breeze redirects to `/login` or `/register` (e.g., after validation failure). These pages use the same `<x-layout>` wrapper and include the same Show/Hide password toggles.
+**Standalone fallback pages:** `auth/login.blade.php` and `auth/register.blade.php` provide full-page equivalents of the modal panels, used when Breeze redirects to `/login` or `/register` (e.g., after validation failure). Both include a "Forgot your password?" link. These pages use the same `<x-layout>` wrapper and include the same Show/Hide password toggles.
 
-### 5.9 Upload Success Dialog
+---
+
+## 12. Upload Success Dialog
+
+> **Modularity note:** This section describes the upload confirmation modal. Changes here should NOT require reading any other section.
 
 An Alpine.js modal that appears after a successful upload/new version. Triggered by the `upload_success` session flash.
 
@@ -423,7 +508,9 @@ An Alpine.js modal that appears after a successful upload/new version. Triggered
 - "A confirmation email has been sent to your address."
 - "OK" button (gray-900) — closes the dialog
 
-### 5.10 Flash Messages
+---
+
+## 13. Flash Messages
 
 Three types of flash messages appear below the header:
 - **Success** (green border/background): e.g., "Lesson plan deleted." or "Vote recorded."
@@ -432,9 +519,11 @@ Three types of flash messages appear below the header:
 
 ---
 
-## 6. Voting System
+## 14. Voting System
 
-### 6.1 Behavior
+> **Modularity note:** This section fully describes the voting system. Changes here should NOT require reading any other section except the Data Model (Section 2.3) for the votes table.
+
+### 14.1 Behavior
 
 Each user can cast exactly one vote per lesson plan version (enforced by a unique database index on `[lesson_plan_id, user_id]`).
 
@@ -447,25 +536,47 @@ Vote values: +1 (upvote) or -1 (downvote).
 
 **Self-vote prevention:** Authors cannot vote on their own plans. The controller checks `$lessonPlan->author_id === Auth::id()` and returns an error flash message if violated.
 
-### 6.2 Cached Vote Score
+### 14.2 Cached Vote Score
 
 To avoid expensive `SUM()` queries on every dashboard page load, each lesson plan has a `vote_score` column that caches the aggregate. After every vote action (create, delete, update), `recalculateVoteScore()` runs: it queries `SUM(value)` from the votes table and saves the result using `saveQuietly()` (which suppresses model events so observers are not triggered during this background recalculation).
 
-### 6.3 Vote Buttons Component
+### 14.3 Vote Display
 
 The `vote-buttons` Blade component operates in two modes:
 
-**Readonly mode** (used in table rows): Shows the score with a colored arrow indicator (green up for positive, red down for negative). No interactive elements.
+**Readonly mode** (used in table rows): Shows the score with the label "Vote 👍 👎" and a colored arrow indicator (green up for positive, red down for negative). No interactive elements.
 
 **Interactive mode** (used on detail page): Two form-based buttons (upvote chevron, downvote chevron) with POST submissions. The active vote direction is highlighted with a colored background. A helper text appears when the user has an active vote.
 
 ---
 
-## 7. Email System
+## 15. Favorites System (NEW — not yet implemented)
 
-### 7.1 Upload Confirmation
+> **Modularity note:** This section fully describes the favorites system. Changes here should NOT require reading any other section except the Data Model (Section 2.4) for the favorites table.
 
-Sent to the authenticated user (the person performing the upload, who is always the author) after each successful upload or new version creation.
+### 15.1 Behavior
+
+Each authenticated user can favorite any lesson plan. A checkbox appears in the rightmost column of the dashboard table. Toggling the checkbox sends an AJAX POST to `/lesson-plans/{id}/favorite`.
+
+**Guest behavior:** The Favorite checkbox is visible but greyed out and non-clickable for guests. A tooltip or visual indicator suggests signing in.
+
+### 15.2 Controller
+
+`FavoriteController@toggle` — accepts POST, toggles the favorite record (creates if not exists, deletes if exists). Returns JSON response `{ favorited: true/false }`.
+
+### 15.3 Route
+
+`POST /lesson-plans/{lessonPlan}/favorite` — in the `auth + verified` middleware group. Named `favorites.toggle`.
+
+---
+
+## 16. Email System
+
+> **Modularity note:** This section fully describes all email functionality. Changes here should NOT require reading any other section.
+
+### 16.1 Upload Confirmation
+
+Sent to the authenticated user (the person performing the upload) after each successful upload or new version creation.
 
 **Mailable:** `App\Mail\LessonPlanUploaded`
 
@@ -473,7 +584,7 @@ Sent to the authenticated user (the person performing the upload, who is always 
 
 **Failure handling:** Wrapped in try/catch. If the email fails to send, the error is logged to `storage/logs/laravel.log` but the upload itself succeeds normally.
 
-### 7.2 Duplicate Content Removed
+### 16.2 Duplicate Content Removed
 
 Sent to the author of a deleted duplicate when the `DetectDuplicateContent` command removes their file.
 
@@ -481,11 +592,15 @@ Sent to the author of a deleted duplicate when the `DetectDuplicateContent` comm
 
 **Data passed:** recipient name, deleted plan name, kept plan name, kept plan's author name.
 
-### 7.3 Email Verification
+### 16.3 Email Verification
 
-Triggered by the `Registered` event after registration. Uses the same SMTP configuration. The verification link route does NOT require the user to be logged in — a custom `VerifyEmailController` validates the signed URL, looks up the user by ID, verifies the hash, marks the email as verified, logs the user in, and redirects to the dashboard. This ensures the link works even when clicked in a new tab or different browser where no session exists.
+Triggered by the `Registered` event after registration. Uses the same SMTP configuration. See Section 3.4 for the custom verification controller details.
 
-### 7.4 SMTP Configuration
+### 16.4 Password Reset Email
+
+Triggered by the standard Laravel Breeze `PasswordResetLinkController`. Uses the same SMTP configuration. See Section 3.3 for the full password reset flow.
+
+### 16.5 SMTP Configuration
 
 | Setting | Value |
 |---|---|
@@ -497,11 +612,15 @@ Triggered by the `Registered` event after registration. Uses the same SMTP confi
 | From Address | david@sheql.com |
 | From Name | ARES Education |
 
+**DreamHost quirk:** The SMTP host MUST be `smtp.dreamhost.com`, NOT `mail.sheql.com`. DreamHost's shared mail servers use a wildcard TLS certificate for `*.dreamhost.com`. Using `mail.sheql.com` causes a TLS certificate mismatch error: `Peer certificate CN='*.dreamhost.com' did not match expected CN='mail.sheql.com'`.
+
 ---
 
-## 8. Visual Design Specification
+## 17. Visual Design Specification
 
-### 8.1 Design Language
+> **Modularity note:** This section covers all visual styling rules. Changes here should NOT require reading any other section.
+
+### 17.1 Design Language
 
 The application uses a clean, monochromatic black-and-white design language with minimal color. No logo image — text-only branding.
 
@@ -516,13 +635,13 @@ The application uses a clean, monochromatic black-and-white design language with
 - Red: negative vote scores, error messages, delete buttons
 - Blue: informational status messages
 
-### 8.2 Layout Structure
+### 17.2 Layout Structure
 
 **Max width:** `max-w-6xl` (72rem / 1152px), centered with auto margins
 **Horizontal padding:** `px-4 sm:px-6 lg:px-8`
 **Vertical rhythm:** `py-8` for main content, `py-6 sm:py-8` for header
 
-### 8.3 Header
+### 17.3 Header
 
 **Structure:** Top-level `<header>` with a bottom border (`border-b border-gray-200`).
 
@@ -534,11 +653,11 @@ The application uses a clean, monochromatic black-and-white design language with
 
 **Navigation** (below branding, only when authenticated): "Browse All", "My Plans", "+ Upload Plan" — horizontal links with active state indicated by underline.
 
-### 8.4 Footer
+### 17.4 Footer
 
 Simple centered text: "© {year} ARES Education — Kenya Lesson Plan Repository" in `text-gray-400`. Separated from content by `border-t border-gray-200` and `mt-16` margin.
 
-### 8.5 Form Styling
+### 17.5 Form Styling
 
 - Labels: `text-sm font-medium text-gray-700 mb-1`
 - Inputs/selects: `border border-gray-300 rounded-md px-3 py-2 text-sm` with gray-400 focus ring
@@ -549,7 +668,7 @@ Simple centered text: "© {year} ARES Education — Kenya Lesson Plan Repository
 - Secondary buttons: `bg-gray-100 text-gray-900 border border-gray-300 hover:bg-gray-200`
 - Cancel links: `text-sm text-gray-500 hover:text-gray-900`
 
-### 8.6 Table Styling
+### 17.6 Table Styling
 
 - Container: bordered card with rounded corners and `overflow-hidden`
 - Header: `bg-gray-50 border-b border-gray-200`, uppercase tiny labels
@@ -557,11 +676,11 @@ Simple centered text: "© {year} ARES Education — Kenya Lesson Plan Repository
 - Cell padding: `px-4 py-3`
 - Pagination: below table in gray-50 footer band
 
-### 8.7 Card Styling
+### 17.7 Card Styling
 
 Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No shadows (the design is flat/minimal).
 
-### 8.8 Responsive Behavior
+### 17.8 Responsive Behavior
 
 - Header collapses: branding text stacks vertically, user email hidden on mobile
 - Navigation links wrap with `flex-wrap gap-4`
@@ -572,27 +691,44 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 
 ---
 
-## 9. Artisan Commands
+## 18. Application Routes
 
-### 9.1 `lessons:detect-duplicates`
+> **Modularity note:** This is a reference table of all routes. For behavior details, see the individual page sections above.
 
-**Signature:** `lessons:detect-duplicates {--dry-run}`
+### 18.1 Public Routes
 
-**Behavior:**
-1. Back-fills `file_hash` for any records where it is NULL (reads the file from disk and computes SHA-256)
-2. Groups all lesson plans by `file_hash` and identifies groups with more than one record
-3. For each group, keeps the record with the lowest `id` (earliest upload) and marks later duplicates for deletion
-4. **Lineage protection:** Skips any duplicate that has dependent versions (other plans reference it via `parent_id` or `original_id`), preventing orphaned version families
-5. For each safe-to-remove duplicate: deletes the stored file, emails the author, deletes associated votes, deletes the database record
-6. With `--dry-run`: shows what would happen but takes no action
+| Method | URI | Controller@Method | Name |
+|---|---|---|---|
+| GET | `/` | DashboardController@index | `dashboard` |
+| GET | `/stats` | DashboardController@stats | `stats` |
 
-**Scheduling:** Recommended to run daily at 2:00 AM via cron.
+### 18.2 Authenticated + Verified Routes
+
+| Method | URI | Controller@Method | Name |
+|---|---|---|---|
+| GET | `/lesson-plans/{lessonPlan}` | LessonPlanController@show | `lesson-plans.show` |
+| GET | `/lesson-plans/{lessonPlan}/preview` | LessonPlanController@preview | `lesson-plans.preview` |
+| GET | `/lesson-plans/{lessonPlan}/download` | LessonPlanController@download | `lesson-plans.download` |
+| GET | `/my-plans` | LessonPlanController@myPlans | `my-plans` |
+| GET | `/lesson-plans-create` | LessonPlanController@create | `lesson-plans.create` |
+| POST | `/lesson-plans` | LessonPlanController@store | `lesson-plans.store` |
+| GET | `/lesson-plans/{lessonPlan}/new-version` | LessonPlanController@edit | `lesson-plans.new-version` |
+| PUT | `/lesson-plans/{lessonPlan}` | LessonPlanController@update | `lesson-plans.update` |
+| DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` |
+| POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` |
+| POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` |
+
+### 18.3 Auth Routes (Breeze)
+
+Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification. The email verification route (`verify-email/{id}/{hash}`) is outside the `auth` middleware group — see Section 3.4.
 
 ---
 
-## 10. Validation Rules
+## 19. Validation Rules
 
-### 10.1 Upload / New Version (StoreLessonPlanRequest)
+> **Modularity note:** This section lists all validation rules. Changes here should NOT require reading any other section.
+
+### 19.1 Upload / New Version (StoreLessonPlanRequest)
 
 | Field | Rules |
 |---|---|
@@ -601,83 +737,85 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | description | nullable, string, max 2000 characters |
 | file | required, max 1024 KB (1 MB), mimes: doc,docx,txt,rtf,odt |
 
-### 10.2 Voting
+### 19.2 Voting
 
 | Field | Rules |
 |---|---|
 | value | required, integer, must be -1 or 1 |
 
-### 10.3 Registration
+### 19.3 Registration
 
 | Field | Rules |
 |---|---|
 | email | required, string, lowercase, valid email, max 255, unique in users table |
 | password | required, confirmed, meets Laravel's default password rules |
 
-### 10.4 Dashboard Sort Parameters
+### 19.4 Dashboard Sort Parameters
 
 | Parameter | Validation |
 |---|---|
-| sort | Must be in whitelist: `class_name`, `lesson_day`, `version_number`, `vote_score`, `updated_at` (matches visible dashboard columns) |
+| sort | Must be in whitelist: `class_name`, `lesson_day`, `author_name`, `version_number`, `vote_score`, `updated_at` |
 | order | Must be 'asc' or 'desc' (case-insensitive); defaults to 'desc' |
 
 ---
 
-## 11. Error Handling
+## 20. Error Handling
 
-### 11.1 Upload Errors
+> **Modularity note:** This section lists all error scenarios. Changes here should NOT require reading any other section.
 
-- **Duplicate canonical name:** Redirects back with error message explaining the collision; suggests waiting a moment and trying again. (This only occurs if the same class/day/author uploads within the same second.)
-- **File too large:** Client-side JavaScript checks file size before form submission and shows an inline error. Server-side validation also rejects files over 1 MB with message "The uploaded file must be smaller than 1 MB."
+### 20.1 Upload Errors
+
+- **Duplicate canonical name:** Redirects back with error message explaining the collision; suggests waiting a moment and trying again.
+- **File too large:** Client-side JavaScript checks file size before form submission. Server-side validation rejects files over 1 MB.
 - **File validation failure:** Standard Laravel validation; field-level error messages displayed below each form field.
 - **Email failure:** Logged but not shown to the user; the upload itself succeeds.
 
-### 11.2 Delete Errors
+### 20.2 Delete Errors
 
 - **Not the author:** Returns HTTP 403 with message "You can only delete your own lesson plans."
 - **Root plan with children:** Redirects back with error message explaining that newer versions must be deleted first.
 
-### 11.3 Vote Errors
+### 20.3 Vote Errors
 
 - **Self-vote:** Redirects back with error flash message: "You cannot vote on your own lesson plan."
 - **Invalid value:** Standard validation error (value must be -1 or 1).
 
-### 11.4 File Not Found
+### 20.4 File Not Found
 
-If a lesson plan's file is missing from disk (e.g., manually deleted), the download route redirects back with "File not found." error.
+If a lesson plan's file is missing from disk, the download route redirects back with "File not found." error.
 
 ---
 
-## 12. Security Considerations
+## 21. Security Considerations
 
-### 12.1 Authentication
+### 21.1 Authentication
 
 - Passwords are Bcrypt-hashed (Laravel default)
 - Email verification required for all authenticated actions
 - CSRF protection on all POST/PUT/DELETE routes
 - Session uses secure cookies in production (`SESSION_SECURE_COOKIE=true`)
 
-### 12.2 Input Validation
+### 21.2 Input Validation
 
 - All user input is validated server-side via Form Request classes
 - Sort column and direction are validated against whitelists
 - File uploads are validated for size (1 MB max) and MIME type
-- Class names are validated as strings (max 100 characters); new names can be entered via the "Other" option
+- Class names are validated as strings (max 100 characters)
 
-### 12.3 Authorization
+### 21.3 Authorization
 
 - Author identity is always set server-side to `Auth::id()` — never from user input
 - Delete operations verify author ownership in the controller
 - Vote self-prevention is enforced in the controller
 
-### 12.4 File Security
+### 21.4 File Security
 
 - Uploaded files are stored outside the web root (in `storage/app/public/lessons/`)
 - Files are served through Laravel's `Storage::download()` method
 - SHA-256 hashing detects duplicate content
 - All uploaded files are renamed to canonical format — original filenames are discarded
 
-### 12.5 Production Settings
+### 21.5 Production Settings
 
 - `APP_DEBUG=false` in production (prevents stack trace exposure)
 - `APP_ENV=production`
@@ -686,27 +824,73 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 
 ---
 
-## 13. File Inventory
+## 22. Artisan Commands
 
-### 13.1 Controllers
+### 22.1 `lessons:detect-duplicates`
+
+**Signature:** `lessons:detect-duplicates {--dry-run}`
+
+**Behavior:**
+1. Back-fills `file_hash` for any records where it is NULL
+2. Groups all lesson plans by `file_hash` and identifies groups with more than one record
+3. Keeps the record with the lowest `id` (earliest upload) and marks later duplicates for deletion
+4. **Lineage protection:** Skips any duplicate that has dependent versions
+5. For each safe-to-remove duplicate: deletes the stored file, emails the author, deletes associated votes, deletes the database record
+6. With `--dry-run`: shows what would happen but takes no action
+
+**Scheduling:** Recommended to run daily at 2:00 AM via cron.
+
+---
+
+## 23. Configuration Constants
+
+### 23.1 Class Names
+
+Class names are not restricted to a fixed list. The upload and edit forms present a dropdown of all existing class names currently in the database, plus an "Other" option that allows teachers to type any new class name (max 100 characters). The initial seed classes (English, History, Mathematics, Science) are defined in `LessonPlanController::CLASS_NAMES` and used to populate the dropdown when no plans exist yet.
+
+### 23.2 Lesson Number Range
+
+1 through 20, defined by `range(1, 20)` in the controller methods.
+
+### 23.3 Pagination
+
+| Page | Items per page |
+|---|---|
+| Dashboard | 10 |
+| My Plans | 25 |
+
+### 23.4 File Upload Limits
+
+| Setting | Value |
+|---|---|
+| Max file size | 1 MB (1024 KB) |
+| Accepted MIME types | doc, docx, txt, rtf, odt |
+
+---
+
+## 24. File Inventory
+
+### 24.1 Controllers
 
 | File | Responsibility |
 |---|---|
 | `DashboardController` | Public homepage (search, filter, sort, counters) + Stats page |
 | `LessonPlanController` | CRUD for lesson plans: upload, show, preview, new version, delete, download |
 | `VoteController` | Cast/toggle votes on lesson plan versions |
+| `FavoriteController` | Toggle favorite status on lesson plans (AJAX) |
 | `Auth/RegisteredUserController` | Custom registration: single email field serves as name + email |
 | `Auth/VerifyEmailController` | Custom email verification: works without active session (validates signed URL, logs user in) |
 
-### 13.2 Models
+### 24.2 Models
 
 | File | Responsibility |
 |---|---|
 | `User` | Auth user with MustVerifyEmail; name = email at registration |
 | `LessonPlan` | Plan version with versioning, canonical naming, vote caching, family queries |
 | `Vote` | Single upvote/downvote on a lesson plan version |
+| `Favorite` | User-plan favorite relationship (pivot) |
 
-### 13.3 Views
+### 24.3 Views
 
 | File | Responsibility |
 |---|---|
@@ -714,8 +898,8 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 | `components/vote-buttons.blade.php` | Reusable vote display/interaction component |
 | `dashboard.blade.php` | Main public page with counters, search/filter/sort table |
 | `stats.blade.php` | Archive statistics page with detailed breakdowns |
-| `lesson-plans/show.blade.php` | Plan detail page with preview button, voting, version history |
-| `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer + download button |
+| `lesson-plans/show.blade.php` | Plan detail page with voting, version history |
+| `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer |
 | `lesson-plans/create.blade.php` | Upload form for new plans |
 | `lesson-plans/edit.blade.php` | New version form (based on existing plan) |
 | `lesson-plans/my-plans.blade.php` | Authenticated user's own plan list |
@@ -727,42 +911,16 @@ If a lesson plan's file is missing from disk (e.g., manually deleted), the downl
 
 ---
 
-## 14. Configuration Constants
+## 25. Dependencies
 
-### 14.1 Class Names
-
-Class names are not restricted to a fixed list. The upload and edit forms present a dropdown of all existing class names currently in the database, plus an "Other" option that allows teachers to type any new class name (max 100 characters). The initial seed classes (English, History, Mathematics, Science) are defined in `LessonPlanController::CLASS_NAMES` and used to populate the dropdown when no plans exist yet. Once plans are uploaded, the dropdown is populated dynamically from `DISTINCT class_name` in the `lesson_plans` table.
-
-### 14.2 Lesson Number Range
-
-1 through 20, defined by `range(1, 20)` in the controller methods.
-
-### 14.3 Pagination
-
-| Page | Items per page |
-|---|---|
-| Dashboard | 10 |
-| My Plans | 25 |
-
-### 14.4 File Upload Limits
-
-| Setting | Value |
-|---|---|
-| Max file size | 1 MB (1024 KB) |
-| Accepted MIME types | doc, docx, txt, rtf, odt |
-
----
-
-## 15. Dependencies
-
-### 15.1 PHP Packages (via Composer)
+### 25.1 PHP Packages (via Composer)
 
 | Package | Purpose |
 |---|---|
 | laravel/framework ^12.0 | Core framework |
 | laravel/breeze | Authentication scaffolding (Blade stack) |
 
-### 15.2 Frontend (via CDN — No Build Step)
+### 25.2 Frontend (via CDN — No Build Step)
 
 | Library | CDN URL | Purpose |
 |---|---|---|

@@ -5,7 +5,7 @@
         <h1 class="text-2xl font-bold text-gray-900 mb-2">Create New Version</h1>
         <p class="text-sm text-gray-600 mb-6">
             You are creating a new version based on
-            <strong>{{ $lessonPlan->class_name }} Day {{ $lessonPlan->lesson_day }}</strong> (v{{ $lessonPlan->version_number }})
+            <strong>{{ $lessonPlan->class_name }} Day {{ $lessonPlan->lesson_day }}</strong> (Version {{ $lessonPlan->version_number }})
             by {{ $lessonPlan->author->name ?? 'Unknown' }}.
         </p>
 
@@ -17,7 +17,7 @@
                 </p>
                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
                    class="inline-block mt-2 px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                    Download v{{ $lessonPlan->version_number }} ({{ $lessonPlan->file_name }})
+                    Download Version {{ $lessonPlan->version_number }} ({{ $lessonPlan->file_name }})
                 </a>
             </div>
         @endif

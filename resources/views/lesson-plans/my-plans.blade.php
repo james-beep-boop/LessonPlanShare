@@ -37,7 +37,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
-                            <td class="px-4 py-3 text-gray-700 text-center">v{{ $plan->version_number }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->version_number }}</td>
                             <td class="px-4 py-3">
                                 <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
                             </td>

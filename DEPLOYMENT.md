@@ -586,6 +586,40 @@ domain pointing to the correct directory. Check:
 
 ---
 
+## DREAMHOST QUIRKS & LESSONS LEARNED
+
+These are issues specific to DreamHost shared hosting that were discovered during deployment. Keep this section as a reference for troubleshooting.
+
+**1. SMTP host must be `smtp.dreamhost.com`, NOT `mail.sheql.com`**
+DreamHost's shared mail servers use a wildcard TLS certificate for `*.dreamhost.com`. If you set `MAIL_HOST=mail.sheql.com`, Laravel will fail with:
+```
+Peer certificate CN='*.dreamhost.com' did not match expected CN='mail.sheql.com'
+```
+Always use `smtp.dreamhost.com` as the SMTP host.
+
+**2. Email verification link must NOT require auth middleware**
+When a user clicks the verification link from their email, it typically opens in a new browser tab (or a different browser entirely) where no Laravel session exists. If the verification route requires the `auth` middleware, the user gets a 403 "THIS ACTION IS UNAUTHORIZED" error. The custom `VerifyEmailController` solves this by validating the signed URL cryptographically and logging the user in without requiring an existing session.
+
+**3. MySQL hostname must be explicitly created and may take hours**
+The hostname `mysql.sheql.com` must be manually created in the DreamHost panel under Websites > MySQL Databases. This is NOT automatic. If the domain is deleted and re-added, the hostname may be removed. After creating or re-creating it, DNS propagation can take up to a few hours. During this time, the app will show 500 errors with `php_network_getaddresses` PDO exceptions.
+
+**4. SFTP user assignment is critical**
+When adding a domain in the DreamHost panel, the SFTP user dropdown determines which home directory Apache serves from. If the domain is assigned to the wrong user (e.g., `dh_wyud2c` instead of `david_sheql`), Apache will serve from `/home/dh_wyud2c/sheql.com` instead of `/home/david_sheql/sheql.com`, resulting in a "Site Not Found" page even though all files are correctly placed.
+
+**5. Use `--depth 1` for git clone (memory limits)**
+DreamHost shared hosting has limited memory. A full git clone may fail with "unable to create thread". Always use `git clone --depth 1` for shallow clones.
+
+**6. Overlay repo — NEVER use automatic stale file detection**
+This repository only contains custom overlay files, not a complete Laravel installation. The `UPDATE_SITE.sh` script uses an explicit removal list for stale files. Automatic file comparison (e.g., "delete any file on server not in repo") would catastrophically delete all Laravel core files, Breeze files, Composer dependencies, and more. Any stale file cleanup must be done by manually adding filenames to the removal list in the script.
+
+**7. No Node.js / no build step**
+DreamHost shared hosting does not have Node.js. The `npm install && npm run build` step from Breeze installation will fail — this is expected. All frontend assets (Tailwind CSS, Alpine.js) are loaded via CDN. Remove any `@vite(...)` references from Breeze layout files.
+
+**8. Config cache masks .env changes**
+After running `php artisan config:cache`, Laravel reads from the cache and ignores `.env` entirely. If you change `.env` values, you MUST clear and rebuild: `php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache`.
+
+---
+
 ## PRODUCTION SECURITY CHECKLIST
 
 After deployment, verify these settings:

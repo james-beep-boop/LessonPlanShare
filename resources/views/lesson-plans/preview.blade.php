@@ -9,7 +9,7 @@
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Preview</p>
                 <h1 class="text-lg font-bold text-gray-900">{{ $lessonPlan->class_name }} — Day {{ $lessonPlan->lesson_day }}</h1>
                 <p class="text-xs text-gray-500 mt-0.5">
-                    v{{ $lessonPlan->version_number }}
+                    Version {{ $lessonPlan->version_number }}
                     &middot; by {{ $lessonPlan->author->name ?? 'Unknown' }}
                     &middot; {{ $lessonPlan->file_name }}
                 </p>
