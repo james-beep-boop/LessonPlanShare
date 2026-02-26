@@ -12,10 +12,10 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    // The merged auth modal on the dashboard handles all registration.
+    // These routes redirect to the dashboard so the modal can be used instead.
+    Route::get('register', fn () => redirect()->route('dashboard'))->name('register');
+    Route::post('register', fn () => redirect()->route('dashboard'));
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');

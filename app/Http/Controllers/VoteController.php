@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
+use App\Models\LessonPlanView;
 use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,7 +36,19 @@ class VoteController extends Controller
 
         // Guard: prevent authors from voting on their own plans
         if ($lessonPlan->author_id === Auth::id()) {
-            return back()->with('error', 'You cannot vote on your own lesson plan.');
+            return $request->expectsJson()
+                ? response()->json(['message' => 'You cannot vote on your own lesson plan.'], 403)
+                : back()->with('error', 'You cannot vote on your own lesson plan.');
+        }
+
+        // Guard: must have viewed the plan before voting (UI also enforces this;
+        // this server-side check prevents API-level bypasses)
+        if (! LessonPlanView::where('lesson_plan_id', $lessonPlan->id)
+                ->where('user_id', Auth::id())
+                ->exists()) {
+            return $request->expectsJson()
+                ? response()->json(['message' => 'View the plan before voting.'], 403)
+                : back()->with('error', 'Please view the plan before voting.');
         }
 
         // Check if the user has already voted on this version

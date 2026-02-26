@@ -53,11 +53,11 @@ class AdminController extends Controller
     /** Bulk-delete multiple lesson plans by ID array. */
     public function bulkDestroyPlans(Request $request)
     {
-        $ids = $request->input('ids', []);
-
-        if (empty($ids)) {
-            return redirect()->route('admin.index')->with('error', 'No plans selected.');
-        }
+        $data = $request->validate([
+            'ids'   => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:lesson_plans,id'],
+        ]);
+        $ids = $data['ids'];
 
         $plans = LessonPlan::whereIn('id', $ids)->get();
 
@@ -114,8 +114,12 @@ class AdminController extends Controller
     /** Bulk-delete multiple user accounts by ID array. */
     public function bulkDestroyUsers(Request $request)
     {
+        $data = $request->validate([
+            'user_ids'   => ['required', 'array'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+        ]);
         $ids = array_filter(
-            $request->input('user_ids', []),
+            $data['user_ids'],
             fn ($id) => (int) $id !== auth()->id()  // never delete self
         );
 

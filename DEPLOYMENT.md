@@ -77,9 +77,12 @@ app/Models/LessonPlanView.php        →  app/Models/LessonPlanView.php (NEW)
 app/Http/Controllers/Auth/AuthenticatedSessionController.php  →  (REPLACE Breeze's)
 app/Http/Controllers/Auth/RegisteredUserController.php        →  (REPLACE Breeze's)
 app/Http/Controllers/Auth/VerifyEmailController.php           →  (REPLACE Breeze's)
+app/Http/Controllers/AdminController.php                →  (NEW)
 app/Http/Controllers/DashboardController.php            →  (NEW)
 app/Http/Controllers/LessonPlanController.php           →  (NEW)
 app/Http/Controllers/VoteController.php                 →  (NEW)
+
+app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 
 app/Http/Requests/StoreLessonPlanRequest.php            →  (NEW)
 
@@ -92,6 +95,9 @@ database/migrations/2024_01_01_000001_create_lesson_plans_table.php  →  (NEW)
 database/migrations/2024_01_01_000002_create_ratings_table.php       →  (NEW)
 database/migrations/2024_01_01_000003_add_unique_index_to_lesson_plans_name.php  →  (NEW)
 database/migrations/2026_02_26_163707_create_lesson_plan_views_table.php         →  (NEW)
+database/migrations/2026_02_26_210000_add_is_admin_to_users_table.php            →  (NEW)
+
+resources/views/admin/index.blade.php                   →  (NEW)
 
 resources/views/components/layout.blade.php             →  (NEW)
 resources/views/components/vote-buttons.blade.php       →  (NEW)
@@ -137,7 +143,7 @@ Visit http://localhost:8000 — you should see the dashboard.
 
 1. Register a test account (click Sign In → Sign Up; the username must be a valid email)
 2. Upload a lesson plan — you should see a dialog box confirming the upload
-   and showing the renamed filename (e.g., `Science_Day3_youremailcom_20260223_143022UTC.pdf`)
+   and showing the renamed filename (e.g., `Science_Day3_youremailcom_20260223_143022UTC.docx`)
 3. Check your email (if SMTP is configured locally) for the upload confirmation
 4. View the plan, download it
 5. Create a new version of it

@@ -16,11 +16,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-// Resend verification email — no auth required (the send-verification route is public
-// so the admin debug button works without needing the caller to be signed in)
-Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
-    ->name('users.send-verification');
-
 /*
 |--------------------------------------------------------------------------
 | Authenticated + Email-Verified Routes
@@ -90,6 +85,11 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
         ->name('admin.users.bulk-delete');
     Route::post('/users/{user}/toggle-admin', [AdminController::class, 'toggleAdmin'])
         ->name('admin.users.toggle-admin');
+
+    // Resend verification email — admin-only; throttled to prevent email spam
+    Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
+        ->middleware('throttle:6,1')
+        ->name('users.send-verification');
 
 });
 
