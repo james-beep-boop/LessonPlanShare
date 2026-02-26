@@ -28,7 +28,7 @@ echo "Updating ARES Education site..."
 # Clone latest from GitHub into a temp directory
 echo "  Fetching latest from GitHub..."
 rm -rf /tmp/LPC
-git clone --depth 1 --quiet https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC
+git clone --depth 1 --quiet -c pack.threads=1 https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC
 
 # Overlay custom files (repo has files at the root, not in a subfolder)
 echo "  Copying updated files..."
