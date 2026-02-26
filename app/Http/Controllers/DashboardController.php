@@ -35,7 +35,12 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        $query = LessonPlan::with('author');
+        // LEFT JOIN users so we can display and sort by author name.
+        // We select lesson_plans.* explicitly to avoid column ambiguity
+        // (both tables have id, name, created_at, updated_at).
+        $query = LessonPlan::query()
+            ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
+            ->select('lesson_plans.*', 'users.name as author_name');
 
         // Filter: show only the latest version of each plan family by default.
         // This uses a subquery that groups by COALESCE(original_id, id) and
@@ -48,18 +53,18 @@ class DashboardController extends Controller
         // Uses LIKE with wildcards — adequate for the expected data volume.
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('class_name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('author', function ($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  });
+                // Prefix lesson_plans columns to avoid ambiguity with the users JOIN.
+                // users.name is searched directly (replaces the old orWhereHas subquery).
+                $q->where('lesson_plans.name', 'like', "%{$search}%")
+                  ->orWhere('lesson_plans.class_name', 'like', "%{$search}%")
+                  ->orWhere('lesson_plans.description', 'like', "%{$search}%")
+                  ->orWhere('users.name', 'like', "%{$search}%");
             });
         }
 
         // Filter by class name (exact match from dropdown)
         if ($className = $request->input('class_name')) {
-            $query->where('class_name', $className);
+            $query->where('lesson_plans.class_name', $className);
         }
 
         // ── Sorting ──
@@ -71,17 +76,22 @@ class DashboardController extends Controller
             : 'desc';
 
         // Whitelist of allowed sort columns — must match visible dashboard columns.
-        // (Document Name and Author columns were removed from the dashboard table.)
+        // author_name sorts by users.name via the LEFT JOIN.
+        // All other columns are prefixed with lesson_plans. to avoid JOIN ambiguity.
         $allowedSorts = [
-            'class_name', 'lesson_day', 'version_number',
-            'vote_score', 'updated_at',
+            'class_name', 'lesson_day', 'author_name',
+            'version_number', 'vote_score', 'updated_at',
         ];
 
         if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortOrder);
+            if ($sortField === 'author_name') {
+                $query->orderBy('users.name', $sortOrder);
+            } else {
+                $query->orderBy('lesson_plans.' . $sortField, $sortOrder);
+            }
         } else {
             // Unknown sort field — fall back to most-recent
-            $query->orderBy('updated_at', 'desc');
+            $query->orderBy('lesson_plans.updated_at', 'desc');
         }
 
         // Paginate at 10 per page; withQueryString() preserves search/sort params

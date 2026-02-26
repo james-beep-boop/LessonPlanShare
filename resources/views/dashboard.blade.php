@@ -100,23 +100,27 @@
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         @php
+                            // align: controls th text-align and the flex justification of the sort link
                             $cols = [
-                                'class_name'     => 'Class',
-                                'lesson_day'     => 'Day #',
-                                'version_number' => 'Version',
-                                'vote_score'     => 'Rating',
-                                'updated_at'     => 'Updated',
+                                'class_name'     => ['label' => 'Class',   'align' => 'left'],
+                                'lesson_day'     => ['label' => 'Day #',   'align' => 'center'],
+                                'author_name'    => ['label' => 'Author',  'align' => 'left'],
+                                'version_number' => ['label' => 'Version', 'align' => 'center'],
+                                'vote_score'     => ['label' => 'Rating',  'align' => 'center'],
+                                'updated_at'     => ['label' => 'Updated', 'align' => 'left'],
                             ];
                         @endphp
-                        @foreach ($cols as $field => $label)
+                        @foreach ($cols as $field => $col)
                             @php
-                                $isActive = ($sortField === $field);
+                                $isActive  = ($sortField === $field);
                                 $nextOrder = ($isActive && $sortOrder === 'asc') ? 'desc' : 'asc';
+                                $thAlign   = $col['align'] === 'center' ? 'text-center' : 'text-left';
+                                $linkAlign = $col['align'] === 'center' ? 'justify-center w-full' : '';
                             @endphp
-                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 {{ $thAlign }} text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                 <a href="{{ route('dashboard', array_merge(request()->query(), ['sort' => $field, 'order' => $nextOrder])) }}"
-                                   class="inline-flex items-center hover:text-gray-900 {{ $isActive ? 'text-gray-900' : '' }}">
-                                    {{ $label }}
+                                   class="inline-flex items-center {{ $linkAlign }} hover:text-gray-900 {{ $isActive ? 'text-gray-900' : '' }}">
+                                    {{ $col['label'] }}
                                     @if ($isActive)
                                         <span class="ml-1">{!! $sortOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
                                     @endif
@@ -131,8 +135,10 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
+                            {{-- Author: email with @ and . stripped per spec Section 2.1 --}}
+                            <td class="px-4 py-3 text-gray-700 text-xs">{{ str_replace(['.', '@'], '', $plan->author_name ?? '—') }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->version_number }}</td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 text-center">
                                 <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
@@ -153,7 +159,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>

@@ -207,7 +207,9 @@ class LessonPlan extends Model
      */
     public function scopeLatestVersions($query)
     {
-        return $query->whereIn('id', function ($sub) {
+        // Use the fully-qualified table name so this scope stays safe
+        // when the query has a JOIN (e.g. the dashboard's users JOIN).
+        return $query->whereIn('lesson_plans.id', function ($sub) {
             $sub->selectRaw('MAX(id)')
                 ->from('lesson_plans')
                 ->groupByRaw('COALESCE(original_id, id)');

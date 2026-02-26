@@ -15,14 +15,12 @@
 ])
 
 @if($readonly)
-    {{-- Compact display for table rows --}}
-    <span class="inline-flex items-center space-x-1 font-medium {{ $score > 0 ? 'text-green-600' : ($score < 0 ? 'text-red-600' : 'text-gray-500') }}">
-        @if ($score > 0)
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-        @elseif ($score < 0)
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        @endif
-        <span>{{ $score > 0 ? '+' : '' }}{{ $score }}</span>
+    {{-- Compact display for table rows (spec Section 14.3) --}}
+    <span class="inline-flex items-center gap-1.5 text-xs whitespace-nowrap">
+        <span class="text-gray-400">Vote 👍 👎</span>
+        <span class="font-semibold {{ $score > 0 ? 'text-green-600' : ($score < 0 ? 'text-red-600' : 'text-gray-400') }}">
+            {{ $score > 0 ? '+' : '' }}{{ $score }}
+        </span>
     </span>
 
 @else

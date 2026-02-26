@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-25 (auth routes moved, Actions column fixed, favoritePlan link fixed)
+**Last updated:** 2026-02-25 (dashboard Author column, Rating format, column alignments done)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -32,50 +32,15 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - `lesson-plans.show`, `lesson-plans.preview`, `lesson-plans.download` require `auth+verified` (moved from public)
 - Dashboard Actions column: "View/Edit" button (greyed out for guests, no Download button)
 - "Favorite Lesson Plan" counter links to `lesson-plans.show` (not preview)
+- Dashboard Author column: LEFT JOIN on users, `author_name` sortable, email `@` and `.` stripped for display
+- Dashboard Rating column: "Vote 👍 👎 +N" format (`whitespace-nowrap`, score in green/red/gray)
+- Dashboard column alignments: Class left, Day# center, Author left, Version center, Rating center, Updated left
 
 ---
 
 ## Partially Implemented / Needs Changes
 
-### 1. Dashboard Table — Column Structure (Section 4.4 of spec)
-
-**Current state:** 6 columns total — 5 sortable (Class, Day#, Version, Rating, Updated) + 1 Actions column
-
-**Spec requires:** 8 columns:
-
-| # | Column | Status |
-|---|---|---|
-| 1 | Class | ✅ done |
-| 2 | Day # | ✅ done |
-| 3 | **Author** | ❌ MISSING — email with `@` and `.` stripped; requires JOIN to users table |
-| 4 | Version | ✅ done |
-| 5 | Rating | ⚠️ format wrong — see below |
-| 6 | Updated | ✅ done |
-| 7 | **Actions** | ⚠️ wrong — see below |
-| 8 | **Favorite** | ❌ MISSING — requires full favorites system |
-
-**Files to change:** `resources/views/dashboard.blade.php`, `app/Http/Controllers/DashboardController.php`
-
-### 2. Dashboard Table — Rating Column Format (Section 4.4 #5 / Section 14.3)
-
-**Current state:** Readonly `<x-vote-buttons>` shows a colored arrow icon + numeric score (e.g., `▲ +2`)
-
-**Spec requires:** Label "Vote 👍 👎" with the score in the cell
-
-**File to change:** `resources/views/components/vote-buttons.blade.php` (readonly mode) OR `resources/views/dashboard.blade.php`
-
-### 3. Dashboard Sort Whitelist (Section 19.4 of spec)
-
-**Current state:** Whitelist in `DashboardController::index()` is:
-```php
-['class_name', 'lesson_day', 'version_number', 'vote_score', 'updated_at']
-```
-
-**Spec requires:** Add `author_name` to the whitelist (requires a JOIN to users table, not a raw column sort)
-
-**File to change:** `app/Http/Controllers/DashboardController.php`
-
-### 4. Different-User Versioning (Section 2.5 / Section 7 of spec)
+### 1. Different-User Versioning (Section 2.5 / Section 7 of spec)
 
 **Current state:** `LessonPlanController::update()` always calls `$lessonPlan->createNewVersion([...])`, which always links the new version to the parent's family (sets `original_id` and `parent_id`), regardless of who is uploading.
 
@@ -105,20 +70,11 @@ Zero code exists for this feature. Full implementation required:
 
 ## Suggested Next Tasks (in priority order)
 
-### Priority 1 — Dashboard: Author column + sort by author (moderate) ← START HERE
-Add JOIN in `DashboardController`, add `author_name` to sort whitelist, add Author column to `dashboard.blade.php`.
+### Priority 1 — Different-user versioning (moderate) ← START HERE
+Add author check in `LessonPlanController::update()` before `createNewVersion()`. If uploader ≠ `$lessonPlan->author_id`, create a brand-new plan (no version family linkage).
 
-### Priority 2 — Dashboard: Rating format "Vote 👍 👎" (easy)
-Update readonly mode of `vote-buttons.blade.php` to include the "Vote 👍 👎" label alongside the score.
-
-### Priority 3 — Dashboard: Column alignments (easy)
-Update `text-left` / `text-center` classes in `dashboard.blade.php` per spec (Class left, Day# center, Author left, Version center, Rating center, Updated left).
-
-### Priority 4 — Different-user versioning (moderate)
-Add author check in `LessonPlanController::update()` before `createNewVersion()`.
-
-### Priority 5 — Favorites system (larger feature)
-Full implementation: migration → model → controller → route → dashboard AJAX column. Update DEPLOYMENT.md file list.
+### Priority 2 — Favorites system (larger feature)
+Full implementation: migration → model → controller → route → dashboard AJAX column. Update DEPLOYMENT.md + UPDATE_SITE.sh file lists.
 
 ---
 
@@ -127,9 +83,9 @@ Full implementation: migration → model → controller → route → dashboard 
 | File | What it does |
 |---|---|
 | `routes/web.php` | All app routes — public vs auth+verified grouping |
-| `app/Http/Controllers/DashboardController.php` | Dashboard index + stats (sort whitelist, Author JOIN needed) |
+| `app/Http/Controllers/DashboardController.php` | Dashboard index + stats (LEFT JOIN on users, author sort) |
 | `app/Http/Controllers/LessonPlanController.php` | CRUD + versioning logic (different-user check needed in `update()`) |
 | `app/Http/Controllers/VoteController.php` | Vote toggle logic |
-| `resources/views/dashboard.blade.php` | Dashboard table (6 columns → 8 columns needed) |
-| `resources/views/components/vote-buttons.blade.php` | Vote display component (readonly format update needed) |
+| `resources/views/dashboard.blade.php` | Dashboard table (7 columns; Favorites column not yet added) |
+| `resources/views/components/vote-buttons.blade.php` | Vote display component (readonly shows "Vote 👍 👎 +N") |
 | `database/migrations/` | 3 migrations present; favorites migration not yet created |
