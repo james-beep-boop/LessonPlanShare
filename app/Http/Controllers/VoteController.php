@@ -63,6 +63,19 @@ class VoteController extends Controller
         // Recalculate the cached vote_score column on the lesson plan
         // (avoids expensive SUM() queries on every page load)
         $lessonPlan->recalculateVoteScore();
+        $lessonPlan->refresh();
+
+        // For AJAX requests (inline dashboard vote buttons), return JSON.
+        // For standard form submissions (show page), redirect back as usual.
+        if ($request->expectsJson()) {
+            $newVote = Vote::where('lesson_plan_id', $lessonPlan->id)
+                ->where('user_id', Auth::id())
+                ->first();
+            return response()->json([
+                'score'    => $lessonPlan->vote_score,
+                'userVote' => $newVote ? $newVote->value : null,
+            ]);
+        }
 
         return back()->with('success', 'Vote recorded.');
     }

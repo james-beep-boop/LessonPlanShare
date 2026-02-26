@@ -72,6 +72,7 @@ COPY FROM THIS REPO                  →  TO YOUR LARAVEL PROJECT
 app/Models/User.php                  →  app/Models/User.php (REPLACE)
 app/Models/LessonPlan.php            →  app/Models/LessonPlan.php (NEW)
 app/Models/Vote.php                  →  app/Models/Vote.php (NEW)
+app/Models/LessonPlanView.php        →  app/Models/LessonPlanView.php (NEW)
 
 app/Http/Controllers/Auth/RegisteredUserController.php  →  (REPLACE Breeze's)
 app/Http/Controllers/Auth/VerifyEmailController.php     →  (REPLACE Breeze's)
@@ -89,6 +90,7 @@ app/Console/Commands/DetectDuplicateContent.php         →  (NEW)
 database/migrations/2024_01_01_000001_create_lesson_plans_table.php  →  (NEW)
 database/migrations/2024_01_01_000002_create_ratings_table.php       →  (NEW)
 database/migrations/2024_01_01_000003_add_unique_index_to_lesson_plans_name.php  →  (NEW)
+database/migrations/2026_02_26_163707_create_lesson_plan_views_table.php         →  (NEW)
 
 resources/views/components/layout.blade.php             →  (NEW)
 resources/views/components/vote-buttons.blade.php       →  (NEW)
@@ -463,12 +465,14 @@ LessonPlanShare/
 ├── database/migrations/
 │   ├── 2024_01_01_000001_create_lesson_plans_table.php
 │   ├── 2024_01_01_000002_create_ratings_table.php      (creates votes table)
-│   └── 2024_01_01_000003_add_unique_index_to_lesson_plans_name.php
+│   ├── 2024_01_01_000003_add_unique_index_to_lesson_plans_name.php
+│   └── 2026_02_26_163707_create_lesson_plan_views_table.php
 │
 ├── app/Models/
 │   ├── User.php
 │   ├── LessonPlan.php
-│   └── Vote.php
+│   ├── Vote.php
+│   └── LessonPlanView.php
 │
 ├── app/Http/Controllers/
 │   ├── Auth/RegisteredUserController.php

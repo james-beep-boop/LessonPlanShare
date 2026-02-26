@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
+use App\Models\LessonPlanView;
+use App\Models\Vote;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Dashboard controller — the main public-facing page of the application.
  *
  * This is the route for "/" (the root URL). It shows a searchable, sortable,
- * paginated table of lesson plans. By default it shows only the latest
- * version of each plan family; a checkbox lets the user see all versions.
+ * paginated table of lesson plans. By default it shows ALL versions; a checkbox
+ * lets the user restrict to the latest version of each plan family.
  *
  * This route is PUBLIC (no auth required) so visitors can browse and
  * download lesson plans without creating an account. Uploading, voting,
@@ -26,7 +29,7 @@ class DashboardController extends Controller
      * Query parameters (all optional):
      * - search: free-text search across name, class, description, author
      * - class_name: filter to a specific class (e.g., "English")
-     * - show_all_versions: if truthy, show every version (not just latest)
+     * - latest_only: if truthy, show only the latest version of each plan family
      * - sort: column to sort by (name, class_name, lesson_day, etc.)
      * - order: 'asc' or 'desc' (validated server-side; bad values default to 'desc')
      *
@@ -42,10 +45,9 @@ class DashboardController extends Controller
             ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
             ->select('lesson_plans.*', 'users.name as author_name');
 
-        // Filter: show only the latest version of each plan family by default.
-        // This uses a subquery that groups by COALESCE(original_id, id) and
-        // selects MAX(id) from each group.
-        if (!$request->boolean('show_all_versions')) {
+        // Filter: show all versions by default. When latest_only=1 is passed,
+        // restrict to one row per family (the highest-id version).
+        if ($request->boolean('latest_only')) {
             $query->latestVersions();
         }
 
@@ -97,6 +99,22 @@ class DashboardController extends Controller
         // Paginate at 10 per page; withQueryString() preserves search/sort params
         $plans = $query->paginate(10)->withQueryString();
 
+        // For logged-in users: load their existing votes and which plans they've viewed.
+        // Used to show interactive vs locked vote buttons in the dashboard table.
+        $userVotes = [];
+        $viewedIds = [];
+        if (Auth::check()) {
+            $planIds   = $plans->pluck('id');
+            $userVotes = Vote::whereIn('lesson_plan_id', $planIds)
+                ->where('user_id', Auth::id())
+                ->pluck('value', 'lesson_plan_id')
+                ->toArray();
+            $viewedIds = LessonPlanView::whereIn('lesson_plan_id', $planIds)
+                ->where('user_id', Auth::id())
+                ->pluck('lesson_plan_id')
+                ->toArray();
+        }
+
         // Get distinct class names that actually have plans, for the filter dropdown.
         // (This is separate from LessonPlanController::CLASS_NAMES, which controls
         // what can be *uploaded*. The dashboard filter shows what *exists*.)
@@ -121,7 +139,8 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'plans', 'classNames', 'sortField', 'sortOrder',
-            'uniqueClassCount', 'totalPlanCount', 'favoritePlan'
+            'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
+            'userVotes', 'viewedIds'
         ));
     }
 

@@ -1,21 +1,30 @@
 {{--
-    Upvote/Downvote component.
+    Upvote/Downvote component. Four display modes:
 
-    Interactive (logged-in user):
-        <x-vote-buttons :plan-id="$plan->id" :score="$plan->vote_score" :user-vote="$userVote" />
-
-    Display-only (dashboard table):
+    1. Readonly (guests / display-only):
         <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
+
+    2. Locked (auth user who hasn't viewed the plan yet, or is the author):
+        <x-vote-buttons :score="$plan->vote_score" :locked="true" />
+
+    3. Inline/AJAX (auth user who has viewed the plan — dashboard table):
+        <x-vote-buttons :plan-id="$plan->id" :score="$plan->vote_score"
+                        :user-vote="$planUserVote" :inline="true" />
+
+    4. Interactive form (show page — full upvote/downvote UI):
+        <x-vote-buttons :plan-id="$plan->id" :score="$plan->vote_score" :user-vote="$userVote" />
 --}}
 @props([
     'planId'   => null,
     'score'    => 0,
     'userVote' => null,
     'readonly' => false,
+    'locked'   => false,
+    'inline'   => false,
 ])
 
 @if($readonly)
-    {{-- Compact display for table rows (spec Section 14.3) --}}
+    {{-- Compact display for guests: no action possible --}}
     <span class="inline-flex items-center gap-1.5 text-xs whitespace-nowrap">
         <span class="text-gray-400">Vote 👍 👎</span>
         <span class="font-semibold {{ $score > 0 ? 'text-green-600' : ($score < 0 ? 'text-red-600' : 'text-gray-400') }}">
@@ -23,8 +32,52 @@
         </span>
     </span>
 
+@elseif($locked)
+    {{-- Greyed arrows: auth user who hasn't viewed the plan yet (or is the author) --}}
+    <span class="inline-flex items-center gap-1 text-xs whitespace-nowrap"
+          title="View this plan first to unlock voting">
+        <span class="px-0.5 text-gray-300 select-none">▲</span>
+        <span class="font-semibold min-w-[2rem] text-center
+              {{ $score > 0 ? 'text-green-600' : ($score < 0 ? 'text-red-600' : 'text-gray-400') }}">
+            {{ $score > 0 ? '+' : '' }}{{ $score }}
+        </span>
+        <span class="px-0.5 text-gray-300 select-none">▼</span>
+    </span>
+
+@elseif($inline)
+    {{-- AJAX vote buttons for the dashboard table — no page reload --}}
+    <div x-data="{
+            score: {{ (int) $score }},
+            userVote: {{ $userVote !== null ? (int) $userVote : 'null' }},
+            vote(value) {
+                fetch('{{ route('votes.store', $planId) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ value: value })
+                }).then(r => r.json()).then(d => {
+                    this.score = d.score;
+                    this.userVote = d.userVote;
+                });
+            }
+         }"
+         class="inline-flex items-center gap-1 text-xs whitespace-nowrap">
+        <button @click="vote(1)" type="button" title="Upvote"
+                :class="userVote === 1 ? 'text-green-600 font-bold' : 'text-gray-400 hover:text-green-600'"
+                class="px-0.5 rounded transition">▲</button>
+        <span :class="score > 0 ? 'text-green-600' : (score < 0 ? 'text-red-600' : 'text-gray-400')"
+              class="font-semibold min-w-[2rem] text-center"
+              x-text="(score > 0 ? '+' : '') + score"></span>
+        <button @click="vote(-1)" type="button" title="Downvote"
+                :class="userVote === -1 ? 'text-red-600 font-bold' : 'text-gray-400 hover:text-red-600'"
+                class="px-0.5 rounded transition">▼</button>
+    </div>
+
 @else
-    {{-- Interactive upvote/downvote buttons --}}
+    {{-- Interactive upvote/downvote buttons (show page — form-based) --}}
     @php
         $currentValue = $userVote ? $userVote->value : 0;
     @endphp

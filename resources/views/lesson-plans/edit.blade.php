@@ -97,7 +97,7 @@
                 @error('description') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            {{-- File Upload --}}
+            {{-- File Upload + Submit (wrapped together so the button can react to fileSelected state) --}}
             <div x-data="fileValidator()">
                 <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Revised Lesson Plan File *</label>
                 <input type="file" name="file" id="file" required
@@ -108,15 +108,17 @@
                 <p class="text-xs text-gray-500 mt-1">Upload your revised version. Max 1 MB.</p>
                 <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
                 @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            </div>
 
-            {{-- Submit --}}
-            <div class="flex items-center space-x-3 pt-2">
-                <button type="submit"
-                        class="px-5 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                    Upload New Version
-                </button>
-                <a href="{{ route('lesson-plans.show', $lessonPlan) }}" class="text-sm text-gray-500 hover:text-gray-900">Cancel</a>
+                {{-- Submit: greyed out until a valid file is chosen --}}
+                <div class="flex items-center space-x-3 pt-4">
+                    <button type="submit"
+                            :disabled="!fileSelected"
+                            :class="fileSelected ? 'bg-gray-900 hover:bg-gray-700 cursor-pointer' : 'bg-gray-400 cursor-not-allowed'"
+                            class="px-5 py-2 text-white text-sm font-medium rounded-md transition-colors">
+                        Upload New Version
+                    </button>
+                    <a href="{{ route('lesson-plans.show', $lessonPlan) }}" class="text-sm text-gray-500 hover:text-gray-900">Cancel</a>
+                </div>
             </div>
         </form>
     </div>
@@ -128,7 +130,9 @@
             const allowed = ['pdf','doc','docx','ppt','pptx','xls','xlsx','txt','rtf','odt','odp','ods'];
             return {
                 error: '',
+                fileSelected: false,
                 validate(event) {
+                    this.fileSelected = false; // reset on every change
                     this.error = '';
                     const file = event.target.files[0];
                     if (!file) return;
@@ -142,7 +146,9 @@
                         const sizeMB = (file.size / 1024 / 1024).toFixed(1);
                         this.error = 'File is ' + sizeMB + ' MB — the limit is 1 MB. Please choose a smaller file.';
                         event.target.value = '';
+                        return;
                     }
+                    this.fileSelected = true; // only set after all validations pass
                 }
             };
         }

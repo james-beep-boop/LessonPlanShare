@@ -66,12 +66,12 @@
                 </select>
             </div>
 
-            {{-- Show All Versions Toggle --}}
+            {{-- Latest Version Filter (default: show all; check to restrict) --}}
             <div class="flex items-center space-x-2">
-                <input type="checkbox" name="show_all_versions" id="show_all_versions" value="1"
-                       {{ request('show_all_versions') ? 'checked' : '' }}
+                <input type="checkbox" name="latest_only" id="latest_only" value="1"
+                       {{ request('latest_only') ? 'checked' : '' }}
                        class="rounded border-gray-300 text-gray-900 focus:ring-gray-400">
-                <label for="show_all_versions" class="text-sm text-gray-600">Show all versions</label>
+                <label for="latest_only" class="text-sm text-gray-600">Latest version only</label>
             </div>
 
             {{-- Buttons --}}
@@ -139,7 +139,27 @@
                             <td class="px-4 py-3 text-gray-700 text-xs">{{ str_replace(['.', '@'], '', $plan->author_name ?? '—') }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->version_number }}</td>
                             <td class="px-4 py-3 text-center">
-                                <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
+                                @php
+                                    // Voting is unlocked when: logged in + verified + not the author + has viewed the plan
+                                    $canVote = Auth::check()
+                                        && Auth::user()->hasVerifiedEmail()
+                                        && $plan->author_id !== Auth::id()
+                                        && in_array($plan->id, $viewedIds);
+                                    $planUserVote = $userVotes[$plan->id] ?? null;
+                                @endphp
+                                @auth
+                                    @if($canVote)
+                                        {{-- Active AJAX vote buttons --}}
+                                        <x-vote-buttons :plan-id="$plan->id" :score="$plan->vote_score"
+                                                        :user-vote="$planUserVote" :inline="true" />
+                                    @else
+                                        {{-- Greyed locked buttons (not viewed yet, or is author) --}}
+                                        <x-vote-buttons :score="$plan->vote_score" :locked="true" />
+                                    @endif
+                                @else
+                                    {{-- Guest: display only --}}
+                                    <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
+                                @endauth
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">

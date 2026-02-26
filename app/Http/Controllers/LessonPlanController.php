@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\LessonPlanUploaded;
 use App\Models\LessonPlan;
+use App\Models\LessonPlanView;
 use App\Http\Requests\StoreLessonPlanRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -170,6 +171,12 @@ class LessonPlanController extends Controller
             $userVote = $lessonPlan->votes()
                 ->where('user_id', Auth::id())
                 ->first();
+
+            // Record that this user has viewed the plan (gates dashboard voting)
+            LessonPlanView::firstOrCreate([
+                'user_id'        => Auth::id(),
+                'lesson_plan_id' => $lessonPlan->id,
+            ]);
         }
 
         return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote'));
@@ -192,10 +199,10 @@ class LessonPlanController extends Controller
     /**
      * Store a new version derived from an existing plan.
      *
-     * Similar to store(), but:
-     * - Links to the parent plan via original_id and parent_id.
-     * - Auto-increments the version number within the family.
-     * - Uses LessonPlan::createNewVersion() for the linkage logic.
+     * Per spec Section 2.5: if the uploader is the same author as the parent plan,
+     * the new file is linked into the parent's version family (original_id / parent_id).
+     * If the uploader is a DIFFERENT user, a completely independent plan is created
+     * (version 1, no family linkage) — the parent plan is not modified.
      */
     public function update(StoreLessonPlanRequest $request, LessonPlan $lessonPlan)
     {
@@ -204,7 +211,7 @@ class LessonPlanController extends Controller
         // Author is always the logged-in user (see class-level design note)
         $author = Auth::user();
 
-        // Generate canonical name for the new version
+        // Generate canonical name (same logic regardless of author match)
         $canonicalName = LessonPlan::generateCanonicalName(
             $data['class_name'],
             $data['lesson_day'],
@@ -230,7 +237,31 @@ class LessonPlanController extends Controller
         // Store with canonical filename
         $filePath = $file->storeAs('lessons', $diskName, 'public');
 
-        // Create the new version, linked to the parent plan's family
+        // ── Author check: link to family or create standalone ──
+        if ($lessonPlan->author_id !== $author->id) {
+            // Different uploader — create a brand-new standalone plan (no family linkage)
+            // per spec Section 2.5
+            $newPlan = LessonPlan::create([
+                'class_name'     => $data['class_name'],
+                'lesson_day'     => $data['lesson_day'],
+                'description'    => $data['description'] ?? null,
+                'name'           => $canonicalName,
+                'author_id'      => $author->id,
+                'file_path'      => $filePath,
+                'file_name'      => $diskName,
+                'file_size'      => $fileSize,
+                'file_hash'      => $fileHash,
+                'version_number' => 1,
+                // original_id and parent_id intentionally omitted (stay null)
+            ]);
+            $this->sendUploadConfirmationEmail($newPlan, $diskName);
+            return redirect()->route('dashboard')
+                ->with('upload_success', true)
+                ->with('upload_filename', $diskName)
+                ->with('status', 'Your plan was saved as a new standalone plan (you are not the original author).');
+        }
+
+        // Same author — create new version linked to the parent's family
         $newVersion = $lessonPlan->createNewVersion([
             'class_name'    => $data['class_name'],
             'lesson_day'    => $data['lesson_day'],
@@ -246,8 +277,8 @@ class LessonPlanController extends Controller
         // Send confirmation email to the uploader
         $this->sendUploadConfirmationEmail($newVersion, $diskName);
 
-        // Flash data triggers the upload-success modal dialog
-        return redirect()->route('lesson-plans.show', $newVersion)
+        // Flash data triggers the upload-success modal dialog; redirect to dashboard per spec
+        return redirect()->route('dashboard')
             ->with('upload_success', true)
             ->with('upload_filename', $diskName);
     }

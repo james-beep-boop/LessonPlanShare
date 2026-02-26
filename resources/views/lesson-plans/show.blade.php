@@ -14,7 +14,10 @@
                 </p>
                 <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ $lessonPlan->name }}</p>
             </div>
-            <a href="{{ route('dashboard') }}" class="text-sm text-gray-500 hover:text-gray-900">&larr; Back</a>
+            <a href="{{ route('dashboard') }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors shrink-0">
+                &larr; Back to Dashboard
+            </a>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
