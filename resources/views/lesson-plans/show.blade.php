@@ -22,9 +22,9 @@
             {{-- Main Content (left 2/3) --}}
             <div class="lg:col-span-2 space-y-6">
 
-                {{-- Plan Details --}}
+                {{-- Lesson Plan Details --}}
                 <div class="border border-gray-200 rounded-lg p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-3">Plan Details</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-3">Lesson Plan Details</h2>
 
                     @if ($lessonPlan->description)
                         <p class="text-gray-700 text-sm mb-4">{{ $lessonPlan->description }}</p>
