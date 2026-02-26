@@ -548,8 +548,9 @@ domain pointing to the correct directory. Check:
   `php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
 **git clone fails with "unable to create thread":**
-- Use `--depth 1` for a shallow clone (DreamHost shared hosting has limited memory)
-- Example: `git clone --depth 1 https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC`
+- Use `--depth 1 -c pack.threads=1` (limits memory and thread usage on shared hosting)
+- Example: `git clone --depth 1 -c pack.threads=1 https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC`
+- You can also set this globally on the server: `git config --global pack.threads 1`
 
 **CSS not loading / page looks broken:**
 - Make sure you removed all `@vite(...)` references from Breeze layout files
@@ -619,8 +620,8 @@ The hostname `mysql.sheql.com` must be manually created in the DreamHost panel u
 **4. SFTP user assignment is critical**
 When adding a domain in the DreamHost panel, the SFTP user dropdown determines which home directory Apache serves from. If the domain is assigned to the wrong user (e.g., `dh_wyud2c` instead of `david_sheql`), Apache will serve from `/home/dh_wyud2c/sheql.com` instead of `/home/david_sheql/sheql.com`, resulting in a "Site Not Found" page even though all files are correctly placed.
 
-**5. Use `--depth 1` for git clone (memory limits)**
-DreamHost shared hosting has limited memory. A full git clone may fail with "unable to create thread". Always use `git clone --depth 1` for shallow clones.
+**5. Use `--depth 1` and `pack.threads=1` for git clone (memory limits)**
+DreamHost shared hosting has limited memory. A full git clone may fail with "unable to create thread, resource temporarily unavailable". Always use `git clone --depth 1 -c pack.threads=1`. The `-c pack.threads=1` flag limits parallel thread creation during pack indexing and prevents the thread exhaustion error. The `UPDATE_SITE.sh` script already includes this flag. If you need to clone manually: `git clone --depth 1 -c pack.threads=1 https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC`.
 
 **6. Overlay repo — NEVER use automatic stale file detection**
 This repository only contains custom overlay files, not a complete Laravel installation. The `UPDATE_SITE.sh` script uses an explicit removal list for stale files. Automatic file comparison (e.g., "delete any file on server not in repo") would catastrophically delete all Laravel core files, Breeze files, Composer dependencies, and more. Any stale file cleanup must be done by manually adding filenames to the removal list in the script.
@@ -630,6 +631,22 @@ DreamHost shared hosting does not have Node.js. The `npm install && npm run buil
 
 **8. Config cache masks .env changes**
 After running `php artisan config:cache`, Laravel reads from the cache and ignores `.env` entirely. If you change `.env` values, you MUST clear and rebuild: `php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache`.
+
+---
+
+## ADMIN SETUP
+
+To grant admin access to a user (run once after first deploy, or after creating a new admin):
+
+```bash
+ssh david_sheql@sheql.com
+cd ~/LessonPlanShare
+php artisan tinker
+>>> User::where('email', 'priority2@protonmail.ch')->update(['is_admin' => true]);
+>>> exit
+```
+
+The "Admin" link will appear in the header on next page load for that user.
 
 ---
 

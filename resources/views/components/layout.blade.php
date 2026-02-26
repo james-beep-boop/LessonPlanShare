@@ -74,23 +74,6 @@
                 </div>
             </div>
 
-            {{-- Navigation links (only when signed in AND verified) --}}
-            @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                <nav class="mt-4 flex flex-wrap gap-4 sm:gap-6 text-sm">
-                    <a href="{{ route('dashboard') }}"
-                       class="font-medium {{ request()->routeIs('dashboard') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
-                        Browse All
-                    </a>
-                    <a href="{{ route('my-plans') }}"
-                       class="font-medium {{ request()->routeIs('my-plans') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
-                        My Plans
-                    </a>
-                    <a href="{{ route('lesson-plans.create') }}"
-                       class="font-medium text-gray-500 hover:text-gray-900">
-                        Upload New Lesson
-                    </a>
-                </nav>
-            @endif
         </div>
     </header>
 

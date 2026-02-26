@@ -192,12 +192,14 @@ class DashboardController extends Controller
             ->get();
 
         // ── Most revised plan family ──
-        // The root plan whose family has the most versions
+        // The root plan whose family has the most versions.
+        // Must group by the full expression, not the alias — MySQL 8 strict mode
+        // (ONLY_FULL_GROUP_BY) rejects grouping by a SELECT-list alias.
         $mostRevised = LessonPlan::select(
                 DB::raw('COALESCE(original_id, id) as root_id'),
                 DB::raw('COUNT(*) as version_count')
             )
-            ->groupBy('root_id')
+            ->groupBy(DB::raw('COALESCE(original_id, id)'))
             ->orderByDesc('version_count')
             ->first();
 

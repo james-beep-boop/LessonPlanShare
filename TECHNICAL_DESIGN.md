@@ -1,7 +1,7 @@
 # ARES Education — Kenya Lesson Plan Repository: Technical Design Document
 
-**Version:** 3.0
-**Date:** February 2026
+**Version:** 3.1
+**Date:** February 2026 (updated 2026-02-26)
 **Status:** Deployed at www.sheql.com
 
 ---
@@ -54,16 +54,23 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 | Column | Type | Notes |
 |---|---|---|
 | id | bigint unsigned PK | Auto-increment |
-| name | varchar(255) | Set to the user's email address at registration |
-| email | varchar(255) unique | Login identifier; same value as `name` |
+| name | varchar(255) unique | Teacher Name chosen by the user at registration |
+| email | varchar(255) unique | Login identifier |
 | email_verified_at | timestamp nullable | Set when user clicks verification link |
 | password | varchar(255) | Bcrypt-hashed |
+| is_admin | boolean default false | Admin flag; grants access to `/admin` panel |
 | remember_token | varchar(100) nullable | Laravel session persistence |
 | created_at / updated_at | timestamps | Standard Laravel |
 
-**Design decision — name equals email:** The registration form has a single "Username" field that accepts an email address. The submitted value is stored in both the `name` and `email` columns. This simplifies the UI while maintaining compatibility with Laravel's auth system, which expects a `name` column. The User model implements `MustVerifyEmail`, requiring users to click a confirmation email link before accessing authenticated routes.
+**Design decision — Teacher Name:** The registration form has three fields: Teacher Name (any unique string), Teacher Email, and Password. The Teacher Name is stored in the `name` column and displayed throughout the UI (dashboard Author column, plan detail pages, stats). It is distinct from the email address. Teacher Name uniqueness is enforced server-side.
 
-**Author display name:** When displayed in the UI (dashboard Author column, plan detail pages, stats), the author name is derived from the email address by stripping the `@` symbol and `.` characters. For example, `david@sheql.com` displays as `davidsheqlcom`.
+**`is_admin` flag:** Defaults to `false`. Set manually via `php artisan tinker`:
+```
+User::where('email', 'user@example.com')->update(['is_admin' => true]);
+```
+Enforced by `AdminMiddleware` on all `/admin` routes.
+
+**Author display name:** The Teacher Name (from `users.name`) is displayed directly — no email stripping required. The canonical filename still uses the email-derived slug for historical consistency.
 
 ### 2.2 `lesson_plans` Table
 
@@ -108,7 +115,23 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 - `lesson_plan_id` → `lesson_plans.id` (CASCADE on delete)
 - `user_id` → `users.id` (CASCADE on delete)
 
-### 2.4 `favorites` Table (NEW — not yet implemented)
+### 2.4 `lesson_plan_views` Table
+
+| Column | Type | Notes |
+|---|---|---|
+| user_id | bigint unsigned FK | The user who viewed the plan |
+| lesson_plan_id | bigint unsigned FK | The plan that was viewed |
+| created_at | timestamp | When the view was first recorded |
+
+**Constraints:** UNIQUE index on `[user_id, lesson_plan_id]` (one record per user per plan — only the first view is recorded).
+
+**Foreign keys:**
+- `user_id` → `users.id` (CASCADE on delete)
+- `lesson_plan_id` → `lesson_plans.id` (CASCADE on delete)
+
+**Behavior:** A view is recorded when an authenticated user visits the `lesson-plans.show` route. Views gate AJAX voting in the dashboard — a user must have viewed a plan before they can vote on it inline. See Section 14.4.
+
+### 2.5 `favorites` Table (NOT YET IMPLEMENTED)
 
 | Column | Type | Notes |
 |---|---|---|
@@ -125,7 +148,7 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 
 **Behavior:** Toggled via AJAX POST to `/lesson-plans/{id}/favorite`. Authenticated users only. Returns JSON `{ favorited: true/false }` for frontend toggle without page reload.
 
-### 2.5 Version Family Model
+### 2.6 Version Family Model
 
 Lesson plans use a tree-based versioning system:
 
@@ -140,13 +163,13 @@ Version 3:         original_id = 1,    parent_id = 2
 - `parent_id` tracks the direct lineage (which version was this derived from).
 - `version_number` auto-increments within a family by finding `MAX(version_number)` across all records sharing the same `original_id`.
 
-**Dashboard default:** Only the latest version per family is shown (using a subquery: `MAX(id)` grouped by `COALESCE(original_id, id)`). A "Show all versions" checkbox reveals every version.
+**Dashboard default:** All versions are shown. A "Latest version only" checkbox restricts to one row per family (subquery: `MAX(id)` grouped by `COALESCE(original_id, id)`).
 
 **Deletion guard:** The root plan cannot be deleted if child versions exist, because `original_id` uses `onDelete('set null')`, which would orphan the family linkage. Users must delete children first.
 
 **Different-user versioning:** When a user who is NOT the original author creates a new version, the system creates a completely new plan (version 1) with no `original_id` or `parent_id` link. This "breaks the link" — the new plan starts its own independent version family.
 
-### 2.6 Canonical Naming
+### 2.7 Canonical Naming
 
 Every uploaded document is renamed to a canonical format, regardless of the original upload filename:
 
@@ -164,7 +187,7 @@ Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.docx`
 
 **Uniqueness:** The combination of class + day + author + second-resolution timestamp ensures unique names. A server-side guard rejects uploads if an identical canonical name already exists (which can only happen if the same user uploads the same class/day within the same second).
 
-### 2.7 File Storage
+### 2.8 File Storage
 
 - Files are stored at `storage/app/public/lessons/{canonical_name}.{ext}`
 - The `storage:link` artisan command creates a symlink from `public/storage` → `storage/app/public`
@@ -172,7 +195,7 @@ Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.docx`
 - Maximum file size: 1 MB (enforced by validation rule `max:1024` and client-side JavaScript)
 - Accepted formats: DOC, DOCX, TXT, RTF, ODT
 
-### 2.8 Duplicate Content Detection
+### 2.9 Duplicate Content Detection
 
 A SHA-256 hash of each uploaded file's contents is computed and stored in `file_hash`. An artisan command (`lessons:detect-duplicates`) runs on a cron schedule to:
 
@@ -190,28 +213,32 @@ The command supports a `--dry-run` flag for preview-only execution.
 
 > **Modularity note:** This section covers how users register, log in, reset passwords, and verify email. Changes here should NOT require reading any other section.
 
-### 3.1 Registration Flow
+### 3.1 Registration and Login Flow (Single Merged Form)
 
-1. User clicks "Sign In" button in the header → Alpine.js modal opens on the "Sign In" panel.
-2. User clicks "Sign Up" link within the modal → switches to the "Create Account" panel.
-3. Registration form fields: Username (email address), Password, Confirm Password. All password fields have a "Show/Hide" toggle button.
-4. On submit, the `RegisteredUserController` validates the email, creates the User record (setting `name` = `email`), fires the `Registered` event (which sends a verification email), and logs the user in.
-5. The user is redirected to the email verification notice page. They cannot access authenticated routes until they click the link in their verification email.
-6. If validation fails (e.g., password mismatch), the user is redirected to the standalone `/register` page (not the modal), which provides the same form in a full-page layout.
+The auth modal is a single form — there are no separate "Sign In" and "Sign Up" panels. The same form handles registration, re-verification, and login based on what exists in the database.
 
-### 3.2 Authentication Flow
+**Form fields:** Teacher Name (unique; required for new accounts only), Teacher Email (required), Password (required; Show/Hide toggle).
 
-1. User clicks "Sign In" button → modal opens on the "Sign In" panel.
-2. Form fields: Username (email), Password (with Show/Hide toggle).
-3. Standard Laravel Breeze login; on success, redirects to dashboard.
-4. On failure, modal reopens with validation error messages.
-5. The modal remembers which panel (login/register) was active via a hidden `_auth_mode` field, so validation errors reopen the correct panel.
-6. If validation fails and redirects to `/login`, a standalone login page renders the same form in a full-page layout.
+**Server-side three-case logic** (`AuthenticatedSessionController@store`):
+
+1. **New email (registration):** Teacher Name is required and validated for uniqueness. A new `User` record is created. The `Registered` event fires (sends verification email). The user is logged in (so the verification notice page can display their email and offer "Resend"). They are redirected to `verification.notice` — they cannot access authenticated routes until clicking the link.
+
+2. **Unverified existing email:** The password is ignored. The verification email is resent. The user is logged in and redirected to `verification.notice`.
+
+3. **Verified existing email:** Standard authentication. Wrong password returns a validation error. On success, redirects to dashboard.
+
+**Teacher Name for existing users (Cases 2 & 3):** The Name field is present in the form but ignored by the server — it is only validated in Case 1.
+
+**Modal trigger:** "Sign In" button dispatches Alpine.js `open-auth-modal` event.
+
+**Standalone fallback:** If validation fails and redirects to `/login`, a standalone login page renders an identical form in a full-page layout.
+
+### 3.2 Password Reset Flow
 
 ### 3.3 Password Reset Flow
 
-1. User clicks "Forgot your password?" link (available in both the sign-in modal and the standalone login page).
-2. This navigates to `/forgot-password` — a standalone form requesting the user's email address.
+1. User clicks "Forgot your password?" link (available in both the auth modal and the standalone login page).
+2. Navigates to `/forgot-password` — standalone form requesting the user's email address.
 3. On submit, Laravel sends a password reset email via the standard Breeze `PasswordResetLinkController`.
 4. The user clicks the reset link in their email → opens `/reset-password/{token}` with their email pre-filled.
 5. User enters a new password + confirmation → submits → Laravel's `NewPasswordController` handles the reset.
@@ -226,7 +253,7 @@ The email verification link does NOT require the user to be logged in. This is c
 2. Finds the user by ID from the URL parameter
 3. Verifies the hash matches the user's email
 4. Marks the email as verified
-5. Logs the user in automatically
+5. Logs the user in automatically (with `$request->session()->regenerate()`)
 6. Redirects to dashboard with a success message
 
 The route uses `signed` and `throttle:6,1` middleware but NOT `auth` middleware.
@@ -242,12 +269,15 @@ The route uses `signed` and `throttle:6,1` middleware but NOT `auth` middleware.
 | Download a file | Authenticated + verified email |
 | Upload a new plan | Authenticated + verified email |
 | Create a new version | Authenticated + verified email |
-| Vote on a plan | Authenticated + verified email (not the author) |
-| Favorite a plan | Authenticated + verified email |
+| Vote on a plan | Authenticated + verified email (not the author; must have viewed the plan) |
+| Inline AJAX vote from dashboard | Authenticated + verified email (not author; must have viewed plan) |
+| Favorite a plan | Authenticated + verified email (NOT YET IMPLEMENTED) |
 | Delete a plan | Authenticated + verified email (only the plan's author) |
 | View "My Plans" | Authenticated + verified email |
+| Access admin panel (`/admin`) | Authenticated + verified email + `is_admin = true` |
+| Delete any plan or user (admin) | Authenticated + verified email + `is_admin = true` |
 
-Authorization is enforced via Laravel middleware (`['auth', 'verified']`) on route groups, plus controller-level guards for author-specific actions (delete, self-vote prevention).
+Authorization is enforced via Laravel middleware (`['auth', 'verified']`) on route groups, `AdminMiddleware` on admin routes, plus controller-level guards for author-specific actions (delete, self-vote prevention).
 
 ---
 
@@ -268,14 +298,14 @@ Bordered card above the search bar with three metrics:
 
 ### 4.2 Upload Button
 
-Visible to authenticated users only. A prominent "+ Upload New Lesson Plan" button (gray-900) displayed right-aligned above the results table.
+Visible to authenticated + verified users only. A prominent "Upload New Lesson" button (gray-900) displayed in the header (right side). No "+" prefix.
 
 ### 4.3 Search & Filter Bar
 
 Contained in a bordered card:
 - **Search** (text input): Free-text search across document name, class name, description, and author name. Uses SQL `LIKE %term%` queries.
 - **Class** (dropdown): Filters by class name. Options are dynamically populated from the distinct `class_name` values that exist in the database.
-- **Show all versions** (checkbox): When unchecked (default), shows only the latest version of each plan family. When checked, shows every version as a separate row.
+- **Latest version only** (checkbox): When unchecked (default), shows ALL versions as separate rows. When checked, restricts to the latest version of each plan family.
 - **Search** button (gray-900) and **Clear** link.
 
 ### 4.4 Results Table
@@ -286,12 +316,12 @@ Eight columns, all sortable by clicking the header:
 |---|---|---|---|
 | 1 | **Class** | left | Subject name |
 | 2 | **Day #** | center | Lesson number |
-| 3 | **Author** | left | Author display name (email with `@` and `.` stripped) |
+| 3 | **Author** | left | Teacher Name (from `users.name` via LEFT JOIN; sortable) |
 | 4 | **Version** | center | Integer only — NO "v" prefix (e.g., `1`, `2`, `3`) |
-| 5 | **Rating** | center | Vote score with colored indicator; readonly `vote-buttons` component. Display format: "Vote 👍 👎" with the score |
+| 5 | **Rating** | center | **Guest:** readonly "Vote 👍 👎 +N". **Authenticated, unviewed plan:** greyed locked ▲▼ (tooltip: "View this plan to unlock voting"). **Authenticated, viewed plan (not author):** interactive AJAX ▲▼ with live score update. **Author:** greyed (can't self-vote). |
 | 6 | **Updated** | left | Date only in "Mon D, YYYY" format (no time) |
-| 7 | **Actions** | center | Single button: "View/Edit" (gray-100, links to plan detail page). **Greyed out and non-clickable for guests** (not logged in). No Download button on the dashboard. |
-| 8 | **Favorite** | center | Checkbox for authenticated users (AJAX toggle). **Greyed out for guests** (not logged in). |
+| 7 | **Actions** | center | Single button: "View/Edit/Vote" (gray-100, links to plan detail page). **Greyed out and non-clickable for guests** (not logged in). No Download button on the dashboard. |
+| 8 | **Favorite** | center | NOT YET IMPLEMENTED (spec placeholder) |
 
 **Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`. Sort whitelist: `class_name`, `lesson_day`, `author_name`, `version_number`, `vote_score`, `updated_at`. Note: sorting by `author_name` requires a JOIN to the `users` table.
 
@@ -474,24 +504,22 @@ In-browser editing is intentionally deferred to a future version. When implement
 
 > **Modularity note:** This section describes the sign-in/sign-up modal dialog. Changes here should NOT require reading any other section.
 
-A single Alpine.js modal dialog that handles both sign-in and registration. It is injected into the layout for all guest (unauthenticated) visitors.
+A single Alpine.js modal dialog that handles both registration and login in one unified form. There are no separate panels. The server determines which action to take based on whether the email address exists and is verified. See Section 3.1 for the three-case server logic.
 
 **Trigger:** Clicking the "Sign In" button in the top-right header dispatches an Alpine.js event (`open-auth-modal`) that opens the modal.
 
-**Sign In Panel:**
-- Fields: Username (email input), Password (with Show/Hide toggle button)
-- Submit button: "Sign In" (full-width, gray-900)
-- Below submit: "Forgot your password?" link (navigates to `/forgot-password`)
-- Footer: "New User? Sign Up" — switches to register panel
+**Form fields:**
+- **Teacher Name** (text input, with hint "choose anything unique") — required for new accounts, present but ignored for existing accounts
+- **Teacher Email** (email input, with hint "email only")
+- **Password** (with Show/Hide toggle button)
 
-**Create Account Panel:**
-- Fields: Username (email, with hint "must be a valid email"), Password (with Show/Hide toggle), Confirm Password (with Show/Hide toggle). The Password and Confirm Password fields share a single toggle state.
-- Submit button: "Sign Up" (full-width, gray-900)
-- Footer: "Already have an account? Sign In" — switches to login panel
+**Submit button:** "Sign In / Up" (full-width, gray-900)
 
-**Error handling:** If login/register fails validation, the modal reopens automatically (the `open` state is set to `true` when `$errors->any()` is true). The hidden `_auth_mode` field preserves which panel was active.
+**Below submit:** "Forgot your password?" link (navigates to `/forgot-password`)
 
-**Standalone fallback pages:** `auth/login.blade.php` and `auth/register.blade.php` provide full-page equivalents of the modal panels, used when Breeze redirects to `/login` or `/register` (e.g., after validation failure). Both include a "Forgot your password?" link. These pages use the same `<x-layout>` wrapper and include the same Show/Hide password toggles.
+**Error handling:** If validation fails, the modal reopens automatically (Alpine.js `open` is set to `true` when `$errors->any()` is true). Field-level error messages appear below each input.
+
+**Standalone fallback page:** `auth/login.blade.php` provides a full-page equivalent for when Breeze redirects to `/login` (e.g., after validation failure on very old browsers). Uses the same `<x-layout>` wrapper.
 
 ---
 
@@ -538,19 +566,66 @@ Vote values: +1 (upvote) or -1 (downvote).
 
 ### 14.2 Cached Vote Score
 
-To avoid expensive `SUM()` queries on every dashboard page load, each lesson plan has a `vote_score` column that caches the aggregate. After every vote action (create, delete, update), `recalculateVoteScore()` runs: it queries `SUM(value)` from the votes table and saves the result using `saveQuietly()` (which suppresses model events so observers are not triggered during this background recalculation).
+To avoid expensive `SUM()` queries on every dashboard page load, each lesson plan has a `vote_score` column that caches the aggregate. After every vote action (create, delete, update), `recalculateVoteScore()` runs: it queries `SUM(value)` from the votes table and updates the cached value using `DB::table('lesson_plans')->where('id', $this->id)->update(['vote_score' => $score])`. This raw update intentionally bypasses Eloquent so that `updated_at` is NOT changed (a vote cast today should not make a 2-year-old plan appear at the top of the "recently updated" sort).
 
-### 14.3 Vote Display
+### 14.3 View-Gated Dashboard Voting
 
-The `vote-buttons` Blade component operates in two modes:
+AJAX voting from the dashboard is gated behind a view requirement: a user must have visited a plan's detail page (`lesson-plans.show`) before they can cast an inline vote. This is enforced by the `lesson_plan_views` table (Section 2.4) — a view record is created via `LessonPlanView::firstOrCreate()` when `show()` is called.
 
-**Readonly mode** (used in table rows): Shows the score with the label "Vote 👍 👎" and a colored arrow indicator (green up for positive, red down for negative). No interactive elements.
+The `DashboardController@index` loads two arrays for authenticated users:
+- `$userVotes` — their existing votes for the visible plan IDs
+- `$viewedIds` — which of the visible plan IDs they have viewed
 
-**Interactive mode** (used on detail page): Two form-based buttons (upvote chevron, downvote chevron) with POST submissions. The active vote direction is highlighted with a colored background. A helper text appears when the user has an active vote.
+These are passed to the view and used to determine which voting mode to render for each row.
+
+### 14.4 Vote Display
+
+The `vote-buttons` Blade component operates in four modes:
+
+**Readonly** (guests): Shows the score with label "Vote 👍 👎 +N". No interactive elements.
+
+**Locked** (authenticated; plan not yet viewed, or is author): Greyed ▲ score ▼. Tooltip: "View this plan to unlock voting". No action on click.
+
+**Inline/AJAX** (authenticated; plan viewed; not author): Alpine.js ▲ score ▼ buttons. Clicking sends a `fetch()` POST with `Accept: application/json`. The `VoteController` returns `{ score, userVote }` JSON. Score and highlighting update in place without page reload.
+
+**Form-based** (plan detail page): Standard POST form buttons (upvote/downvote chevrons). Active direction highlighted (green/red). Helper text when vote is active: "Click the same arrow again to remove your vote."
 
 ---
 
-## 15. Favorites System (NEW — not yet implemented)
+## 15. Admin Panel (`/admin`)
+
+> **Modularity note:** This section fully describes the admin panel. Changes here should NOT require reading any other section.
+
+**Access:** Requires authentication + verified email + `is_admin = true`. Enforced by `AdminMiddleware`.
+
+**Layout:** Two-section page within `<x-layout>`. Admin link appears in the header for admin users only.
+
+**Setting admin status:** Run once via tinker on the server:
+```bash
+php artisan tinker
+>>> User::where('email', 'user@example.com')->update(['is_admin' => true]);
+```
+
+### 15.1 Lesson Plans Table
+
+Displays ALL lesson plans (paginated 50/page) with columns: checkbox, Delete button, Class, Day#, Author, Version, File, Updated.
+
+- **Per-row Delete:** individual form POST with browser `confirm()` guard. Admin can delete any plan (bypasses author check).
+- **Bulk Delete:** checkboxes use HTML5 `form="bulk-plans-form"` attribute to link to a `<form>` outside the table (avoids nested forms). Select-all checkbox via inline JS.
+- Deletions permanently remove the file from disk and the database record.
+
+### 15.2 Registered Users Table
+
+Displays ALL users (paginated 50/page) with columns: checkbox, Delete button, Teacher Name, Email, Verified, Admin, Registered, Action.
+
+- **Per-row Delete:** admin can delete any user except themselves (self-deletion is blocked both in UI and controller).
+- **Bulk Delete:** same checkbox pattern as plans table; own ID is filtered out server-side.
+- **Verify button (Action column):** appears only for unverified users. Sends an AJAX `fetch()` POST to `users.send-verification`. Button shows "Email Sent" for 5 seconds on success.
+- Current admin's own row is highlighted in blue (`bg-blue-50`).
+
+---
+
+## 16. Favorites System (NOT YET IMPLEMENTED)
 
 > **Modularity note:** This section fully describes the favorites system. Changes here should NOT require reading any other section except the Data Model (Section 2.4) for the favorites table.
 
@@ -570,11 +645,11 @@ Each authenticated user can favorite any lesson plan. A checkbox appears in the 
 
 ---
 
-## 16. Email System
+## 17. Email System
 
 > **Modularity note:** This section fully describes all email functionality. Changes here should NOT require reading any other section.
 
-### 16.1 Upload Confirmation
+### 17.1 Upload Confirmation
 
 Sent to the authenticated user (the person performing the upload) after each successful upload or new version creation.
 
@@ -584,7 +659,7 @@ Sent to the authenticated user (the person performing the upload) after each suc
 
 **Failure handling:** Wrapped in try/catch. If the email fails to send, the error is logged to `storage/logs/laravel.log` but the upload itself succeeds normally.
 
-### 16.2 Duplicate Content Removed
+### 17.2 Duplicate Content Removed
 
 Sent to the author of a deleted duplicate when the `DetectDuplicateContent` command removes their file.
 
@@ -592,15 +667,15 @@ Sent to the author of a deleted duplicate when the `DetectDuplicateContent` comm
 
 **Data passed:** recipient name, deleted plan name, kept plan name, kept plan's author name.
 
-### 16.3 Email Verification
+### 17.3 Email Verification
 
 Triggered by the `Registered` event after registration. Uses the same SMTP configuration. See Section 3.4 for the custom verification controller details.
 
-### 16.4 Password Reset Email
+### 17.4 Password Reset Email
 
 Triggered by the standard Laravel Breeze `PasswordResetLinkController`. Uses the same SMTP configuration. See Section 3.3 for the full password reset flow.
 
-### 16.5 SMTP Configuration
+### 17.5 SMTP Configuration
 
 | Setting | Value |
 |---|---|
@@ -647,11 +722,17 @@ The application uses a clean, monochromatic black-and-white design language with
 
 **Left side:** "ARES Education" heading (`text-3xl sm:text-4xl font-bold text-gray-900`) + "Kenya Lesson Plan Repository" subtitle (`text-base sm:text-lg text-gray-500`). All wrapped in a link to the dashboard. No logo image.
 
-**Right side** (reading left to right):
-- Authenticated: user's email address (hidden on small screens), **Stats** link (`text-base sm:text-lg font-medium`; underlined when active), "Sign Out" link (`text-base sm:text-lg`)
-- Guest: **Stats** link, "Sign In" button (`text-base sm:text-lg font-medium`; no background, just text)
+**Right side** (reading left to right, authenticated + verified):
+- **"Upload New Lesson"** button (gray-900 pill)
+- User's **Teacher Name** (hidden on small screens)
+- **Admin** link — visible only when `is_admin = true`; underlined when on admin pages
+- **Stats** link — underlined when active
+- **Sign Out** form button
 
-**Navigation** (below branding, only when authenticated): "Browse All", "My Plans", "+ Upload Plan" — horizontal links with active state indicated by underline.
+**Right side (guest / unverified):**
+- **Sign In** button (text-only, dispatches `open-auth-modal`)
+
+**No sub-navigation below branding.** The three nav links (Browse All, My Plans, Upload New Lesson) that previously appeared below the header subtitle have been removed. All navigation is via the header or by direct URL.
 
 ### 17.4 Footer
 
@@ -701,6 +782,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 |---|---|---|---|
 | GET | `/` | DashboardController@index | `dashboard` |
 | GET | `/stats` | DashboardController@stats | `stats` |
+| POST | `/users/{user}/send-verification` | DashboardController@sendVerification | `users.send-verification` |
 
 ### 18.2 Authenticated + Verified Routes
 
@@ -716,9 +798,21 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | PUT | `/lesson-plans/{lessonPlan}` | LessonPlanController@update | `lesson-plans.update` |
 | DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` |
 | POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` |
-| POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` |
+| POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` *(not yet implemented)* |
 
-### 18.3 Auth Routes (Breeze)
+### 18.3 Admin Routes (auth + verified + is_admin)
+
+Prefix: `/admin`. Middleware: `['auth', 'verified', AdminMiddleware::class]`.
+
+| Method | URI | Controller@Method | Name |
+|---|---|---|---|
+| GET | `/admin` | AdminController@index | `admin.index` |
+| DELETE | `/admin/lesson-plans/{lessonPlan}` | AdminController@destroyPlan | `admin.lesson-plans.destroy` |
+| POST | `/admin/lesson-plans/bulk-delete` | AdminController@bulkDestroyPlans | `admin.lesson-plans.bulk-delete` |
+| DELETE | `/admin/users/{user}` | AdminController@destroyUser | `admin.users.destroy` |
+| POST | `/admin/users/bulk-delete` | AdminController@bulkDestroyUsers | `admin.users.bulk-delete` |
+
+### 18.4 Auth Routes (Breeze)
 
 Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, password reset, email verification. The email verification route (`verify-email/{id}/{hash}`) is outside the `auth` middleware group — see Section 3.4.
 
@@ -743,12 +837,17 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 |---|---|
 | value | required, integer, must be -1 or 1 |
 
-### 19.3 Registration
+### 19.3 Login / Registration (`AuthenticatedSessionController`)
 
-| Field | Rules |
-|---|---|
-| email | required, string, lowercase, valid email, max 255, unique in users table |
-| password | required, confirmed, meets Laravel's default password rules |
+The same form is used for both. Validation differs by case:
+
+| Field | New account (Case 1) | Existing unverified (Case 2) | Existing verified (Case 3) |
+|---|---|---|---|
+| name (Teacher Name) | required, non-empty, unique in `users.name` | ignored | ignored |
+| email | required, valid email | required | required |
+| password | stored (hashed) | ignored | validated against hash |
+
+Validation is handled in `AuthenticatedSessionController@store`, not via a Form Request class.
 
 ### 19.4 Dashboard Sort Parameters
 
@@ -874,40 +973,49 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 
 | File | Responsibility |
 |---|---|
-| `DashboardController` | Public homepage (search, filter, sort, counters) + Stats page |
-| `LessonPlanController` | CRUD for lesson plans: upload, show, preview, new version, delete, download |
-| `VoteController` | Cast/toggle votes on lesson plan versions |
-| `FavoriteController` | Toggle favorite status on lesson plans (AJAX) |
-| `Auth/RegisteredUserController` | Custom registration: single email field serves as name + email |
+| `DashboardController` | Public homepage (search, filter, sort, counters, loads userVotes + viewedIds) + Stats page |
+| `LessonPlanController` | CRUD for lesson plans: upload, show (records view), preview, new version, delete, download |
+| `VoteController` | Cast/toggle votes; returns JSON for AJAX requests |
+| `AdminController` | Admin panel: per-row and bulk delete for plans and users |
+| `FavoriteController` | Toggle favorite status on lesson plans — NOT YET IMPLEMENTED |
+| `Auth/AuthenticatedSessionController` | Custom three-case login+register (new/unverified/verified) |
 | `Auth/VerifyEmailController` | Custom email verification: works without active session (validates signed URL, logs user in) |
 
 ### 24.2 Models
 
 | File | Responsibility |
 |---|---|
-| `User` | Auth user with MustVerifyEmail; name = email at registration |
+| `User` | Auth user; Teacher Name (unique); `is_admin` flag; MustVerifyEmail |
 | `LessonPlan` | Plan version with versioning, canonical naming, vote caching, family queries |
 | `Vote` | Single upvote/downvote on a lesson plan version |
-| `Favorite` | User-plan favorite relationship (pivot) |
+| `LessonPlanView` | View tracking pivot (user_id + lesson_plan_id, created_at only) |
+| `Favorite` | User-plan favorite relationship — NOT YET IMPLEMENTED |
 
-### 24.3 Views
+### 24.3 Middleware
 
 | File | Responsibility |
 |---|---|
-| `components/layout.blade.php` | Master layout: header, branding, Stats link, auth modal, upload dialog, footer |
-| `components/vote-buttons.blade.php` | Reusable vote display/interaction component |
-| `dashboard.blade.php` | Main public page with counters, search/filter/sort table |
+| `AdminMiddleware` | Checks `is_admin = true`; aborts 403 otherwise. Applied to `/admin` route group. |
+
+### 24.4 Views
+
+| File | Responsibility |
+|---|---|
+| `components/layout.blade.php` | Master layout: header, merged auth modal, Admin link, upload dialog, footer |
+| `components/vote-buttons.blade.php` | 4-mode vote component (readonly / locked / inline AJAX / form) |
+| `dashboard.blade.php` | Main public page with counters, search/filter/sort table, AJAX vote buttons |
 | `stats.blade.php` | Archive statistics page with detailed breakdowns |
-| `lesson-plans/show.blade.php` | Plan detail page with voting, version history |
+| `admin/index.blade.php` | Admin panel: lesson plans + users tables with delete/bulk-delete |
+| `lesson-plans/show.blade.php` | Plan detail page with voting, version history, Print button |
 | `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer |
-| `lesson-plans/create.blade.php` | Upload form for new plans |
-| `lesson-plans/edit.blade.php` | New version form (based on existing plan) |
+| `lesson-plans/create.blade.php` | Upload form for new plans (submit button gated on valid file) |
+| `lesson-plans/edit.blade.php` | New version form (submit button gated on valid file) |
 | `lesson-plans/my-plans.blade.php` | Authenticated user's own plan list |
-| `auth/login.blade.php` | Standalone login page (fallback for modal) |
-| `auth/register.blade.php` | Standalone registration page (fallback for modal) |
+| `auth/login.blade.php` | Standalone login page (fallback for modal validation failures) |
+| `auth/register.blade.php` | Standalone registration page (fallback) |
 | `auth/forgot-password.blade.php` | Password reset request form (enter email) |
 | `auth/reset-password.blade.php` | Set new password form (from email link) |
-| `auth/verify-email.blade.php` | Email verification notice page |
+| `auth/verify-email.blade.php` | Email verification notice page with Resend button |
 
 ---
 
