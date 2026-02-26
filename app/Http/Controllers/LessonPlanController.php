@@ -153,8 +153,7 @@ class LessonPlanController extends Controller
     /**
      * View a single lesson plan with its details, votes, and version history.
      *
-     * Public route — no auth required. Anyone can view and download plans.
-     * Voting requires authentication (handled in the view with @auth).
+     * Requires authentication + verified email (per spec Section 3.5).
      */
     public function show(LessonPlan $lessonPlan)
     {
@@ -256,12 +255,10 @@ class LessonPlanController extends Controller
     /**
      * Show a document preview page with an embedded viewer.
      *
-     * Public route — anyone can preview files. Uses Google Docs Viewer
-     * to render .doc/.docx files in the browser without requiring any
-     * server-side conversion. The preview page includes a download button
-     * for users who want to save the file locally.
-     *
-     * If the plan has no file attached, redirects to the detail page.
+     * Requires authentication + verified email (per spec Section 3.5).
+     * Uses Google Docs Viewer to render .doc/.docx files in the browser
+     * without server-side conversion. If no file is attached, redirects
+     * to the detail page with an error.
      */
     public function preview(LessonPlan $lessonPlan)
     {
@@ -278,8 +275,8 @@ class LessonPlanController extends Controller
     /**
      * Download the file attached to a lesson plan.
      *
-     * Public route — anyone can download. The file is served with the
-     * canonical filename so the user gets a meaningful file name.
+     * Requires authentication + verified email (per spec Section 3.5).
+     * The file is served with the canonical filename.
      */
     public function download(LessonPlan $lessonPlan)
     {

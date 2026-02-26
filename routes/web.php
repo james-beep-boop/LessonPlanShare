@@ -9,22 +9,13 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Public Routes
 |--------------------------------------------------------------------------
-| The dashboard (browse all plans) is publicly visible.
-| Individual plan pages are also public so non-registered visitors can browse.
+| The dashboard and stats page are publicly visible — no login required.
+| All other routes (including viewing individual plans) require auth.
 */
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
 Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
-
-Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])
-    ->name('lesson-plans.show');
-
-Route::get('/lesson-plans/{lessonPlan}/preview', [LessonPlanController::class, 'preview'])
-    ->name('lesson-plans.preview');
-
-Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 'download'])
-    ->name('lesson-plans.download');
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +26,14 @@ Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    // View, preview, and download require a verified account (per spec Section 3.5)
+    Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])
+        ->name('lesson-plans.show');
+    Route::get('/lesson-plans/{lessonPlan}/preview', [LessonPlanController::class, 'preview'])
+        ->name('lesson-plans.preview');
+    Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 'download'])
+        ->name('lesson-plans.download');
 
     // My Plans
     Route::get('/my-plans', [LessonPlanController::class, 'myPlans'])

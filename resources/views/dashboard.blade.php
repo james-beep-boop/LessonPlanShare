@@ -24,7 +24,7 @@
             <div class="flex-1 min-w-[200px]">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Favorite Lesson Plan</p>
                 @if ($favoritePlan && $favoritePlan->vote_score > 0)
-                    <a href="{{ route('lesson-plans.preview', $favoritePlan) }}"
+                    <a href="{{ route('lesson-plans.show', $favoritePlan) }}"
                        class="text-sm font-medium text-gray-900 hover:text-gray-600 underline underline-offset-2">
                         {{ $favoritePlan->name }}
                     </a>
@@ -137,16 +137,18 @@
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             <td class="px-4 py-3 text-center whitespace-nowrap">
-                                <a href="{{ route('lesson-plans.show', $plan) }}"
-                                   class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md mr-1">
-                                    View
-                                </a>
-                                @if ($plan->file_path)
-                                    <a href="{{ route('lesson-plans.download', $plan) }}"
-                                       class="inline-block px-3 py-1 text-xs font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md">
-                                        Download
+                                @auth
+                                    <a href="{{ route('lesson-plans.show', $plan) }}"
+                                       class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
+                                        View/Edit
                                     </a>
-                                @endif
+                                @else
+                                    {{-- Greyed out for guests — sign in required to view plans --}}
+                                    <span class="inline-block px-3 py-1 text-xs font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed"
+                                          title="Sign in to view lesson plans">
+                                        View/Edit
+                                    </span>
+                                @endauth
                             </td>
                         </tr>
                     @empty

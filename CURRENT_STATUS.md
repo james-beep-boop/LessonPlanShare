@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-25 (re-verified by full codebase read)
+**Last updated:** 2026-02-25 (auth routes moved, Actions column fixed, favoritePlan link fixed)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -29,6 +29,9 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Version numbers displayed as plain integers (no "v" prefix)
 - "Lesson Plan Details" heading on show page
 - `favoritePlan` counter on dashboard correctly shows plan with highest `vote_score`
+- `lesson-plans.show`, `lesson-plans.preview`, `lesson-plans.download` require `auth+verified` (moved from public)
+- Dashboard Actions column: "View/Edit" button (greyed out for guests, no Download button)
+- "Favorite Lesson Plan" counter links to `lesson-plans.show` (not preview)
 
 ---
 
@@ -61,19 +64,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 
 **File to change:** `resources/views/components/vote-buttons.blade.php` (readonly mode) OR `resources/views/dashboard.blade.php`
 
-### 3. Dashboard Table — Actions Column (Section 4.4 #7)
-
-**Current state:** Two buttons: `View` (gray-100) + `Download` (gray-900 filled)
-
-**Spec requires:**
-- [ ] Single button labeled **"View/Edit"** (gray-100)
-- [ ] Button links to `lesson-plans.show` (unchanged)
-- [ ] **Greyed out and non-clickable for guests** (not logged in)
-- [ ] Download button **removed** from dashboard entirely
-
-**File to change:** `resources/views/dashboard.blade.php`
-
-### 4. Dashboard Sort Whitelist (Section 19.4 of spec)
+### 3. Dashboard Sort Whitelist (Section 19.4 of spec)
 
 **Current state:** Whitelist in `DashboardController::index()` is:
 ```php
@@ -84,24 +75,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 
 **File to change:** `app/Http/Controllers/DashboardController.php`
 
-### 5. Authorization: View / Preview / Download Routes (Section 3.5 of spec)
-
-**Current state:** `lesson-plans.show`, `lesson-plans.preview`, and `lesson-plans.download` are **public routes** (no middleware) in `routes/web.php`.
-
-```php
-// Currently public:
-Route::get('/lesson-plans/{lessonPlan}', ...)->name('lesson-plans.show');
-Route::get('/lesson-plans/{lessonPlan}/preview', ...)->name('lesson-plans.preview');
-Route::get('/lesson-plans/{lessonPlan}/download', ...)->name('lesson-plans.download');
-```
-
-**Spec requires:** Move all three into the `['auth', 'verified']` middleware group.
-
-**Side effect to fix:** The "Favorite Lesson Plan" counter in `dashboard.blade.php` links to `lesson-plans.preview`. After this change, guests clicking that link will be redirected to login. This is acceptable per spec, but optionally the link could be changed to `lesson-plans.show` to soften the redirect experience (no code change strictly required, but worth considering).
-
-**Files to change:** `routes/web.php`, `app/Http/Controllers/LessonPlanController.php` (remove the "Public route" comment in `show()` and `preview()`)
-
-### 6. Different-User Versioning (Section 2.5 / Section 7 of spec)
+### 4. Different-User Versioning (Section 2.5 / Section 7 of spec)
 
 **Current state:** `LessonPlanController::update()` always calls `$lessonPlan->createNewVersion([...])`, which always links the new version to the parent's family (sets `original_id` and `parent_id`), regardless of who is uploading.
 
@@ -131,26 +105,19 @@ Zero code exists for this feature. Full implementation required:
 
 ## Suggested Next Tasks (in priority order)
 
-### Priority 1 — Authorization change (moderate; enables correct UX for all other changes)
-Move `lesson-plans.show`, `lesson-plans.preview`, `lesson-plans.download` to `['auth', 'verified']` middleware group. This is a small routes change but affects UX significantly.
-- **Risk:** "Favorite Lesson Plan" counter link in `dashboard.blade.php` currently goes to `lesson-plans.preview`; will now redirect guests to login. Consider changing it to `lesson-plans.show` for a softer landing.
-
-### Priority 2 — Dashboard: Author column + sort by author (moderate)
+### Priority 1 — Dashboard: Author column + sort by author (moderate) ← START HERE
 Add JOIN in `DashboardController`, add `author_name` to sort whitelist, add Author column to `dashboard.blade.php`.
 
-### Priority 3 — Dashboard: Actions column fix (easy)
-Rename "View" → "View/Edit", remove Download button, grey out for guests.
-
-### Priority 4 — Dashboard: Rating format "Vote 👍 👎" (easy)
+### Priority 2 — Dashboard: Rating format "Vote 👍 👎" (easy)
 Update readonly mode of `vote-buttons.blade.php` to include the "Vote 👍 👎" label alongside the score.
 
-### Priority 5 — Dashboard: Column alignments (easy)
+### Priority 3 — Dashboard: Column alignments (easy)
 Update `text-left` / `text-center` classes in `dashboard.blade.php` per spec (Class left, Day# center, Author left, Version center, Rating center, Updated left).
 
-### Priority 6 — Different-user versioning (moderate)
+### Priority 4 — Different-user versioning (moderate)
 Add author check in `LessonPlanController::update()` before `createNewVersion()`.
 
-### Priority 7 — Favorites system (larger feature)
+### Priority 5 — Favorites system (larger feature)
 Full implementation: migration → model → controller → route → dashboard AJAX column. Update DEPLOYMENT.md file list.
 
 ---
