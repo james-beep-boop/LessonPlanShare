@@ -21,10 +21,10 @@
                 </a>
                 <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
                    class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                    View Details
+                    &larr; Back to Details
                 </a>
                 <a href="{{ route('dashboard') }}"
-                   class="text-sm text-gray-500 hover:text-gray-900">&larr; Back</a>
+                   class="text-sm text-gray-500 hover:text-gray-900">Home</a>
             </div>
         </div>
 
