@@ -180,8 +180,10 @@
                                     </td>
                                     <td class="px-3 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y g:ia') }}</td>
                                     <td class="px-3 py-2">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+
+                                        {{-- Verify button (unverified users only) --}}
                                         @if (! $u->email_verified_at)
-                                            {{-- Resend verification email via AJAX --}}
                                             <div x-data="{ sent: false }" class="inline">
                                                 <button type="button"
                                                         @click="
@@ -204,6 +206,34 @@
                                                 </button>
                                             </div>
                                         @endif
+
+                                        {{-- Grant admin: any admin can promote a non-admin (not self) --}}
+                                        @if ($u->id !== auth()->id() && ! $u->is_admin)
+                                            <form method="POST"
+                                                  action="{{ route('admin.users.toggle-admin', $u) }}"
+                                                  onsubmit="return confirm('Grant admin privileges to {{ addslashes($u->name) }}?')">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 transition-colors">
+                                                    Make Admin
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        {{-- Revoke admin: only super-admin can demote (not self) --}}
+                                        @if ($u->id !== auth()->id() && $u->is_admin && auth()->user()->email === 'priority2@protonmail.ch')
+                                            <form method="POST"
+                                                  action="{{ route('admin.users.toggle-admin', $u) }}"
+                                                  onsubmit="return confirm('Revoke admin privileges from {{ addslashes($u->name) }}?')">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded hover:bg-orange-200 transition-colors">
+                                                    Revoke Admin
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

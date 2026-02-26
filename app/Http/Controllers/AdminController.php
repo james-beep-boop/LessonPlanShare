@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -13,9 +15,14 @@ use Illuminate\Support\Facades\DB;
  * All routes here require auth + verified + is_admin (AdminMiddleware).
  * Admins can delete any lesson plan or any user account, bypassing
  * the normal author-only restrictions.
+ *
+ * SUPER_ADMIN_EMAIL is the one account that can revoke admin privileges.
+ * All other admins can only grant privileges.
  */
 class AdminController extends Controller
 {
+    /** The email address of the super-administrator (only account that can revoke admin). */
+    private const SUPER_ADMIN_EMAIL = 'priority2@protonmail.ch';
     /** Display the admin panel. */
     public function index()
     {
@@ -63,6 +70,32 @@ class AdminController extends Controller
 
         return redirect()->route('admin.index')
             ->with('success', count($plans) . ' lesson plan(s) deleted.');
+    }
+
+    /**
+     * Grant or revoke admin privileges for a user.
+     *
+     * Any admin can grant privileges to a non-admin.
+     * Only the super-admin (SUPER_ADMIN_EMAIL) can revoke privileges.
+     * No admin can modify their own privileges.
+     */
+    public function toggleAdmin(User $user): RedirectResponse
+    {
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'You cannot change your own admin status.');
+        }
+
+        // Revoking admin is restricted to the super-admin
+        if ($user->is_admin && Auth::user()->email !== self::SUPER_ADMIN_EMAIL) {
+            return back()->with('error', 'Only the super-administrator can revoke admin privileges.');
+        }
+
+        $newStatus = ! $user->is_admin;
+        $user->update(['is_admin' => $newStatus]);
+
+        return back()->with('success', $newStatus
+            ? "Admin privileges granted to {$user->name}."
+            : "Admin privileges revoked from {$user->name}.");
     }
 
     /** Delete a single user account. */

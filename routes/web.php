@@ -88,6 +88,8 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
         ->name('admin.users.destroy');
     Route::post('/users/bulk-delete', [AdminController::class, 'bulkDestroyUsers'])
         ->name('admin.users.bulk-delete');
+    Route::post('/users/{user}/toggle-admin', [AdminController::class, 'toggleAdmin'])
+        ->name('admin.users.toggle-admin');
 
 });
 
