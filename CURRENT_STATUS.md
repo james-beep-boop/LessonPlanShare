@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-26 (admin system, Teacher Name, merged auth modal, view-gated AJAX voting, sub-nav removed, Stats 500 fix)
+**Last updated:** 2026-02-26 (admin system, Teacher Name, merged auth modal, view-gated AJAX voting, sub-nav removed, Stats 500 fix, admin privilege toggle)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -56,6 +56,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - `/admin` page: two tables (lesson plans + registered users) with checkboxes, bulk-delete, Verify AJAX button
   - Admin link in header (visible to admins only, left of username)
   - Sub-navigation links (Browse All / My Plans / Upload New Lesson) removed from layout
+  - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
 
 ---
 
@@ -100,7 +101,7 @@ See "Not Started" section above for full checklist.
 | `app/Http/Controllers/DashboardController.php` | Dashboard (LEFT JOIN users, loads userVotes + viewedIds) + Stats |
 | `app/Http/Controllers/LessonPlanController.php` | CRUD + preview + download + view recording |
 | `app/Http/Controllers/VoteController.php` | Vote toggle; returns JSON for AJAX requests |
-| `app/Http/Controllers/AdminController.php` | Admin delete (plans + users), bulk-delete |
+| `app/Http/Controllers/AdminController.php` | Admin delete (plans + users), bulk-delete, toggleAdmin |
 | `app/Http/Middleware/AdminMiddleware.php` | Enforces `is_admin` flag on admin routes |
 | `app/Models/User.php` | Auth user; Teacher Name (unique); `is_admin` flag |
 | `app/Models/LessonPlanView.php` | View tracking pivot (user_id, lesson_plan_id) |

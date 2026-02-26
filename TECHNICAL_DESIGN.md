@@ -600,11 +600,13 @@ The `vote-buttons` Blade component operates in four modes:
 
 **Layout:** Two-section page within `<x-layout>`. Admin link appears in the header for admin users only.
 
-**Setting admin status:** Run once via tinker on the server:
+**Setting admin status:** The first admin must be set via tinker on the server. All subsequent promotions can be done through the Admin panel UI.
 ```bash
 php artisan tinker
->>> User::where('email', 'user@example.com')->update(['is_admin' => true]);
+>>> User::where('email', 'priority2@protonmail.ch')->update(['is_admin' => true]);
 ```
+
+**Super-admin:** `priority2@protonmail.ch` is the hardcoded super-administrator (`AdminController::SUPER_ADMIN_EMAIL`). Only this account can revoke admin privileges; all other admins can only grant them.
 
 ### 15.1 Lesson Plans Table
 
@@ -621,6 +623,8 @@ Displays ALL users (paginated 50/page) with columns: checkbox, Delete button, Te
 - **Per-row Delete:** admin can delete any user except themselves (self-deletion is blocked both in UI and controller).
 - **Bulk Delete:** same checkbox pattern as plans table; own ID is filtered out server-side.
 - **Verify button (Action column):** appears only for unverified users. Sends an AJAX `fetch()` POST to `users.send-verification`. Button shows "Email Sent" for 5 seconds on success.
+- **Make Admin button (Action column):** appears for non-admin users (not self). Any admin can click to grant `is_admin = true`. Posts to `admin.users.toggle-admin` with browser `confirm()` guard.
+- **Revoke Admin button (Action column):** appears only when the current user is `priority2@protonmail.ch` (super-admin), for rows where `is_admin = true` (not self). Posts to same route to set `is_admin = false`.
 - Current admin's own row is highlighted in blue (`bg-blue-50`).
 
 ---

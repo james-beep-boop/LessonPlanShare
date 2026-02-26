@@ -636,7 +636,7 @@ After running `php artisan config:cache`, Laravel reads from the cache and ignor
 
 ## ADMIN SETUP
 
-To grant admin access to a user (run once after first deploy, or after creating a new admin):
+**First admin only** — must be set via tinker (UI doesn't exist until you're already an admin):
 
 ```bash
 ssh david_sheql@sheql.com
@@ -647,6 +647,8 @@ php artisan tinker
 ```
 
 The "Admin" link will appear in the header on next page load for that user.
+
+**Subsequent admins** — use the Admin panel UI: go to `/admin`, find the user in the Registered Users table, click "Make Admin". Any existing admin can promote another user. Only `priority2@protonmail.ch` (super-admin) can revoke admin privileges via the "Revoke Admin" button.
 
 ---
 
