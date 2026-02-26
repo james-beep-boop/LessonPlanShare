@@ -36,6 +36,7 @@ class VerifyEmailController extends Controller
         // Already verified? Just redirect.
         if ($user->hasVerifiedEmail()) {
             Auth::login($user);
+            $request->session()->regenerate();
             return redirect()->route('dashboard')->with('success', 'Your email is already verified.');
         }
 
@@ -46,6 +47,7 @@ class VerifyEmailController extends Controller
 
         // Log the user in so they land on the dashboard ready to go
         Auth::login($user);
+        $request->session()->regenerate();
 
         return redirect()->route('dashboard')->with('success', 'Email verified! Welcome to ARES Education.');
     }

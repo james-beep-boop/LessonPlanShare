@@ -116,7 +116,7 @@
     <script>
         function fileValidator() {
             const maxSize = 1 * 1024 * 1024; // 1 MB
-            const allowed = ['pdf','doc','docx','ppt','pptx','xls','xlsx','txt','rtf','odt','odp','ods'];
+            const allowed = ['doc','docx','txt','rtf','odt']; // must match StoreLessonPlanRequest
             return {
                 error: '',
                 fileSelected: false,

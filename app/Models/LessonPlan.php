@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Represents a single version of a lesson plan document.
@@ -302,7 +303,11 @@ class LessonPlan extends Model
      */
     public function recalculateVoteScore(): void
     {
-        $this->vote_score = $this->votes()->sum('value');
-        $this->saveQuietly();
+        $score = $this->votes()->sum('value');
+        // Use a raw DB update so voting never touches updated_at.
+        // saveQuietly() suppresses model events but still updates timestamps,
+        // which would cause voted-on plans to float to the top of the "Updated" sort.
+        DB::table('lesson_plans')->where('id', $this->id)->update(['vote_score' => $score]);
+        $this->vote_score = $score; // keep local attribute in sync
     }
 }

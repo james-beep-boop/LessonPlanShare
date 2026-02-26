@@ -52,19 +52,19 @@ class AuthenticatedSessionController extends Controller
             event(new Registered($user));   // sends the verification email
 
             Auth::login($user);
+            $request->session()->regenerate();
 
             return redirect(route('verification.notice', absolute: false));
         }
 
-        // Case 2: account exists but email not yet verified — update password and resend.
-        // (Covers the case where the user previously registered but never confirmed,
-        //  and may have forgotten the original password.)
+        // Case 2: account exists but email not yet verified — resend verification email.
+        // Do NOT update the password: overwriting it would let anyone hijack an
+        // unverified account just by knowing the email address.
         if (! $user->hasVerifiedEmail()) {
-            $user->update(['password' => Hash::make($password)]);
-
             $user->sendEmailVerificationNotification();
 
             Auth::login($user);
+            $request->session()->regenerate();
 
             return redirect(route('verification.notice', absolute: false));
         }
