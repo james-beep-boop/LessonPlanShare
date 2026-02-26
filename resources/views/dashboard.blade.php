@@ -89,16 +89,6 @@
         </div>
     </form>
 
-    {{-- Upload button (visible to signed-in users) --}}
-    @auth
-        <div class="mb-6 flex justify-end">
-            <a href="{{ route('lesson-plans.create') }}"
-               class="inline-flex items-center px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                + Upload New Lesson Plan
-            </a>
-        </div>
-    @endauth
-
     {{-- Results Table --}}
     <div class="border border-gray-200 rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
@@ -219,6 +209,7 @@
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Registered</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -234,6 +225,30 @@
                         @endif
                     </td>
                     <td class="px-4 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y g:ia') }}</td>
+                    <td class="px-4 py-2">
+                        @if(! $u->email_verified_at)
+                            {{-- Alpine.js: sends verification email via AJAX, shows "Email Sent" for 5s --}}
+                            <div x-data="{ sent: false }" class="inline">
+                                <button type="button"
+                                        @click="
+                                            fetch('{{ route('users.send-verification', $u) }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                    'Accept': 'application/json'
+                                                }
+                                            }).then(() => {
+                                                sent = true;
+                                                setTimeout(() => sent = false, 5000);
+                                            });
+                                        "
+                                        :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                        class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
+                                        x-text="sent ? 'Email Sent' : 'Verify'">
+                                </button>
+                            </div>
+                        @endif
+                    </td>
                 </tr>
                 @endforeach
             </tbody>

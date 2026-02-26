@@ -58,6 +58,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Voting (upvote / downvote)
     Route::post('/lesson-plans/{lessonPlan}/vote', [VoteController::class, 'store'])
         ->name('votes.store');
+
+    // Admin: resend verification email for a specific user (debug table button)
+    Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
+        ->name('users.send-verification');
 });
 
 /*

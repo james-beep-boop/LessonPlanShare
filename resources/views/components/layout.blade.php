@@ -35,6 +35,10 @@
                      guests in the UI — no name, no Sign Out, Sign In modal available. --}}
                 <div class="flex items-center pt-2 space-x-5">
                     @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                        <a href="{{ route('lesson-plans.create') }}"
+                           class="px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors whitespace-nowrap">
+                            + Upload Plan
+                        </a>
                         <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
                     @endif
 
