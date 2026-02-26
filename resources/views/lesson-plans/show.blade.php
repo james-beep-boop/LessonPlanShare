@@ -77,6 +77,11 @@
                                 Download File
                             </a>
                         @endif
+                        {{-- Print button — opens browser print dialog (supports print-to-PDF) --}}
+                        <button type="button" onclick="window.print()"
+                                class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                            Print / Save PDF
+                        </button>
                         @auth
                             <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
                                class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">

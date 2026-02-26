@@ -1,21 +1,23 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LessonPlanController;
 use App\Http\Controllers\VoteController;
+use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Public Routes
 |--------------------------------------------------------------------------
-| The dashboard and stats page are publicly visible — no login required.
-| All other routes (including viewing individual plans) require auth.
+| The dashboard is publicly visible — no login required.
 */
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-// Admin debug: resend verification email — no auth required (debug table is public)
+// Resend verification email — no auth required (the send-verification route is public
+// so the admin debug button works without needing the caller to be signed in)
 Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
     ->name('users.send-verification');
 
@@ -23,15 +25,14 @@ Route::post('/users/{user}/send-verification', [DashboardController::class, 'sen
 |--------------------------------------------------------------------------
 | Authenticated + Email-Verified Routes
 |--------------------------------------------------------------------------
-| These require the user to be logged in AND to have verified their email
-| address (clicked the confirmation link in the sign-up email).
+| These require the user to be logged in AND to have verified their email.
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
 
-    // View, preview, and download require a verified account (per spec Section 3.5)
+    // View, preview, and download require a verified account
     Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])
         ->name('lesson-plans.show');
     Route::get('/lesson-plans/{lessonPlan}/preview', [LessonPlanController::class, 'preview'])
@@ -67,9 +68,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Admin Routes
+|--------------------------------------------------------------------------
+| Require auth + verified + is_admin. AdminMiddleware enforces the flag.
+*/
+
+Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')->group(function () {
+
+    Route::get('/', [AdminController::class, 'index'])->name('admin.index');
+
+    // Lesson plan management
+    Route::delete('/lesson-plans/{lessonPlan}', [AdminController::class, 'destroyPlan'])
+        ->name('admin.lesson-plans.destroy');
+    Route::post('/lesson-plans/bulk-delete', [AdminController::class, 'bulkDestroyPlans'])
+        ->name('admin.lesson-plans.bulk-delete');
+
+    // User management
+    Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])
+        ->name('admin.users.destroy');
+    Route::post('/users/bulk-delete', [AdminController::class, 'bulkDestroyUsers'])
+        ->name('admin.users.bulk-delete');
+
+});
+
+/*
+|--------------------------------------------------------------------------
 | Auth Routes (provided by Laravel Breeze)
 |--------------------------------------------------------------------------
-| Breeze adds login, register, password reset, and email verification
-| routes in routes/auth.php.
 */
 require __DIR__ . '/auth.php';

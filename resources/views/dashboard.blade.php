@@ -131,8 +131,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
-                            {{-- Author: email with @ and . stripped per spec Section 2.1 --}}
-                            <td class="px-4 py-3 text-gray-700 text-xs">{{ str_replace(['.', '@'], '', $plan->author_name ?? '—') }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->version_number }}</td>
                             <td class="px-4 py-3 text-center">
                                 @php
@@ -162,13 +161,13 @@
                                 @auth
                                     <a href="{{ route('lesson-plans.show', $plan) }}"
                                        class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
-                                        View/Edit
+                                        View/Edit/Vote
                                     </a>
                                 @else
                                     {{-- Greyed out for guests — sign in required to view plans --}}
                                     <span class="inline-block px-3 py-1 text-xs font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed"
                                           title="Sign in to view lesson plans">
-                                        View/Edit
+                                        View/Edit/Vote
                                     </span>
                                 @endauth
                             </td>
@@ -197,64 +196,5 @@
         Showing {{ $plans->firstItem() ?? 0 }}–{{ $plans->lastItem() ?? 0 }} of {{ $plans->total() }} plans
     </div>
 
-    {{-- ── Temp table of registered users (debug, always visible) ── --}}
-    <div class="mt-12 border border-gray-200 rounded-lg overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h2 class="text-sm font-semibold text-gray-700">Temp table of registered users</h2>
-        </div>
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
-                <tr>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Registered</th>
-                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @foreach($registeredUsers as $u)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-2 text-gray-400 text-xs">{{ $u->id }}</td>
-                    <td class="px-4 py-2 text-gray-700">{{ $u->email }}</td>
-                    <td class="px-4 py-2">
-                        @if($u->email_verified_at)
-                            <span class="text-green-600 text-xs font-medium">Yes</span>
-                        @else
-                            <span class="text-red-500 text-xs font-medium">No</span>
-                        @endif
-                    </td>
-                    <td class="px-4 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y g:ia') }}</td>
-                    <td class="px-4 py-2">
-                        @if(! $u->email_verified_at)
-                            {{-- Alpine.js: sends verification email via AJAX, shows "Email Sent" for 5s --}}
-                            <div x-data="{ sent: false }" class="inline">
-                                <button type="button"
-                                        @click="
-                                            fetch('{{ route('users.send-verification', $u) }}', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                                    'Accept': 'application/json'
-                                                }
-                                            }).then(r => {
-                                                if (r.ok) {
-                                                    sent = true;
-                                                    setTimeout(() => sent = false, 5000);
-                                                }
-                                            });
-                                        "
-                                        :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                        class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
-                                        x-text="sent ? 'Email Sent' : 'Verify'">
-                                </button>
-                            </div>
-                        @endif
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
 
 </x-layout>

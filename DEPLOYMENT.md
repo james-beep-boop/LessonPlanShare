@@ -467,7 +467,8 @@ LessonPlanShare/
 │   ├── 2024_01_01_000001_create_lesson_plans_table.php
 │   ├── 2024_01_01_000002_create_ratings_table.php      (creates votes table)
 │   ├── 2024_01_01_000003_add_unique_index_to_lesson_plans_name.php
-│   └── 2026_02_26_163707_create_lesson_plan_views_table.php
+│   ├── 2026_02_26_163707_create_lesson_plan_views_table.php
+│   └── 2026_02_26_210000_add_is_admin_to_users_table.php
 │
 ├── app/Models/
 │   ├── User.php
@@ -476,11 +477,16 @@ LessonPlanShare/
 │   └── LessonPlanView.php
 │
 ├── app/Http/Controllers/
+│   ├── Auth/AuthenticatedSessionController.php         (custom login — three-case + Teacher Name)
 │   ├── Auth/RegisteredUserController.php
 │   ├── Auth/VerifyEmailController.php                  (session-free verification)
+│   ├── AdminController.php                             (admin panel: delete plans + users)
 │   ├── DashboardController.php                         (index + stats pages)
 │   ├── LessonPlanController.php                        (CRUD + preview + download)
 │   └── VoteController.php
+│
+├── app/Http/Middleware/
+│   └── AdminMiddleware.php                             (enforces is_admin flag)
 │
 ├── app/Http/Requests/
 │   └── StoreLessonPlanRequest.php
@@ -499,6 +505,8 @@ LessonPlanShare/
 │   │   ├── forgot-password.blade.php                   (password reset request)
 │   │   ├── reset-password.blade.php                    (set new password)
 │   │   └── verify-email.blade.php                      (email verification page)
+│   ├── admin/
+│   │   └── index.blade.php                             (admin panel: plans + users tables)
 │   ├── components/
 │   │   ├── layout.blade.php                            (master layout with auth modal)
 │   │   └── vote-buttons.blade.php

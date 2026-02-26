@@ -29,17 +29,22 @@
                     </p>
                 </a>
 
-                {{-- Right: username, Stats, Sign Out (or Sign In for guests) --}}
-                {{-- Only show username/Sign Out for fully verified users. Unverified
-                     users are kept in session so "Resend" works, but they appear as
-                     guests in the UI — no name, no Sign Out, Sign In modal available. --}}
+                {{-- Right: Upload, username, Admin, Stats, Sign Out (or Sign In for guests/unverified) --}}
                 <div class="flex items-center pt-2 space-x-5">
                     @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                         <a href="{{ route('lesson-plans.create') }}"
                            class="px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors whitespace-nowrap">
-                            + Upload Plan
+                            Upload New Lesson
                         </a>
                         <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
+                    @endif
+
+                    {{-- Admin link — only for administrators --}}
+                    @if(auth()->check() && auth()->user()->is_admin)
+                    <a href="{{ route('admin.index') }}"
+                       class="text-base sm:text-lg font-medium {{ request()->routeIs('admin.*') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                        Admin
+                    </a>
                     @endif
 
                     {{-- Stats link — only for verified users --}}
@@ -61,7 +66,7 @@
                     @else
                         <button
                             x-data
-                            @click="$dispatch('open-auth-modal', { mode: 'login' })"
+                            @click="$dispatch('open-auth-modal')"
                             class="text-base sm:text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer">
                             Sign In
                         </button>
@@ -82,7 +87,7 @@
                     </a>
                     <a href="{{ route('lesson-plans.create') }}"
                        class="font-medium text-gray-500 hover:text-gray-900">
-                        + Upload Plan
+                        Upload New Lesson
                     </a>
                 </nav>
             @endif
@@ -90,15 +95,16 @@
     </header>
 
     {{-- ──────────────────────────────────────────────────────────
-         Sign In / Sign Up modal dialog (Alpine.js)
-         Two panels: 'login' and 'register', toggled by buttons.
+         Sign In — or Sign Up New User modal (Alpine.js)
+         Single form: Teacher Name + Teacher Email + Password.
+         Logic handled in AuthenticatedSessionController:
+           - New email → register, send verification, hold at "check email"
+           - Unverified existing → resend verification
+           - Verified existing → log in normally
     ────────────────────────────────────────────────────────────── --}}
     @if(!auth()->check() || !auth()->user()->hasVerifiedEmail())
-    <div x-data="{
-            open: {{ $errors->any() ? 'true' : 'false' }},
-            mode: '{{ old('_auth_mode', 'login') }}'
-         }"
-         @open-auth-modal.window="open = true; mode = $event.detail.mode || 'login'"
+    <div x-data="{ open: {{ $errors->any() ? 'true' : 'false' }} }"
+         @open-auth-modal.window="open = true"
          x-cloak>
 
         {{-- Backdrop --}}
@@ -120,134 +126,72 @@
                     </svg>
                 </button>
 
-                {{-- ── Login panel ── --}}
-                <div x-show="mode === 'login'">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-6">Sign In</h2>
+                <h2 class="text-xl font-semibold text-gray-900 mb-1">Sign In</h2>
+                <p class="text-xs text-gray-500 mb-5">— or Sign Up New User</p>
 
-                    <form method="POST" action="{{ route('login') }}">
-                        @csrf
-                        <input type="hidden" name="_auth_mode" value="login">
+                <form method="POST" action="{{ route('login') }}">
+                    @csrf
 
-                        <div class="mb-4">
-                            <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">
-                                Username
-                            </label>
-                            <input type="email" id="login-email" name="email"
-                                   value="{{ old('email') }}" required autofocus
-                                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                            @error('email')
-                                <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-6" x-data="{ show: false }">
-                            <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">
-                                Password
-                            </label>
-                            <div class="relative">
-                                <input :type="show ? 'text' : 'password'" id="login-password" name="password" required
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
-                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                                <button type="button" @click="show = !show"
-                                        class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
-                                        x-text="show ? 'Hide' : 'Show'"></button>
-                            </div>
-                            @error('password')
-                                <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <button type="submit"
-                                class="w-full bg-gray-900 text-white text-sm font-medium py-2.5 rounded-md
-                                       hover:bg-gray-700 transition-colors">
-                            Sign In
-                        </button>
-
-                        <div class="mt-3 text-center">
-                            <a href="{{ route('password.request') }}"
-                               class="text-xs text-gray-500 hover:text-gray-900 underline">
-                                Forgot your password?
-                            </a>
-                        </div>
-                    </form>
-
-                    <div class="mt-6 pt-4 border-t border-gray-200 text-center">
-                        <span class="text-sm text-gray-500">New User?</span>
-                        <button @click="mode = 'register'"
-                                class="ml-1 text-sm font-medium text-gray-900 hover:text-gray-600 underline">
-                            Sign Up
-                        </button>
+                    {{-- Teacher Name --}}
+                    <div class="mb-4">
+                        <label for="login-name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Teacher Name <span class="font-normal text-gray-400">(choose anything unique)</span>
+                        </label>
+                        <input type="text" id="login-name" name="name"
+                               value="{{ old('name') }}" required autofocus autocomplete="name"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                        @error('name')
+                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
-                </div>
 
-                {{-- ── Register panel ── --}}
-                <div x-show="mode === 'register'" x-data="{ showPw: false }">
-                    <h2 class="text-xl font-semibold text-gray-900 mb-6">Create Account</h2>
-
-                    <form method="POST" action="{{ route('register') }}">
-                        @csrf
-                        <input type="hidden" name="_auth_mode" value="register">
-
-                        <div class="mb-4">
-                            <label for="reg-email" class="block text-sm font-medium text-gray-700 mb-1">
-                                Username <span class="font-normal text-gray-400">(must be a valid email)</span>
-                            </label>
-                            <input type="email" id="reg-email" name="email"
-                                   value="{{ old('email') }}" required
-                                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                            @error('email')
-                                <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="reg-password" class="block text-sm font-medium text-gray-700 mb-1">
-                                Password
-                            </label>
-                            <div class="relative">
-                                <input :type="showPw ? 'text' : 'password'" id="reg-password" name="password" required
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
-                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                                <button type="button" @click="showPw = !showPw"
-                                        class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
-                                        x-text="showPw ? 'Hide' : 'Show'"></button>
-                            </div>
-                        </div>
-
-                        <div class="mb-6">
-                            <label for="reg-password-confirm" class="block text-sm font-medium text-gray-700 mb-1">
-                                Confirm Password
-                            </label>
-                            <div class="relative">
-                                <input :type="showPw ? 'text' : 'password'" id="reg-password-confirm" name="password_confirmation" required
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
-                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                                <button type="button" @click="showPw = !showPw"
-                                        class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
-                                        x-text="showPw ? 'Hide' : 'Show'"></button>
-                            </div>
-                            @error('password')
-                                <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <button type="submit"
-                                class="w-full bg-gray-900 text-white text-sm font-medium py-2.5 rounded-md
-                                       hover:bg-gray-700 transition-colors">
-                            Sign Up
-                        </button>
-                    </form>
-
-                    <div class="mt-6 pt-4 border-t border-gray-200 text-center">
-                        <span class="text-sm text-gray-500">Already have an account?</span>
-                        <button @click="mode = 'login'"
-                                class="ml-1 text-sm font-medium text-gray-900 hover:text-gray-600 underline">
-                            Sign In
-                        </button>
+                    {{-- Teacher Email --}}
+                    <div class="mb-4">
+                        <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">
+                            Teacher Email <span class="font-normal text-gray-400">(email only)</span>
+                        </label>
+                        <input type="email" id="login-email" name="email"
+                               value="{{ old('email') }}" required autocomplete="email"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                        @error('email')
+                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
-                </div>
+
+                    {{-- Password --}}
+                    <div class="mb-6" x-data="{ show: false }">
+                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                        </label>
+                        <div class="relative">
+                            <input :type="show ? 'text' : 'password'" id="login-password" name="password" required
+                                   autocomplete="current-password"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
+                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            <button type="button" @click="show = !show"
+                                    class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                                    x-text="show ? 'Hide' : 'Show'"></button>
+                        </div>
+                        @error('password')
+                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-gray-900 text-white text-sm font-medium py-2.5 rounded-md
+                                   hover:bg-gray-700 transition-colors">
+                        Sign In / Up
+                    </button>
+
+                    <div class="mt-3 text-center">
+                        <a href="{{ route('password.request') }}"
+                           class="text-xs text-gray-500 hover:text-gray-900 underline">
+                            Forgot your password?
+                        </a>
+                    </div>
+                </form>
 
             </div>
         </div>
