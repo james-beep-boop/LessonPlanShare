@@ -207,4 +207,39 @@
         Showing {{ $plans->firstItem() ?? 0 }}–{{ $plans->lastItem() ?? 0 }} of {{ $plans->total() }} plans
     </div>
 
+    {{-- ── Temp table of registered users (debug, visible to verified users only) ── --}}
+    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+    <div class="mt-12 border border-gray-200 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-sm font-semibold text-gray-700">Temp table of registered users</h2>
+        </div>
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Registered</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @foreach($registeredUsers as $u)
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-gray-400 text-xs">{{ $u->id }}</td>
+                    <td class="px-4 py-2 text-gray-700">{{ $u->email }}</td>
+                    <td class="px-4 py-2">
+                        @if($u->email_verified_at)
+                            <span class="text-green-600 text-xs font-medium">Yes</span>
+                        @else
+                            <span class="text-red-500 text-xs font-medium">No</span>
+                        @endif
+                    </td>
+                    <td class="px-4 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y g:ia') }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
+
 </x-layout>

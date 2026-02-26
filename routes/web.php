@@ -15,8 +15,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
-
 /*
 |--------------------------------------------------------------------------
 | Authenticated + Email-Verified Routes
@@ -26,6 +24,8 @@ Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
 
     // View, preview, and download require a verified account (per spec Section 3.5)
     Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])

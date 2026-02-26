@@ -134,6 +134,9 @@ class DashboardController extends Controller
         // Registered users: total number of accounts (verified or not)
         $userCount = User::count();
 
+        // Debug table: all registered users (shown only to verified auth users in the view)
+        $registeredUsers = User::orderBy('created_at')->get(['id', 'email', 'email_verified_at', 'created_at']);
+
         // Favorite plan: the single plan with the highest net vote score
         // (upvotes minus downvotes). Ties broken by most recent. Eager-load author.
         $favoritePlan = LessonPlan::with('author')
@@ -144,7 +147,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'plans', 'classNames', 'sortField', 'sortOrder',
             'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
-            'userVotes', 'viewedIds', 'userCount'
+            'userVotes', 'viewedIds', 'userCount', 'registeredUsers'
         ));
     }
 

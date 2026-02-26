@@ -38,11 +38,13 @@
                         <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
                     @endif
 
-                    {{-- Stats link — visible to all visitors --}}
+                    {{-- Stats link — only for verified users --}}
+                    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                     <a href="{{ route('stats') }}"
                        class="text-base sm:text-lg font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
                         Stats
                     </a>
+                    @endif
 
                     @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                         <form method="POST" action="{{ route('logout') }}" class="inline">
