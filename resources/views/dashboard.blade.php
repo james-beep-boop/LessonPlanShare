@@ -237,9 +237,11 @@
                                                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                                                     'Accept': 'application/json'
                                                 }
-                                            }).then(() => {
-                                                sent = true;
-                                                setTimeout(() => sent = false, 5000);
+                                            }).then(r => {
+                                                if (r.ok) {
+                                                    sent = true;
+                                                    setTimeout(() => sent = false, 5000);
+                                                }
                                             });
                                         "
                                         :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"

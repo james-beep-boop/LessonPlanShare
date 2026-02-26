@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+// Admin debug: resend verification email — no auth required (debug table is public)
+Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
+    ->name('users.send-verification');
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated + Email-Verified Routes
@@ -59,9 +63,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/lesson-plans/{lessonPlan}/vote', [VoteController::class, 'store'])
         ->name('votes.store');
 
-    // Admin: resend verification email for a specific user (debug table button)
-    Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
-        ->name('users.send-verification');
 });
 
 /*
