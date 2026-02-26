@@ -35,8 +35,11 @@
         @php
             // Build the full public URL to the stored file
             $fileUrl = asset('storage/' . $lessonPlan->file_path);
-            // Google Docs Viewer URL — renders Office docs in the browser
-            $viewerUrl = 'https://docs.google.com/gview?url=' . urlencode($fileUrl) . '&embedded=true';
+            // Google Docs Viewer URL — renders Office docs in the browser.
+            // The &t= timestamp busts Google's cache so the viewer reloads the
+            // document on every visit (without it the iframe silently goes blank
+            // on second and subsequent views of the same document).
+            $viewerUrl = 'https://docs.google.com/gview?url=' . urlencode($fileUrl) . '&embedded=true&t=' . time();
         @endphp
 
         <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">

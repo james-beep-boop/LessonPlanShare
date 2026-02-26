@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-26 (admin system, Teacher Name, merged auth modal, view-gated AJAX voting, sub-nav removed, Stats 500 fix, admin privilege toggle)
+**Last updated:** 2026-02-26 (admin system, Teacher Name, merged auth modal, view-gated AJAX voting, sub-nav removed, Stats 500 fix, admin privilege toggle, security hardening, Google Docs cache-buster)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -33,7 +33,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Plan detail page (two-column layout, voting, version history sidebar)
 - Print/Save PDF button on plan detail page (`window.print()`)
 - Back button on show page is a prominent styled button ("← Back to Dashboard")
-- Document preview (Google Docs Viewer iframe)
+- Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
 - Preview page buttons: "Home" (→ dashboard) and "← Back to Details" (→ show page)
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
 - Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised)
@@ -76,18 +76,11 @@ Zero code exists for this feature. Full implementation required:
 - [ ] **DashboardController:** Eager-load user's favorites to pre-populate checkboxes
 - [ ] **Update DEPLOYMENT.md + UPDATE_SITE.sh:** Add `FavoriteController.php`, `Favorite.php`, migration
 
-### Minor Pending
-
-- [ ] **Google Docs Viewer cache-buster:** Add `'&t=' . time()` to `$viewerUrl` in `preview.blade.php` to force a fresh viewer load on every visit (the viewer silently fails on second load without it)
-
 ---
 
 ## Suggested Next Tasks (in priority order)
 
-### Priority 1 — Google Docs Viewer cache-buster (5-minute fix)
-Add `'&t=' . time()` to the viewer URL in `resources/views/lesson-plans/preview.blade.php`.
-
-### Priority 2 — Favorites system (larger feature)
+### Priority 1 — Favorites system (larger feature)
 Full implementation: migration → model → controller → route → dashboard AJAX column.
 See "Not Started" section above for full checklist.
 
