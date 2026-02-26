@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\LessonPlanController;
 use App\Http\Controllers\VoteController;
 use App\Http\Middleware\AdminMiddleware;
@@ -58,6 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Voting (upvote / downvote)
     Route::post('/lesson-plans/{lessonPlan}/vote', [VoteController::class, 'store'])
         ->name('votes.store');
+
+    // Favorites (toggle on/off)
+    Route::post('/lesson-plans/{lessonPlan}/favorite', [FavoriteController::class, 'toggle'])
+        ->name('favorites.toggle');
 
 });
 

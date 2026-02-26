@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Favorite;
 use App\Models\LessonPlan;
 use App\Models\LessonPlanView;
 use App\Models\User;
@@ -100,17 +101,22 @@ class DashboardController extends Controller
         // Paginate at 10 per page; withQueryString() preserves search/sort params
         $plans = $query->paginate(10)->withQueryString();
 
-        // For logged-in users: load their existing votes and which plans they've viewed.
-        // Used to show interactive vs locked vote buttons in the dashboard table.
-        $userVotes = [];
-        $viewedIds = [];
+        // For logged-in users: load their existing votes, viewed plan IDs, and favorites.
+        // Used to show interactive vote buttons and pre-populate favorite checkboxes.
+        $userVotes    = [];
+        $viewedIds    = [];
+        $favoritedIds = [];
         if (Auth::check()) {
-            $planIds   = $plans->pluck('id');
-            $userVotes = Vote::whereIn('lesson_plan_id', $planIds)
+            $planIds      = $plans->pluck('id');
+            $userVotes    = Vote::whereIn('lesson_plan_id', $planIds)
                 ->where('user_id', Auth::id())
                 ->pluck('value', 'lesson_plan_id')
                 ->toArray();
-            $viewedIds = LessonPlanView::whereIn('lesson_plan_id', $planIds)
+            $viewedIds    = LessonPlanView::whereIn('lesson_plan_id', $planIds)
+                ->where('user_id', Auth::id())
+                ->pluck('lesson_plan_id')
+                ->toArray();
+            $favoritedIds = Favorite::whereIn('lesson_plan_id', $planIds)
                 ->where('user_id', Auth::id())
                 ->pluck('lesson_plan_id')
                 ->toArray();
@@ -144,7 +150,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'plans', 'classNames', 'sortField', 'sortOrder',
             'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
-            'userVotes', 'viewedIds', 'userCount'
+            'userVotes', 'viewedIds', 'favoritedIds', 'userCount'
         ));
     }
 

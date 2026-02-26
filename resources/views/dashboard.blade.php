@@ -123,6 +123,7 @@
                                 </a>
                             </th>
                         @endforeach
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Favorite">★</th>
                         <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -157,6 +158,31 @@
                                 @endauth
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
+
+                            {{-- Favorite star: AJAX toggle for logged-in users; greyed for guests --}}
+                            <td class="px-4 py-3 text-center">
+                                @auth
+                                    <div x-data="{
+                                        fav: {{ in_array($plan->id, $favoritedIds) ? 'true' : 'false' }},
+                                        toggle() {
+                                            fetch('{{ route('favorites.toggle', $plan) }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                    'Accept': 'application/json'
+                                                }
+                                            }).then(r => r.json()).then(d => { this.fav = d.favorited; });
+                                        }
+                                    }">
+                                        <button @click="toggle" title="Toggle favorite"
+                                                :class="fav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'"
+                                                class="text-lg leading-none transition-colors">★</button>
+                                    </div>
+                                @else
+                                    <span class="text-lg leading-none text-gray-200" title="Sign in to favorite">★</span>
+                                @endauth
+                            </td>
+
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 @auth
                                     <a href="{{ route('lesson-plans.show', $plan) }}"
@@ -174,7 +200,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>
