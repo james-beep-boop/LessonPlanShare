@@ -17,6 +17,12 @@
                 <p class="text-xs text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
             </div>
 
+            {{-- Counter: Registered Users --}}
+            <div class="text-center px-4">
+                <p class="text-3xl font-bold text-gray-900">{{ $userCount }}</p>
+                <p class="text-xs text-gray-500 mt-1">Registered {{ Str::plural('User', $userCount) }}</p>
+            </div>
+
             {{-- Divider --}}
             <div class="hidden sm:block w-px h-14 bg-gray-200"></div>
 

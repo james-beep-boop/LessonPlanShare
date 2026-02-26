@@ -32,12 +32,12 @@
                 </button>
             </form>
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="text-sm text-gray-500 hover:text-gray-900 underline">
-                    Sign Out
-                </button>
-            </form>
+            <p class="text-xs text-gray-400 mt-2">
+                Wrong email? <a href="{{ route('logout') }}" class="underline hover:text-gray-600"
+                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Sign out</a>
+                and register again.
+            </p>
+            <form id="logout-form" method="POST" action="{{ route('logout') }}" class="hidden">@csrf</form>
         </div>
     </div>
 </x-layout>

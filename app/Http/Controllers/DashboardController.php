@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
 use App\Models\LessonPlanView;
+use App\Models\User;
 use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -130,6 +131,9 @@ class DashboardController extends Controller
         // Total plans: every version counts as one (not just latest)
         $totalPlanCount = LessonPlan::count();
 
+        // Registered users: total number of accounts (verified or not)
+        $userCount = User::count();
+
         // Favorite plan: the single plan with the highest net vote score
         // (upvotes minus downvotes). Ties broken by most recent. Eager-load author.
         $favoritePlan = LessonPlan::with('author')
@@ -140,7 +144,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'plans', 'classNames', 'sortField', 'sortOrder',
             'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
-            'userVotes', 'viewedIds'
+            'userVotes', 'viewedIds', 'userCount'
         ));
     }
 

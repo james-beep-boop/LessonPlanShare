@@ -30,10 +30,13 @@
                 </a>
 
                 {{-- Right: username, Stats, Sign Out (or Sign In for guests) --}}
+                {{-- Only show username/Sign Out for fully verified users. Unverified
+                     users are kept in session so "Resend" works, but they appear as
+                     guests in the UI — no name, no Sign Out, Sign In modal available. --}}
                 <div class="flex items-center pt-2 space-x-5">
-                    @auth
+                    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                         <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
-                    @endauth
+                    @endif
 
                     {{-- Stats link — visible to all visitors --}}
                     <a href="{{ route('stats') }}"
@@ -41,7 +44,7 @@
                         Stats
                     </a>
 
-                    @auth
+                    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit"
@@ -56,12 +59,12 @@
                             class="text-base sm:text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer">
                             Sign In
                         </button>
-                    @endauth
+                    @endif
                 </div>
             </div>
 
-            {{-- Navigation links (only when signed in) --}}
-            @auth
+            {{-- Navigation links (only when signed in AND verified) --}}
+            @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                 <nav class="mt-4 flex flex-wrap gap-4 sm:gap-6 text-sm">
                     <a href="{{ route('dashboard') }}"
                        class="font-medium {{ request()->routeIs('dashboard') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
@@ -76,7 +79,7 @@
                         + Upload Plan
                     </a>
                 </nav>
-            @endauth
+            @endif
         </div>
     </header>
 
@@ -84,7 +87,7 @@
          Sign In / Sign Up modal dialog (Alpine.js)
          Two panels: 'login' and 'register', toggled by buttons.
     ────────────────────────────────────────────────────────────── --}}
-    @guest
+    @if(!auth()->check() || !auth()->user()->hasVerifiedEmail())
     <div x-data="{
             open: {{ $errors->any() ? 'true' : 'false' }},
             mode: '{{ old('_auth_mode', 'login') }}'
@@ -243,7 +246,7 @@
             </div>
         </div>
     </div>
-    @endguest
+    @endif
 
     {{-- ──────────────────────────────────────────────────────────
          Upload-success dialog
