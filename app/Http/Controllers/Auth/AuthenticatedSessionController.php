@@ -25,23 +25,28 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      *
-     * If the email is not in the database, auto-register the user with the
-     * supplied password, send a verification email, and redirect to the
-     * "Check Your Email" page — no separate Sign Up step required.
+     * Three cases:
+     *   1. Email not in DB → auto-register, send verification email, go to "Check Your Email".
+     *   2. Email exists, NOT yet verified → update password (in case they forgot it),
+     *      resend verification email, go to "Check Your Email".
+     *   3. Email exists, verified → normal authentication. Wrong password returns an error.
      *
-     * If the email exists, authenticate normally. Wrong passwords still produce
-     * the standard Breeze error.
+     * This means users never need to find a separate "Sign Up" form. Entering any
+     * email/password combination will either log them in or start the verification flow.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $email = $request->input('email');
+        $email    = $request->input('email');
+        $password = $request->input('password');
 
-        // Auto-register: if no account exists for this email, create one now.
-        if (! User::where('email', $email)->exists()) {
+        $user = User::where('email', $email)->first();
+
+        // Case 1: brand-new email — create account and send verification email.
+        if (! $user) {
             $user = User::create([
-                'name'     => $email,   // username = email address (same as RegisteredUserController)
+                'name'     => $email,
                 'email'    => $email,
-                'password' => Hash::make($request->input('password')),
+                'password' => Hash::make($password),
             ]);
 
             event(new Registered($user));   // sends the verification email
@@ -51,7 +56,20 @@ class AuthenticatedSessionController extends Controller
             return redirect(route('verification.notice', absolute: false));
         }
 
-        // Existing account — standard authentication (wrong password returns error).
+        // Case 2: account exists but email not yet verified — update password and resend.
+        // (Covers the case where the user previously registered but never confirmed,
+        //  and may have forgotten the original password.)
+        if (! $user->hasVerifiedEmail()) {
+            $user->update(['password' => Hash::make($password)]);
+
+            $user->sendEmailVerificationNotification();
+
+            Auth::login($user);
+
+            return redirect(route('verification.notice', absolute: false));
+        }
+
+        // Case 3: verified account — standard authentication. Wrong password = error.
         $request->authenticate();
 
         $request->session()->regenerate();

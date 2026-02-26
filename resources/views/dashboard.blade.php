@@ -207,8 +207,7 @@
         Showing {{ $plans->firstItem() ?? 0 }}–{{ $plans->lastItem() ?? 0 }} of {{ $plans->total() }} plans
     </div>
 
-    {{-- ── Temp table of registered users (debug, visible to verified users only) ── --}}
-    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+    {{-- ── Temp table of registered users (debug, always visible) ── --}}
     <div class="mt-12 border border-gray-200 rounded-lg overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h2 class="text-sm font-semibold text-gray-700">Temp table of registered users</h2>
@@ -240,6 +239,5 @@
             </tbody>
         </table>
     </div>
-    @endif
 
 </x-layout>
