@@ -1,6 +1,6 @@
 # CLAUDE.md — Project Guide for Claude Code
 
-**Last updated:** 2026-02-26
+**Last updated:** 2026-02-25
 **Auto-loaded in every session.** Keep this file short and high-signal.
 
 ## Project Overview
@@ -76,5 +76,5 @@ See DEPLOYMENT.md for full details, quirks, and the exact update script.
 - After completing work, update CURRENT_STATUS.md and suggest a git commit message.
 - Flag any DreamHost compatibility risk immediately.
 - Be concise. No fluff. Use bullet points and code blocks.
-- When adding new files, also update the file lists in DEPLOYMENT.md (the COMPLETE FILE LIST section and the Step 4 copy list).
+- When adding new files, update THREE places: (1) DEPLOYMENT.md COMPLETE FILE LIST, (2) DEPLOYMENT.md Step 4 copy list, (3) `UPDATE_SITE.sh` copy section — new files won't deploy without this.
 - When adding new routes, update routes/web.php or routes/auth.php AND the route table in TECHNICAL_DESIGN.md.
