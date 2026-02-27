@@ -55,8 +55,7 @@
             {{-- Fallback note below the viewer --}}
             <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <p class="text-xs text-gray-400">
-                    Preview powered by Google Docs Viewer. If the document does not load,
-                    use the Download button above.
+                    Preview powered by Google Docs Viewer. If the document does not load, refresh the page. If that does not work, download the file.
                 </p>
                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
                    class="text-xs text-gray-900 font-medium hover:text-gray-600 underline flex-shrink-0">
