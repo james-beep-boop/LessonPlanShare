@@ -14,9 +14,7 @@
 
         {{-- Welcome --}}
         <p class="text-gray-600 mb-8 leading-relaxed">
-            Welcome to the ARES Lesson Plan Library — a free shared library where Kenyan high school
-            teachers find, download, rate, and share lesson plans. Everything here was made by teachers,
-            for teachers.
+            Welcome to the ARES Lesson Plan Library — a free shared library where Kenyan teachers can find, download, rate, and share lesson plans. This guide will show you how to use the site step by step, so you can get the most out of it.
         </p>
 
         <div class="space-y-8 text-gray-700 text-sm leading-relaxed">
