@@ -80,10 +80,10 @@ class DashboardController extends Controller
         // ── Sorting ──
         // Validate sort direction to prevent SQL injection / 500 errors.
         // Only 'asc' and 'desc' are accepted; anything else defaults to 'desc'.
-        $sortField = $request->input('sort', 'updated_at');
-        $sortOrder = in_array(strtolower($request->input('order', 'desc')), ['asc', 'desc'])
-            ? strtolower($request->input('order', 'desc'))
-            : 'desc';
+        $sortField = $request->input('sort', 'class_name');
+        $sortOrder = in_array(strtolower($request->input('order', 'asc')), ['asc', 'desc'])
+            ? strtolower($request->input('order', 'asc'))
+            : 'asc';
 
         // Whitelist of allowed sort columns — must match visible dashboard columns.
         // author_name sorts by users.name via the LEFT JOIN.

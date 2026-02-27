@@ -53,54 +53,55 @@
                             <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->author->name ?? '—' }}</span>
                         </div>
                         <div>
-                            <span class="text-gray-500">File:</span>
-                            <span class="text-gray-900 font-medium ml-1">
-                                {{ $lessonPlan->file_name ?? '—' }}
-                                ({{ $lessonPlan->file_size_formatted }})
-                            </span>
-                        </div>
-                        <div>
                             <span class="text-gray-500">Uploaded:</span>
                             <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->created_at->format('M j, Y g:ia') }} UTC</span>
                         </div>
                     </div>
 
                     {{-- Action Buttons --}}
-                    <div class="flex flex-wrap items-center gap-3 mt-6 pt-4 border-t border-gray-100">
-                        @if ($lessonPlan->file_path)
-                            <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
-                               class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                                Preview File
-                            </a>
-                            <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                               class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                Download File
-                            </a>
-                        @endif
-                        {{-- Print button — opens browser print dialog (supports print-to-PDF) --}}
-                        <button type="button" onclick="window.print()"
-                                class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                            Print / Save PDF
-                        </button>
+                    <div class="mt-6 pt-4 border-t border-gray-100 space-y-2">
+
+                        {{-- Row 1: Preview · Download File · Print/Save PDF --}}
+                        <div class="flex flex-wrap items-center gap-3">
+                            @if ($lessonPlan->file_path)
+                                <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
+                                   class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                                    Preview
+                                </a>
+                                <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                                   class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Download File
+                                </a>
+                            @endif
+                            {{-- Print button — opens browser print dialog (supports print-to-PDF) --}}
+                            <button type="button" onclick="window.print()"
+                                    class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                Print / Save PDF
+                            </button>
+                        </div>
+
+                        {{-- Row 2: Create New Version — full width below the three buttons --}}
                         @auth
                             <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
-                               class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                               class="block w-full text-center px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                 Create New Version
                             </a>
                         @endauth
+
+                        {{-- Delete — only shown to the plan's author; same full width as Create New Version --}}
                         @auth
                             @if ($lessonPlan->author_id === auth()->id())
-                                <form method="POST" action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
-                                      onsubmit="return confirm('Are you sure you want to delete this version?');">
+                                <form method="POST" action="{{ route('lesson-plans.destroy', $lessonPlan) }}" class="w-full">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
-                                            class="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-md hover:bg-red-100 transition-colors">
-                                        Delete
+                                            class="block w-full text-center px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
+                                        Delete This Document - Cannot Be Undone
                                     </button>
                                 </form>
                             @endif
                         @endauth
+
                     </div>
                 </div>
 
@@ -146,7 +147,8 @@
                 <div class="border border-gray-200 rounded-lg p-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-3">Version History</h2>
                     <div class="space-y-3">
-                        @foreach ($versions as $version)
+                        {{-- Most recent version first; single-version case renders correctly as-is --}}
+                        @foreach ($versions->sortByDesc('created_at') as $version)
                             <div class="flex items-start space-x-3 {{ $version->id === $lessonPlan->id ? 'bg-gray-50 -mx-2 px-2 py-1.5 rounded-md' : '' }}">
                                 <div class="flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono font-bold text-gray-600 whitespace-nowrap">
                                     {{ $version->semantic_version }}

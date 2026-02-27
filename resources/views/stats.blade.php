@@ -25,12 +25,12 @@
         {{-- ── Summary Counters ── --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div class="border border-gray-200 rounded-lg p-5 text-center">
-                <p class="text-4xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
-                <p class="text-sm text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
-            </div>
-            <div class="border border-gray-200 rounded-lg p-5 text-center">
                 <p class="text-4xl font-bold text-gray-900">{{ $uniqueClassCount }}</p>
                 <p class="text-sm text-gray-500 mt-1">Unique {{ Str::plural('Class', $uniqueClassCount) }}</p>
+            </div>
+            <div class="border border-gray-200 rounded-lg p-5 text-center">
+                <p class="text-4xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
+                <p class="text-sm text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
             </div>
             <div class="border border-gray-200 rounded-lg p-5 text-center">
                 <p class="text-4xl font-bold text-gray-900">{{ $contributorCount }}</p>

@@ -7,16 +7,10 @@
 
             <div class="flex flex-wrap gap-6 items-start">
 
-                {{-- Counter: Unique Classes --}}
-                <div class="text-center px-4">
-                    <p class="text-3xl font-bold text-gray-900">{{ $uniqueClassCount }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Unique {{ Str::plural('Class', $uniqueClassCount) }}</p>
-                </div>
-
                 {{-- Counter: Total Lesson Plans --}}
                 <div class="text-center px-4">
                     <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
                 </div>
 
                 {{-- Counter: Registered Users --}}
