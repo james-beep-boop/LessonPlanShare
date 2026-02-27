@@ -27,7 +27,7 @@
         </tr>
         <tr style="background: #f9fafb;">
             <td style="padding: 8px; font-weight: bold; color: #6b7280;">Version:</td>
-            <td style="padding: 8px;">{{ $versionNumber }}</td>
+            <td style="padding: 8px;">{{ $semanticVersion }}</td>
         </tr>
     </table>
 

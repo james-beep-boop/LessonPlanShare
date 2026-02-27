@@ -74,7 +74,7 @@
                                     <td class="px-3 py-2 text-gray-700">{{ $plan->class_name }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
-                                    <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->version_number }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs font-mono">{{ $plan->file_name }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                                 </tr>

@@ -6,8 +6,10 @@ use App\Mail\LessonPlanUploaded;
 use App\Models\LessonPlan;
 use App\Models\LessonPlanView;
 use App\Http\Requests\StoreLessonPlanRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,23 +17,24 @@ use Illuminate\Support\Facades\Storage;
  * Handles CRUD operations for lesson plans.
  *
  * Key behaviors:
- * - Upload creates a new lesson plan (version 1) with a canonical filename.
- * - "New Version" creates a child version linked to a parent plan.
+ * - Upload creates a new lesson plan with a semantic version (1.0.0 for the first
+ *   upload of a class/day, or 1.N.0 for a major revision on an existing one).
+ * - "New Version" creates a child version; the uploader selects major or minor revision.
  * - Files are renamed on disk to the canonical naming format:
- *   {ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC.{ext}
+ *   {ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC_v{major}-{minor}-{patch}.{ext}
+ * - Semantic versions are assigned GLOBALLY per (class_name, lesson_day) pair,
+ *   enforced by a DB unique index.
  * - SHA-256 file hash is computed on upload for duplicate content detection.
  * - Upload confirmation emails are sent asynchronously (failures logged, not blocking).
  *
  * DESIGN DECISION — Author locked to logged-in user:
  *   The author is always set to the currently authenticated user (Auth::id()).
- *   Previously, the form allowed selecting any registered user as the author,
- *   but this was changed to prevent impersonation and simplify the upload flow.
  *
- * DESIGN DECISION — Confirmation email recipient:
- *   The upload confirmation email is always sent to the person performing the
- *   upload (Auth::user()), not the selected author. This is intentional:
- *   the uploader needs confirmation that their action succeeded. The selected
- *   author is not necessarily expecting a notification at that moment.
+ * DESIGN DECISION — Semantic versioning is global per class/day:
+ *   Unlike the old per-family version_number, semantic versions are shared
+ *   across all uploads for a given (class_name, lesson_day) pair regardless
+ *   of author or version family. This means Mathematics Day 5 has one global
+ *   sequence: 1.0.0 → 1.1.0 → 1.1.1 → 1.2.0 etc.
  */
 class LessonPlanController extends Controller
 {
@@ -43,6 +46,78 @@ class LessonPlanController extends Controller
      * to enforce the allowed values server-side.
      */
     public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
+
+    /**
+     * Compute the next semantic version for a given class/day pair.
+     *
+     * Looks at ALL existing plans for (class_name, lesson_day) globally
+     * (across all version families and authors) to find the current maximum.
+     *
+     * Rules:
+     * - If no plans exist for this class/day: return [1, 0, 0]
+     * - If 'minor' revision type: increment patch of the current max minor
+     * - If 'major' revision type (default): increment minor, reset patch to 0
+     *
+     * The unique DB index on (class_name, lesson_day, version_major, version_minor,
+     * version_patch) is the definitive race-condition guard — if two concurrent
+     * uploads compute the same version, the second INSERT fails with '23000'.
+     */
+    private function computeNextSemanticVersion(
+        string $className,
+        int $lessonDay,
+        string $revisionType = 'major'
+    ): array {
+        // Find the row with the highest semantic version for this class/day.
+        // ORDER BY minor DESC, patch DESC gives the "latest" version row.
+        $latest = DB::table('lesson_plans')
+            ->where('class_name', $className)
+            ->where('lesson_day', $lessonDay)
+            ->orderByDesc('version_minor')
+            ->orderByDesc('version_patch')
+            ->select('version_minor', 'version_patch')
+            ->first();
+
+        if (!$latest) {
+            // No plans yet for this class/day — first upload is always 1.0.0
+            return [1, 0, 0];
+        }
+
+        if ($revisionType === 'minor') {
+            // Bump the patch number; keep the current max minor
+            return [1, $latest->version_minor, $latest->version_patch + 1];
+        }
+
+        // 'major': bump the minor number, reset patch to 0
+        return [1, $latest->version_minor + 1, 0];
+    }
+
+    /**
+     * AJAX endpoint: return the computed next semantic version for a class/day.
+     *
+     * Used by the create and edit forms to show a live version preview before
+     * the user submits. Returns JSON: { "version": "1.2.0" }
+     *
+     * Query parameters:
+     * - class_name:    Subject name
+     * - lesson_day:    Lesson number (integer)
+     * - revision_type: 'major' (default) or 'minor'
+     */
+    public function nextVersion(Request $request): JsonResponse
+    {
+        $className    = $request->input('class_name', '');
+        $lessonDay    = (int) $request->input('lesson_day', 0);
+        $revisionType = $request->input('revision_type', 'major');
+
+        if (!$className || !$lessonDay) {
+            return response()->json(['version' => '1.0.0']);
+        }
+
+        [$major, $minor, $patch] = $this->computeNextSemanticVersion(
+            $className, $lessonDay, $revisionType
+        );
+
+        return response()->json(['version' => "{$major}.{$minor}.{$patch}"]);
+    }
 
     /**
      * My Plans: list all plans authored by the current user.
@@ -62,11 +137,6 @@ class LessonPlanController extends Controller
 
     /**
      * Show the upload form for a brand-new lesson plan.
-     *
-     * Passes dropdown data to the view:
-     * - $classNames: restricted list of allowed class names
-     * - $lessonNumbers: 1 through 20
-     * - $authors: all registered users (name keyed by id), alphabetical
      */
     public function create()
     {
@@ -77,75 +147,74 @@ class LessonPlanController extends Controller
     }
 
     /**
-     * Store a brand-new lesson plan (version 1, no parent).
+     * Store a brand-new lesson plan.
      *
-     * Flow:
-     * 1. Validate form data (class_name, lesson_day, author_id, file).
-     * 2. Look up the selected author for canonical name generation.
-     * 3. Generate canonical name with UTC timestamp.
-     * 4. Check for duplicate name (same class/day/author within same second).
-     * 5. Rename the uploaded file to the canonical name + original extension.
-     * 6. Compute SHA-256 hash for future duplicate content detection.
-     * 7. Create the LessonPlan record (version 1, no parent/original).
-     * 8. Send confirmation email to the uploader (not the selected author).
-     * 9. Redirect to the plan's detail page with a success dialog.
+     * The semantic version is computed globally for the selected class/day.
+     * New uploads are always treated as "major" revisions (or 1.0.0 if first).
      */
     public function store(StoreLessonPlanRequest $request)
     {
         $data = $request->validated();
 
-        // Author is always the logged-in user (see class-level design note)
         $author = Auth::user();
 
-        // Generate canonical name using the author's display name (email)
+        // Compute next semantic version globally for this class/day.
+        // New uploads always use 'major' (first upload = 1.0.0).
+        [$major, $minor, $patch] = $this->computeNextSemanticVersion(
+            $data['class_name'],
+            $data['lesson_day'],
+            'major'
+        );
+
         $canonicalName = LessonPlan::generateCanonicalName(
             $data['class_name'],
             $data['lesson_day'],
-            $author->name
+            $author->name,
+            null,
+            [$major, $minor, $patch]
         );
 
-        // Guard: reject if this exact canonical name already exists.
-        // This can happen if the same class/day/author uploads twice in
-        // the same second (the timestamp is second-resolution).
+        // Guard: reject if this exact canonical name already exists
         if (LessonPlan::where('name', $canonicalName)->exists()) {
             return back()->withInput()->with('error',
                 'A lesson plan with the name "' . $canonicalName . '" already exists. '
-                . 'This can happen if you upload the same class/day combination within the same second. '
                 . 'Please wait a moment and try again.');
         }
 
-        // Handle file upload — rename to canonical name + original extension
         $file      = $request->file('file');
         $extension = $file->getClientOriginalExtension();
         $fileSize  = $file->getSize();
         $diskName  = $canonicalName . '.' . $extension;
+        $fileHash  = hash_file('sha256', $file->getRealPath());
+        $filePath  = $file->storeAs('lessons', $diskName, 'public');
 
-        // Compute SHA-256 hash of file contents for duplicate content detection.
-        // The DetectDuplicateContent artisan command uses this hash to find
-        // and remove files with identical content.
-        $fileHash = hash_file('sha256', $file->getRealPath());
+        try {
+            $plan = LessonPlan::create([
+                'class_name'     => $data['class_name'],
+                'lesson_day'     => $data['lesson_day'],
+                'description'    => $data['description'] ?? null,
+                'name'           => $canonicalName,
+                'author_id'      => $author->id,
+                'version_number' => 1,
+                'version_major'  => $major,
+                'version_minor'  => $minor,
+                'version_patch'  => $patch,
+                'file_path'      => $filePath,
+                'file_name'      => $diskName,
+                'file_size'      => $fileSize,
+                'file_hash'      => $fileHash,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Storage::disk('public')->delete($filePath);
+            if ($e->getCode() === '23000') {
+                return back()->withInput()->with('error',
+                    'A version conflict occurred (another upload happened simultaneously). Please try again.');
+            }
+            throw $e;
+        }
 
-        // Store with canonical filename in the public disk under lessons/
-        $filePath = $file->storeAs('lessons', $diskName, 'public');
-
-        // Create the lesson plan record — this is version 1 (no parent/original)
-        $plan = LessonPlan::create([
-            'class_name'     => $data['class_name'],
-            'lesson_day'     => $data['lesson_day'],
-            'description'    => $data['description'] ?? null,
-            'name'           => $canonicalName,
-            'author_id'      => $author->id,
-            'version_number' => 1,
-            'file_path'      => $filePath,
-            'file_name'      => $diskName,
-            'file_size'      => $fileSize,
-            'file_hash'      => $fileHash,
-        ]);
-
-        // Send confirmation email to the person who performed the upload
         $this->sendUploadConfirmationEmail($plan, $diskName);
 
-        // Flash data triggers the upload-success modal dialog in layout.blade.php
         return redirect()->route('lesson-plans.show', $plan)
             ->with('upload_success', true)
             ->with('upload_filename', $diskName);
@@ -160,12 +229,10 @@ class LessonPlanController extends Controller
     {
         $lessonPlan->load(['author', 'votes']);
 
-        // Get all versions in this plan's family (same original_id)
         $versions = $lessonPlan->familyVersions()
             ->with('author')
             ->get();
 
-        // Check if the current user has already voted on this specific version
         $userVote = null;
         if (Auth::check()) {
             $userVote = $lessonPlan->votes()
@@ -185,15 +252,28 @@ class LessonPlanController extends Controller
     /**
      * Show the form to create a new version of an existing plan.
      *
-     * Pre-fills the class name and lesson day from the parent version.
-     * The user can change these if needed (e.g., reassigning to a different class).
+     * Pre-computes the next major and minor version so the form can
+     * display a live preview without an extra AJAX round-trip on load.
      */
     public function edit(LessonPlan $lessonPlan)
     {
         $classNames    = self::CLASS_NAMES;
         $lessonNumbers = range(1, 20);
 
-        return view('lesson-plans.edit', compact('lessonPlan', 'classNames', 'lessonNumbers'));
+        [$mj, $mn, $mp] = $this->computeNextSemanticVersion(
+            $lessonPlan->class_name, $lessonPlan->lesson_day, 'major'
+        );
+        $nextMajorVersion = "{$mj}.{$mn}.{$mp}";
+
+        [$mj, $mn, $mp] = $this->computeNextSemanticVersion(
+            $lessonPlan->class_name, $lessonPlan->lesson_day, 'minor'
+        );
+        $nextMinorVersion = "{$mj}.{$mn}.{$mp}";
+
+        return view('lesson-plans.edit', compact(
+            'lessonPlan', 'classNames', 'lessonNumbers',
+            'nextMajorVersion', 'nextMinorVersion'
+        ));
     }
 
     /**
@@ -202,58 +282,71 @@ class LessonPlanController extends Controller
      * Per spec Section 2.5: if the uploader is the same author as the parent plan,
      * the new file is linked into the parent's version family (original_id / parent_id).
      * If the uploader is a DIFFERENT user, a completely independent plan is created
-     * (version 1, no family linkage) — the parent plan is not modified.
+     * (version_number 1, no family linkage).
+     *
+     * In both cases, the semantic version is computed GLOBALLY for the selected
+     * class/day using the user's chosen revision_type (major or minor).
      */
     public function update(StoreLessonPlanRequest $request, LessonPlan $lessonPlan)
     {
         $data = $request->validated();
 
-        // Author is always the logged-in user (see class-level design note)
         $author = Auth::user();
 
-        // Generate canonical name (same logic regardless of author match)
+        $revisionType = $data['revision_type'];
+        [$major, $minor, $patch] = $this->computeNextSemanticVersion(
+            $data['class_name'],
+            $data['lesson_day'],
+            $revisionType
+        );
+
         $canonicalName = LessonPlan::generateCanonicalName(
             $data['class_name'],
             $data['lesson_day'],
-            $author->name
+            $author->name,
+            null,
+            [$major, $minor, $patch]
         );
 
-        // Guard: reject duplicate canonical names
         if (LessonPlan::where('name', $canonicalName)->exists()) {
             return back()->withInput()->with('error',
                 'A lesson plan with the name "' . $canonicalName . '" already exists. '
                 . 'Please wait a moment and try again.');
         }
 
-        // Handle file upload — rename to canonical name + original extension
         $file      = $request->file('file');
         $extension = $file->getClientOriginalExtension();
         $fileSize  = $file->getSize();
         $diskName  = $canonicalName . '.' . $extension;
-
-        // Compute SHA-256 hash for duplicate detection
-        $fileHash = hash_file('sha256', $file->getRealPath());
-
-        // Store with canonical filename
-        $filePath = $file->storeAs('lessons', $diskName, 'public');
+        $fileHash  = hash_file('sha256', $file->getRealPath());
+        $filePath  = $file->storeAs('lessons', $diskName, 'public');
 
         // ── Author check: link to family or create standalone ──
         if ($lessonPlan->author_id !== $author->id) {
-            // Different uploader — create a brand-new standalone plan (no family linkage)
-            // per spec Section 2.5
-            $newPlan = LessonPlan::create([
-                'class_name'     => $data['class_name'],
-                'lesson_day'     => $data['lesson_day'],
-                'description'    => $data['description'] ?? null,
-                'name'           => $canonicalName,
-                'author_id'      => $author->id,
-                'file_path'      => $filePath,
-                'file_name'      => $diskName,
-                'file_size'      => $fileSize,
-                'file_hash'      => $fileHash,
-                'version_number' => 1,
-                // original_id and parent_id intentionally omitted (stay null)
-            ]);
+            try {
+                $newPlan = LessonPlan::create([
+                    'class_name'     => $data['class_name'],
+                    'lesson_day'     => $data['lesson_day'],
+                    'description'    => $data['description'] ?? null,
+                    'name'           => $canonicalName,
+                    'author_id'      => $author->id,
+                    'file_path'      => $filePath,
+                    'file_name'      => $diskName,
+                    'file_size'      => $fileSize,
+                    'file_hash'      => $fileHash,
+                    'version_number' => 1,
+                    'version_major'  => $major,
+                    'version_minor'  => $minor,
+                    'version_patch'  => $patch,
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                Storage::disk('public')->delete($filePath);
+                if ($e->getCode() === '23000') {
+                    return back()->withInput()->with('error',
+                        'A version conflict occurred. Please try again.');
+                }
+                throw $e;
+            }
             $this->sendUploadConfirmationEmail($newPlan, $diskName);
             return redirect()->route('dashboard')
                 ->with('upload_success', true)
@@ -262,22 +355,32 @@ class LessonPlanController extends Controller
         }
 
         // Same author — create new version linked to the parent's family
-        $newVersion = $lessonPlan->createNewVersion([
-            'class_name'    => $data['class_name'],
-            'lesson_day'    => $data['lesson_day'],
-            'description'   => $data['description'] ?? null,
-            'name'          => $canonicalName,
-            'author_id'     => $author->id,
-            'file_path'     => $filePath,
-            'file_name'     => $diskName,
-            'file_size'     => $fileSize,
-            'file_hash'     => $fileHash,
-        ]);
+        try {
+            $newVersion = $lessonPlan->createNewVersion([
+                'class_name'    => $data['class_name'],
+                'lesson_day'    => $data['lesson_day'],
+                'description'   => $data['description'] ?? null,
+                'name'          => $canonicalName,
+                'author_id'     => $author->id,
+                'file_path'     => $filePath,
+                'file_name'     => $diskName,
+                'file_size'     => $fileSize,
+                'file_hash'     => $fileHash,
+                'version_major' => $major,
+                'version_minor' => $minor,
+                'version_patch' => $patch,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Storage::disk('public')->delete($filePath);
+            if ($e->getCode() === '23000') {
+                return back()->withInput()->with('error',
+                    'A version conflict occurred. Please try again.');
+            }
+            throw $e;
+        }
 
-        // Send confirmation email to the uploader
         $this->sendUploadConfirmationEmail($newVersion, $diskName);
 
-        // Flash data triggers the upload-success modal dialog; redirect to dashboard per spec
         return redirect()->route('dashboard')
             ->with('upload_success', true)
             ->with('upload_filename', $diskName);
@@ -285,11 +388,6 @@ class LessonPlanController extends Controller
 
     /**
      * Show a document preview page with an embedded viewer.
-     *
-     * Requires authentication + verified email (per spec Section 3.5).
-     * Uses Google Docs Viewer to render .doc/.docx files in the browser
-     * without server-side conversion. If no file is attached, redirects
-     * to the detail page with an error.
      */
     public function preview(LessonPlan $lessonPlan)
     {
@@ -305,9 +403,6 @@ class LessonPlanController extends Controller
 
     /**
      * Download the file attached to a lesson plan.
-     *
-     * Requires authentication + verified email (per spec Section 3.5).
-     * The file is served with the canonical filename.
      */
     public function download(LessonPlan $lessonPlan)
     {
@@ -324,28 +419,14 @@ class LessonPlanController extends Controller
     /**
      * Delete a lesson plan (only the author can delete their own).
      *
-     * Guards:
-     * 1. Only the author who uploaded this version can delete it.
-     * 2. A plan cannot be deleted if other versions in its family still
-     *    exist. This prevents orphaned records — both direct children
-     *    (via parent_id) and family members (via original_id) are checked.
-     *    The root plan guard checks for any descendants; non-root plans
-     *    check for direct children. Users must delete from the leaves inward.
-     *
-     * Also cleans up:
-     * - The stored file on disk
-     * - All votes associated with this version
+     * Guards against deleting plans with descendants (must delete leaf-first).
      */
     public function destroy(LessonPlan $lessonPlan)
     {
-        // Guard: only the author can delete
         if ($lessonPlan->author_id !== Auth::id()) {
             abort(403, 'You can only delete your own lesson plans.');
         }
 
-        // Guard: prevent deleting a root plan if ANY descendants still exist
-        // (not just direct children — intermediate deletions can null parent_id,
-        // so we check original_id which links all family members to the root)
         if ($lessonPlan->is_original) {
             $hasDescendants = LessonPlan::where('original_id', $lessonPlan->id)->exists();
             if ($hasDescendants) {
@@ -355,19 +436,16 @@ class LessonPlanController extends Controller
             }
         }
 
-        // Guard: prevent deleting intermediate versions that have direct children
         if (!$lessonPlan->is_original && $lessonPlan->children()->exists()) {
             return back()->with('error',
                 'Other versions were created from this one. '
                 . 'Please delete those newer versions first.');
         }
 
-        // Delete the file from storage
         if ($lessonPlan->file_path && Storage::disk('public')->exists($lessonPlan->file_path)) {
             Storage::disk('public')->delete($lessonPlan->file_path);
         }
 
-        // Clean up votes before deleting the record (avoids FK constraint issues)
         $lessonPlan->votes()->delete();
         $lessonPlan->delete();
 
@@ -378,11 +456,7 @@ class LessonPlanController extends Controller
     /**
      * Send an upload confirmation email to the authenticated user (the uploader).
      *
-     * Note: this always emails Auth::user(), NOT the selected author_id.
-     * See the class-level design note for the rationale.
-     *
      * Wrapped in try/catch so a mail failure never blocks the upload itself.
-     * Failures are logged to storage/logs/laravel.log.
      */
     private function sendUploadConfirmationEmail(LessonPlan $plan, string $diskName): void
     {
@@ -393,11 +467,10 @@ class LessonPlanController extends Controller
                 canonicalFilename: $diskName,
                 className:         $plan->class_name,
                 lessonDay:         $plan->lesson_day,
-                versionNumber:     $plan->version_number,
+                semanticVersion:   $plan->semantic_version,
                 viewUrl:           route('lesson-plans.show', $plan),
             ));
         } catch (\Exception $e) {
-            // Log but don't fail — the upload itself was successful
             \Illuminate\Support\Facades\Log::warning(
                 'Upload confirmation email failed: ' . $e->getMessage()
             );

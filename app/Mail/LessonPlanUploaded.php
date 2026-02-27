@@ -21,7 +21,7 @@ class LessonPlanUploaded extends Mailable
         public string $canonicalFilename,
         public string $className,
         public int    $lessonDay,
-        public int    $versionNumber,
+        public string $semanticVersion,
         public string $viewUrl,
     ) {}
 

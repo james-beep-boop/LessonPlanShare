@@ -72,6 +72,7 @@ COPY FROM THIS REPO                  →  TO YOUR LARAVEL PROJECT
 app/Models/User.php                  →  app/Models/User.php (REPLACE)
 app/Models/LessonPlan.php            →  app/Models/LessonPlan.php (NEW)
 app/Models/Vote.php                  →  app/Models/Vote.php (NEW)
+app/Models/Favorite.php              →  app/Models/Favorite.php (NEW)
 app/Models/LessonPlanView.php        →  app/Models/LessonPlanView.php (NEW)
 
 app/Http/Controllers/Auth/AuthenticatedSessionController.php  →  (REPLACE Breeze's)
@@ -79,8 +80,11 @@ app/Http/Controllers/Auth/RegisteredUserController.php        →  (REPLACE Bree
 app/Http/Controllers/Auth/VerifyEmailController.php           →  (REPLACE Breeze's)
 app/Http/Controllers/AdminController.php                →  (NEW)
 app/Http/Controllers/DashboardController.php            →  (NEW)
+app/Http/Controllers/FavoriteController.php             →  (NEW)
 app/Http/Controllers/LessonPlanController.php           →  (NEW)
 app/Http/Controllers/VoteController.php                 →  (NEW)
+
+tests/Feature/SemanticVersionTest.php                   →  (NEW)
 
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 
@@ -96,6 +100,10 @@ database/migrations/2024_01_01_000002_create_ratings_table.php       →  (NEW)
 database/migrations/2024_01_01_000003_add_unique_index_to_lesson_plans_name.php  →  (NEW)
 database/migrations/2026_02_26_163707_create_lesson_plan_views_table.php         →  (NEW)
 database/migrations/2026_02_26_210000_add_is_admin_to_users_table.php            →  (NEW)
+database/migrations/2026_02_26_230000_create_favorites_table.php                 →  (NEW)
+database/migrations/2026_02_27_000000_add_semantic_version_to_lesson_plans.php   →  (NEW)
+
+database/factories/LessonPlanFactory.php                →  (NEW)
 
 resources/views/admin/index.blade.php                   →  (NEW)
 
@@ -115,6 +123,7 @@ resources/views/lesson-plans/preview.blade.php          →  (NEW)
 resources/views/lesson-plans/my-plans.blade.php         →  (NEW)
 resources/views/emails/lesson-plan-uploaded.blade.php   →  (NEW)
 resources/views/emails/duplicate-content-removed.blade.php  →  (NEW)
+resources/views/guide.blade.php                         →  (NEW)
 
 routes/web.php                                          →  (REPLACE)
 routes/auth.php                                         →  (REPLACE — standard Breeze auth routes)
@@ -265,6 +274,7 @@ cp -r /tmp/LPC/resources/* ~/LessonPlanShare/resources/
 cp -r /tmp/LPC/routes/* ~/LessonPlanShare/routes/
 cp -r /tmp/LPC/public/* ~/LessonPlanShare/public/
 cp -r /tmp/LPC/storage/* ~/LessonPlanShare/storage/
+cp -r /tmp/LPC/tests/* ~/LessonPlanShare/tests/
 cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example
 cp /tmp/LPC/.gitignore ~/LessonPlanShare/.gitignore
 rm -rf /tmp/LPC
@@ -474,12 +484,18 @@ LessonPlanShare/
 │   ├── 2024_01_01_000002_create_ratings_table.php      (creates votes table)
 │   ├── 2024_01_01_000003_add_unique_index_to_lesson_plans_name.php
 │   ├── 2026_02_26_163707_create_lesson_plan_views_table.php
-│   └── 2026_02_26_210000_add_is_admin_to_users_table.php
+│   ├── 2026_02_26_210000_add_is_admin_to_users_table.php
+│   ├── 2026_02_26_230000_create_favorites_table.php
+│   └── 2026_02_27_000000_add_semantic_version_to_lesson_plans.php
+│
+├── database/factories/
+│   └── LessonPlanFactory.php
 │
 ├── app/Models/
 │   ├── User.php
 │   ├── LessonPlan.php
 │   ├── Vote.php
+│   ├── Favorite.php
 │   └── LessonPlanView.php
 │
 ├── app/Http/Controllers/
@@ -488,7 +504,8 @@ LessonPlanShare/
 │   ├── Auth/VerifyEmailController.php                  (session-free verification)
 │   ├── AdminController.php                             (admin panel: delete plans + users)
 │   ├── DashboardController.php                         (index + stats pages)
-│   ├── LessonPlanController.php                        (CRUD + preview + download)
+│   ├── FavoriteController.php                          (AJAX favorite toggle)
+│   ├── LessonPlanController.php                        (CRUD + preview + download + versioning)
 │   └── VoteController.php
 │
 ├── app/Http/Middleware/
@@ -527,6 +544,9 @@ LessonPlanShare/
 │       ├── edit.blade.php
 │       ├── preview.blade.php                           (Google Docs Viewer)
 │       └── my-plans.blade.php
+│
+├── tests/Feature/
+│   └── SemanticVersionTest.php                        (11 tests for semantic versioning)
 │
 └── routes/
     ├── web.php

@@ -8,7 +8,7 @@
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">{{ $lessonPlan->class_name }} — Day {{ $lessonPlan->lesson_day }}</h1>
                 <p class="text-sm text-gray-500 mt-1">
-                    Version {{ $lessonPlan->version_number }}
+                    Version {{ $lessonPlan->semantic_version }}
                     &middot; by {{ $lessonPlan->author->name ?? 'Unknown' }}
                     &middot; {{ $lessonPlan->created_at->format('M j, Y g:ia') }} UTC
                 </p>
@@ -46,7 +46,7 @@
                         </div>
                         <div>
                             <span class="text-gray-500">Version:</span>
-                            <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->version_number }}</span>
+                            <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->semantic_version }}</span>
                         </div>
                         <div>
                             <span class="text-gray-500">Author:</span>
@@ -148,8 +148,8 @@
                     <div class="space-y-3">
                         @foreach ($versions as $version)
                             <div class="flex items-start space-x-3 {{ $version->id === $lessonPlan->id ? 'bg-gray-50 -mx-2 px-2 py-1.5 rounded-md' : '' }}">
-                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
-                                    {{ $version->version_number }}
+                                <div class="flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono font-bold text-gray-600 whitespace-nowrap">
+                                    {{ $version->semantic_version }}
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     @if ($version->id === $lessonPlan->id)

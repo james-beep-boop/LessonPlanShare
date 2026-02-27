@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/guide', fn () => view('guide'))->name('guide');
 
 /*
 |--------------------------------------------------------------------------
@@ -39,6 +40,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // My Plans
     Route::get('/my-plans', [LessonPlanController::class, 'myPlans'])
         ->name('my-plans');
+
+    // AJAX: compute next semantic version for a class/day (used by create + edit forms)
+    Route::get('/lesson-plans-next-version', [LessonPlanController::class, 'nextVersion'])
+        ->name('lesson-plans.next-version');
 
     // Create new plan
     Route::get('/lesson-plans-create', [LessonPlanController::class, 'create'])

@@ -16,16 +16,19 @@ use Illuminate\Support\Facades\DB;
  * - Subsequent versions link back to the root via original_id and to their
  *   immediate predecessor via parent_id.
  * - Documents are stored on disk with a canonical filename generated from
- *   structured fields: {ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC.ext
+ *   structured fields: {ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC_v{major}-{minor}-{patch}.ext
  * - A SHA-256 hash of the file contents is stored for duplicate detection
  *   (see DetectDuplicateContent artisan command).
  * - vote_score is a cached aggregate of all votes for this version, updated
  *   by VoteController after each vote action to avoid expensive SUM() queries.
+ * - Semantic versioning (major.minor.patch) is assigned GLOBALLY per
+ *   (class_name, lesson_day) pair. A unique DB index enforces uniqueness.
  *
  * Database columns:
  * - id, class_name, lesson_day, description, name (canonical), original_id (FK),
- *   parent_id (FK), version_number, author_id (FK), file_path, file_name,
- *   file_size, file_hash, vote_score, created_at, updated_at.
+ *   parent_id (FK), version_number, version_major, version_minor, version_patch,
+ *   author_id (FK), file_path, file_name, file_size, file_hash, vote_score,
+ *   created_at, updated_at.
  */
 class LessonPlan extends Model
 {
@@ -35,7 +38,7 @@ class LessonPlan extends Model
      * Mass-assignable attributes.
      *
      * Note: vote_score is included because recalculateVoteScore() updates it
-     * via saveQuietly(), but it should never come from user input.
+     * via a raw DB update, but it should never come from user input.
      */
     protected $fillable = [
         'class_name',      // Subject name (e.g., 'English', 'Mathematics', 'Science')
@@ -45,6 +48,9 @@ class LessonPlan extends Model
         'original_id',     // FK: root plan in this version family (NULL for root)
         'parent_id',       // FK: immediate predecessor version (NULL for root)
         'version_number',  // Auto-incremented within the family (1, 2, 3...)
+        'version_major',   // Semantic version: first integer (always 1 in this system)
+        'version_minor',   // Semantic version: second integer (bumped on major revision)
+        'version_patch',   // Semantic version: third integer (bumped on minor revision)
         'author_id',       // FK: the user who uploaded this version
         'file_path',       // Relative path on the 'public' disk (e.g., 'lessons/...')
         'file_name',       // Canonical filename with extension (for downloads)
@@ -110,13 +116,15 @@ class LessonPlan extends Model
      * For the root plan, original_id is NULL, so we match on id instead.
      * Returns a query builder (not a relationship) so it can be chained.
      * Used by the show page to display the version history sidebar.
+     * Ordered by semantic version (minor ASC, patch ASC) for correct display.
      */
     public function familyVersions()
     {
         $rootId = $this->original_id ?? $this->id;
         return LessonPlan::where('id', $rootId)
             ->orWhere('original_id', $rootId)
-            ->orderBy('version_number', 'asc');
+            ->orderBy('version_minor', 'asc')
+            ->orderBy('version_patch', 'asc');
     }
 
     /**
@@ -131,8 +139,20 @@ class LessonPlan extends Model
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  Accessors (virtual attributes accessed as $plan->upvote_count, etc.)
+    //  Accessors (virtual attributes accessed as $plan->semantic_version, etc.)
     // ══════════════════════════════════════════════════════════════
+
+    /**
+     * The human-readable semantic version string (e.g. "1.2.16").
+     *
+     * This is the canonical display version used across all views.
+     * The underlying integers (version_major, version_minor, version_patch)
+     * allow correct numeric sorting — this accessor is display-only.
+     */
+    public function getSemanticVersionAttribute(): string
+    {
+        return "{$this->version_major}.{$this->version_minor}.{$this->version_patch}";
+    }
 
     /**
      * Count of upvotes (+1) for this version.
@@ -187,6 +207,12 @@ class LessonPlan extends Model
      * For the root plan, this returns its own id.
      * For descendants, this returns original_id.
      * Used to group all versions together.
+     *
+     * IMPORTANT: This accessor is NOT safe to call on partial Eloquent
+     * results (e.g., SELECT with COALESCE aliases) that omit the 'id'
+     * or 'original_id' columns — it will throw a TypeError.
+     * The DashboardController::stats() method explicitly avoids using
+     * the alias 'root_id' for this reason.
      */
     public function getRootIdAttribute(): int
     {
@@ -224,36 +250,47 @@ class LessonPlan extends Model
     /**
      * Generate a canonical name from the structured fields.
      *
-     * Format: "{ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC"
+     * Format: "{ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC_v{major}-{minor}-{patch}"
      *
-     * Example: "Mathematics_Day5_david@sheql.com_20260221_143022UTC"
+     * Example: "Mathematics_Day5_davidsheqlcom_20260227_143022UTC_v1-2-16"
      *
      * Sanitization:
      * - Spaces are replaced with hyphens
      * - Special characters (except A-Z, a-z, 0-9, hyphen) are stripped
-     * - The @ and . in email addresses are removed, which is intentional
-     *   (e.g., "david@sheql.com" becomes "davidsheqlcom")
      *
      * The timestamp defaults to the current UTC time but can be overridden
      * (useful for testing or backfilling historical records).
      *
-     * @param  string       $className   Subject name (e.g., 'Mathematics')
-     * @param  int          $lessonDay   Lesson number (1–20)
-     * @param  string       $authorName  Author's display name (email address)
-     * @param  Carbon|null  $timestamp   Optional UTC timestamp override
+     * The $semanticVersion array [major, minor, patch] is appended to the name
+     * so the filename reflects the exact version it contains.
+     *
+     * @param  string       $className       Subject name (e.g., 'Mathematics')
+     * @param  int          $lessonDay       Lesson number (1–20)
+     * @param  string       $authorName      Author's display name
+     * @param  Carbon|null  $timestamp       Optional UTC timestamp override
+     * @param  array|null   $semanticVersion [major, minor, patch] integers
      * @return string       The canonical name (without file extension)
      */
-    public static function generateCanonicalName(string $className, int $lessonDay, string $authorName, ?Carbon $timestamp = null): string
-    {
+    public static function generateCanonicalName(
+        string $className,
+        int $lessonDay,
+        string $authorName,
+        ?Carbon $timestamp = null,
+        ?array $semanticVersion = null
+    ): string {
         $ts = ($timestamp ?? Carbon::now('UTC'))->format('Ymd_His');
         // Sanitize: replace spaces with hyphens, remove special chars.
-        // Fallback to 'Unknown' if sanitization produces an empty string
-        // (e.g., if a name contained only special characters).
+        // Fallback to 'Unknown' if sanitization produces an empty string.
         $cleanClass  = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', $className));
         $cleanAuthor = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', $authorName));
         $cleanClass  = $cleanClass  !== '' ? $cleanClass  : 'Unknown';
         $cleanAuthor = $cleanAuthor !== '' ? $cleanAuthor : 'Unknown';
-        return "{$cleanClass}_Day{$lessonDay}_{$cleanAuthor}_{$ts}UTC";
+        $name = "{$cleanClass}_Day{$lessonDay}_{$cleanAuthor}_{$ts}UTC";
+        if ($semanticVersion !== null) {
+            [$major, $minor, $patch] = $semanticVersion;
+            $name .= "_v{$major}-{$minor}-{$patch}";
+        }
+        return $name;
     }
 
     /**
@@ -262,12 +299,13 @@ class LessonPlan extends Model
      * Handles the version-family linkage automatically:
      * - Sets original_id to the root of this family
      * - Sets parent_id to THIS plan's id
-     * - Auto-increments the version number
+     * - Auto-increments the version_number (family-internal counter)
      *
-     * The $attributes array can override any defaults (class_name, lesson_day,
-     * description, etc.) — this allows re-categorizing a plan in a new version.
+     * The $attributes array MUST include version_major, version_minor, version_patch
+     * (computed globally by LessonPlanController::computeNextSemanticVersion()).
+     * It can also override any defaults (class_name, lesson_day, description, etc.).
      *
-     * Called by LessonPlanController::update().
+     * Called by LessonPlanController::update() for same-author uploads.
      *
      * @param  array  $attributes  Overrides for the new version's fields
      * @return LessonPlan          The newly created version
@@ -276,7 +314,7 @@ class LessonPlan extends Model
     {
         $rootId = $this->original_id ?? $this->id;
 
-        // Find the highest version number in this family
+        // Find the highest version number in this family (family-internal counter)
         $maxVersion = LessonPlan::where('id', $rootId)
             ->orWhere('original_id', $rootId)
             ->max('version_number');
@@ -295,18 +333,13 @@ class LessonPlan extends Model
      * Recalculate and store the cached vote_score from the votes table.
      *
      * Called by VoteController::store() after every vote action (create,
-     * toggle off, or switch direction). Uses saveQuietly() to suppress
-     * model events during this background recalculation.
-     *
-     * The cached score is displayed on the dashboard and show pages,
-     * avoiding an expensive SUM() join on every page load.
+     * toggle off, or switch direction). Uses a raw DB update to suppress
+     * model events and avoid touching updated_at (which would cause
+     * voted-on plans to float to the top of the "Updated" sort).
      */
     public function recalculateVoteScore(): void
     {
         $score = $this->votes()->sum('value');
-        // Use a raw DB update so voting never touches updated_at.
-        // saveQuietly() suppresses model events but still updates timestamps,
-        // which would cause voted-on plans to float to the top of the "Updated" sort.
         DB::table('lesson_plans')->where('id', $this->id)->update(['vote_score' => $score]);
         $this->vote_score = $score; // keep local attribute in sync
     }

@@ -17,7 +17,7 @@
                 <label for="class_name_select" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
                 <select id="class_name_select"
                         x-model="selected"
-                        @change="isOther = (selected === '__other__'); if (!isOther) custom = '';"
+                        @change="isOther = (selected === '__other__'); if (!isOther) custom = ''; $dispatch('lesson-meta-changed')"
                         class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     <option value="">— Select a class —</option>
@@ -48,6 +48,7 @@
             <div>
                 <label for="lesson_day" class="block text-sm font-medium text-gray-700 mb-1">Lesson Number *</label>
                 <select name="lesson_day" id="lesson_day" required
+                        @change="$dispatch('lesson-meta-changed')"
                         class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     <option value="">—</option>
@@ -77,12 +78,16 @@
                 @error('description') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            {{-- Generated Name Preview --}}
-            <div class="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <p class="text-xs font-medium text-gray-600 mb-1">Document Name (auto-generated)</p>
+            {{-- Version Preview --}}
+            {{-- Fetches the computed next version for the selected class/day via AJAX.
+                 Updates whenever class_name or lesson_day change (via lesson-meta-changed event). --}}
+            <div x-data="createVersionPreview()" x-init="refresh()" @lesson-meta-changed.window="refresh()"
+                 class="bg-gray-50 border border-gray-200 rounded-md p-3">
+                <p class="text-xs font-medium text-gray-600 mb-1">Version (auto-assigned)</p>
                 <p class="text-xs text-gray-500">
-                    Your document will be named using the format:<br>
-                    <code class="bg-gray-100 px-1 rounded text-gray-700">{ClassName}_Day{N}_{AuthorName}_{UTC-Timestamp}</code>
+                    This upload will be assigned version
+                    <span class="font-mono font-semibold text-gray-800" x-text="loading ? '…' : version"></span>
+                    for the selected class and lesson day.
                 </p>
             </div>
 
@@ -112,8 +117,45 @@
         </form>
     </div>
 
-    {{-- Client-side file validation (size + type check before upload) --}}
+    {{-- Client-side scripts: file validation + version preview --}}
     <script>
+        /**
+         * Fetches the computed next semantic version for the currently-selected
+         * class/day from the AJAX endpoint. New uploads always use 'major'.
+         * Returns 1.0.0 if no class/day is selected yet.
+         */
+        function createVersionPreview() {
+            return {
+                version: '1.0.0',
+                loading: false,
+                async refresh() {
+                    const className = document.querySelector('[name="class_name"]')?.value || '';
+                    const lessonDay = document.querySelector('[name="lesson_day"]')?.value || '';
+                    if (!className || !lessonDay) { this.version = '1.0.0'; return; }
+                    this.loading = true;
+                    try {
+                        const params = new URLSearchParams({
+                            class_name: className,
+                            lesson_day: lessonDay,
+                            revision_type: 'major'
+                        });
+                        const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                            }
+                        });
+                        const d = await r.json();
+                        this.version = d.version;
+                    } catch (e) {
+                        this.version = '1.0.0';
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            };
+        }
+
         function fileValidator() {
             const maxSize = 1 * 1024 * 1024; // 1 MB
             const allowed = ['doc','docx','txt','rtf','odt']; // must match StoreLessonPlanRequest

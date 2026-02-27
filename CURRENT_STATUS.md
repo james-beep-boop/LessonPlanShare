@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-26 (admin system, Teacher Name, merged auth modal, view-gated AJAX voting, sub-nav removed, Stats 500 fix, admin privilege toggle, security hardening, Google Docs cache-buster)
+**Last updated:** 2026-02-27 (semantic versioning: major.minor.patch per class/day, revision type selector, live AJAX version preview, canonical filename suffix `_v{major}-{minor}-{patch}`, backfill migration, feature tests)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -30,6 +30,8 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Dashboard column alignments: Class left, Day# center, Author left, Version center, Rating center, Updated left
 - Dashboard Actions: "View/Edit/Vote" button (greyed out for guests); no Download button on dashboard
 - View tracking: visiting `lesson-plans.show` records a view in `lesson_plan_views` table; gates AJAX voting
+- Favorites: AJAX star toggle on dashboard; yellow when favorited, grey when not; greyed out for guests; `favorites` table with unique `[user_id, lesson_plan_id]` index; `FavoriteController::toggle()` returns JSON
+- Guide page (`/guide`): public, linked in header for all users; covers login, version numbering, view/download, upload, delete, voting, and admin rules
 - Plan detail page (two-column layout, voting, version history sidebar)
 - Print/Save PDF button on plan detail page (`window.print()`)
 - Back button on show page is a prominent styled button ("← Back to Dashboard")
@@ -43,7 +45,21 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Duplicate content detection artisan command (`lessons:detect-duplicates [--dry-run]`)
 - File type restriction: DOC, DOCX, TXT, RTF, ODT only (client and server both validated)
 - SMTP configured for `smtp.dreamhost.com` (port 587, TLS)
-- Version numbers displayed as plain integers (no "v" prefix)
+- **Semantic versioning:** `major.minor.patch` format per `(class_name, lesson_day)` scope
+  - First upload for any class/day → `1.0.0`; first integer always stays `1`
+  - Major revision (new standalone version) → increment second integer, reset third (e.g., `1.1.0`)
+  - Minor revision (patch/tweak) → increment third integer only (e.g., `1.1.1`)
+  - Global sequence: version is determined by the highest existing version for that class/day regardless of author or family
+  - DB columns: `version_major`, `version_minor`, `version_patch` (unsigned int, correct numeric sort)
+  - Unique DB index on `(class_name, lesson_day, version_major, version_minor, version_patch)` as race guard
+  - `semantic_version` Eloquent accessor on `LessonPlan` model → `"1.2.3"` string
+  - Canonical filename includes `_v{major}-{minor}-{patch}` suffix (hyphens, not dots)
+  - `revision_type` radio (major/minor) shown on edit/new-version form
+  - Live AJAX version preview: fetches from `GET /lesson-plans-next-version` as class/day changes
+  - Server pre-computes both options in `edit()` to avoid AJAX round-trip on page load
+  - Unique constraint violation (race condition) caught and returns user-friendly error
+  - `LessonPlanFactory` for tests; `tests/Feature/SemanticVersionTest.php` (11 tests)
+  - Backfill migration assigns `1.N.0` to all existing rows grouped by class/day
 - `lesson-plans.show`, `lesson-plans.preview`, `lesson-plans.download` require `auth+verified`
 - "Favorite Lesson Plan" counter links to `lesson-plans.show`
 - Upload button (create + edit forms) greyed out until a valid file is chosen
@@ -62,27 +78,11 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 
 ## Not Started
 
-### Favorites System (Section 15 of spec)
-
-Zero code exists for this feature. Full implementation required:
-
-- [ ] **Migration:** `database/migrations/..._create_favorites_table.php`
-  - Columns: `id`, `user_id` (FK → users.id CASCADE), `lesson_plan_id` (FK → lesson_plans.id CASCADE), `created_at`
-  - Unique index on `[user_id, lesson_plan_id]`
-- [ ] **Model:** `app/Models/Favorite.php`
-- [ ] **Controller:** `app/Http/Controllers/FavoriteController.php` — `toggle()` returns JSON `{ favorited: bool }`
-- [ ] **Route:** `POST /lesson-plans/{lessonPlan}/favorite` in auth+verified group, named `favorites.toggle`
-- [ ] **Dashboard column:** Checkbox in rightmost column; AJAX Alpine.js toggle; greyed out for guests
-- [ ] **DashboardController:** Eager-load user's favorites to pre-populate checkboxes
-- [ ] **Update DEPLOYMENT.md + UPDATE_SITE.sh:** Add `FavoriteController.php`, `Favorite.php`, migration
+No major features remain. All spec items are implemented.
 
 ---
 
 ## Suggested Next Tasks (in priority order)
-
-### Priority 1 — Favorites system (larger feature)
-Full implementation: migration → model → controller → route → dashboard AJAX column.
-See "Not Started" section above for full checklist.
 
 ---
 
@@ -102,7 +102,9 @@ See "Not Started" section above for full checklist.
 | `resources/views/components/vote-buttons.blade.php` | 4-mode vote display (readonly/locked/inline/form) |
 | `resources/views/dashboard.blade.php` | 7-column table with inline AJAX vote buttons |
 | `resources/views/admin/index.blade.php` | Admin panel: plans + users tables with delete/bulk-delete |
-| `database/migrations/` | 5 migrations (including lesson_plan_views + is_admin) |
+| `database/migrations/` | 7 migrations (views, is_admin, favorites, semantic_version) |
+| `database/factories/LessonPlanFactory.php` | Factory for feature tests |
+| `tests/Feature/SemanticVersionTest.php` | 11 feature tests for semantic versioning |
 
 ## Admin Access Setup
 

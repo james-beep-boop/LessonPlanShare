@@ -38,6 +38,7 @@ cp -a /tmp/LPC/resources/. ~/LessonPlanShare/resources/ 2>/dev/null || true
 cp -a /tmp/LPC/routes/. ~/LessonPlanShare/routes/ 2>/dev/null || true
 cp -a /tmp/LPC/public/. ~/LessonPlanShare/public/ 2>/dev/null || true
 cp -a /tmp/LPC/storage/. ~/LessonPlanShare/storage/ 2>/dev/null || true
+cp -a /tmp/LPC/tests/. ~/LessonPlanShare/tests/ 2>/dev/null || true
 cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example 2>/dev/null || true
 cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
 cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true

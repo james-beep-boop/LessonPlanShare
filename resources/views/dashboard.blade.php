@@ -133,7 +133,7 @@
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
-                            <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->version_number }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-center">
                                 @php
                                     // Voting is unlocked when: logged in + verified + not the author + has viewed the plan

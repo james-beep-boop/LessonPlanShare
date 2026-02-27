@@ -55,6 +55,12 @@
                     </a>
                     @endif
 
+                    {{-- Guide — visible to all users --}}
+                    <a href="{{ route('guide') }}"
+                       class="text-base sm:text-lg font-medium {{ request()->routeIs('guide') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                        Guide
+                    </a>
+
                     @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
