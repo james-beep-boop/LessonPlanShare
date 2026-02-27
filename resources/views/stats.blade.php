@@ -4,9 +4,15 @@
     <div class="max-w-4xl mx-auto">
 
         {{-- Page Title --}}
-        <div class="mb-8">
-            <h1 class="text-2xl font-bold text-gray-900">Archive Statistics</h1>
-            <p class="text-sm text-gray-500 mt-1">A snapshot of the ARES Education Lesson Plan Archive.</p>
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Archive Statistics</h1>
+                <p class="text-sm text-gray-500 mt-1">A snapshot of the ARES Education Lesson Plan Archive.</p>
+            </div>
+            <a href="{{ route('dashboard') }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors shrink-0">
+                &larr; Back to Dashboard
+            </a>
         </div>
 
         {{-- ── Summary Counters ── --}}

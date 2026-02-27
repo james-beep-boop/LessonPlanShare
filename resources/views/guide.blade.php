@@ -6,8 +6,8 @@
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-2xl font-bold text-gray-900">How to Use This Site</h1>
             <a href="{{ route('dashboard') }}"
-               class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                &larr; Back
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
+                &larr; Back to Dashboard
             </a>
         </div>
 
