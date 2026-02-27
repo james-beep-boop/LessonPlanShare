@@ -47,13 +47,11 @@
                     </a>
                     @endif
 
-                    {{-- Stats link — only for verified users --}}
-                    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                    {{-- Stats link — visible to all (route is public) --}}
                     <a href="{{ route('stats') }}"
                        class="text-base sm:text-lg font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
                         Stats
                     </a>
-                    @endif
 
                     {{-- Guide — visible to all users --}}
                     <a href="{{ route('guide') }}"

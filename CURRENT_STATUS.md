@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (semantic versioning, back buttons, code review fixes, targeted fix pass: thumbs icons, preview refresh, filter bar, sort UX, CC footer, favorites_only filter, cache-control headers)
+**Last updated:** 2026-02-27 (Codex security hardening pass: vote race-condition fix, verify-email replay hardening, UPDATE_SITE.sh error visibility, stats nav always visible, guide.blade.php stale wording fixed)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -23,6 +23,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Voting system (upvote/downvote toggle, self-vote prevention, cached `vote_score`)
 - `recalculateVoteScore()` uses raw `DB::table()` update — does NOT touch `updated_at`
 - VoteController returns JSON for `Accept: application/json` requests (AJAX support)
+- VoteController `Vote::create()` wrapped in `try/catch (QueryException)` for SQLSTATE 23000 — handles concurrent duplicate-insert race condition gracefully (idempotent no-op)
 - Dashboard with counters (unique classes, total plans, favorite plan), search, filter, sort, pagination (10/page)
 - Dashboard shows all versions by default; filter bar below search has "Show only latest" and "Show only my favorites" (verified users only) checkboxes that auto-submit
 - Dashboard filter bar also shows hint "Sort by clicking a blue column header below"
@@ -37,7 +38,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - View tracking: visiting `lesson-plans.show` records a view in `lesson_plan_views` table; gates AJAX voting
 - Favorites: AJAX star toggle on dashboard; yellow when favorited, grey when not; greyed out for guests **and unverified users**; `favorites` table with unique `[user_id, lesson_plan_id]` index; `FavoriteController::toggle()` returns JSON
 - Guide page (`/guide`): public, linked in header for all users; covers login, version numbering, view/download, upload, delete, voting, and admin rules
-- Footer: "Kenya Lesson Plan Repository version {VERSION} © YEAR ARES Education — This work is licensed under CC BY-SA 4.0" + inline SVG CC/BY/SA badge icons (no external CDN)
+- Footer: "Kenya Lesson Plan Repository version {VERSION} © YEAR ARES Education — Lesson Plans are licensed under CC BY-SA 4.0" + inline SVG CC/BY/SA badge icons (no external CDN)
 - Footer version from `storage/app/version.txt` (written by `UPDATE_SITE.sh` using `git describe --tags --abbrev=0` to prefer clean tag, falls back to full describe/hash/dev)
 - Vote buttons: thumbs-up/down (👍👎) everywhere — locked mode, inline AJAX mode, form mode (SVG). Arrow icons removed.
 - Vote AJAX (inline dashboard): error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
@@ -49,7 +50,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
 - Preview page buttons: "↻ Refresh Viewer", "Download File", "← Back to Details", "Home"
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
-- Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised) — **public, no auth required** (route is outside the auth+verified middleware group)
+- Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised) — **public, no auth required** (route is outside the auth+verified middleware group); Stats link in header is visible to **all users including guests** (consistent with the public route)
 - Stats `groupBy` bug fixed: uses `DB::raw('COALESCE(original_id, id)')` not the alias
 - Upload success dialog (Alpine.js modal, canonical filename display)
 - Flash messages (success/error/status)
@@ -77,7 +78,8 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - "Favorite Lesson Plan" counter links to `lesson-plans.show`
 - Upload button (create + edit forms) greyed out until a valid file is chosen
 - After new version upload → redirects to dashboard (not show page)
-- Session regeneration on all `Auth::login()` calls (all three auth cases + VerifyEmailController)
+- Session regeneration on all `Auth::login()` calls (all three auth cases + VerifyEmailController fresh-verify branch)
+- VerifyEmailController already-verified replay branch does NOT call `Auth::login()` — prevents a signed-URL replay from granting a new session
 - **Admin system:**
   - `is_admin` boolean column on `users` table (migration `2026_02_26_210000_add_is_admin_to_users_table.php`)
   - `AdminMiddleware` enforces the flag; 403 if not admin

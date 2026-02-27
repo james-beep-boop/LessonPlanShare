@@ -50,7 +50,7 @@
                      <li>Click any column heading (Class, Day&nbsp;#, Author, Rating, Updated) to sort the list</li>
                     <li>Type in the <strong>Search</strong> box (class name, topic, or teacher name)</li>
                     <li>Choose a <strong>Class</strong> from the dropdown filter</li>
-                    <li>Tick <strong>Latest version only</strong> — if you want to see just the latest version, as it hides older versions</li>
+                    <li>Tick <strong>Show only latest</strong> (in the filter bar below the search box) — hides older versions so you see only the most recent plan for each class/day</li>
                 </ul>
                 <p>Click the <strong>View/Edit/Vote</strong> button on any row to open that lesson plan.</p>
             </section>
@@ -125,7 +125,7 @@
                 <div class="bg-red-50 border border-red-200 rounded-md px-4 py-3 text-red-800 mb-3">
                     <strong>Warning:</strong> Deleted plans are gone permanently and cannot be recovered.
                 </div>
-                <p class="text-gray-600">To see all your plans in one place, click <strong>My Plans</strong> in the page header.</p>
+                <p class="text-gray-600">To see all your plans, type your teacher name in the <strong>Search</strong> box on the dashboard.</p>
             </section>
 
             {{-- 9. For Administrators --}}

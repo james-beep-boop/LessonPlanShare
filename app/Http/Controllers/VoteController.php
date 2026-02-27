@@ -65,12 +65,23 @@ class VoteController extends Controller
                 $existingVote->update(['value' => $data['value']]);
             }
         } else {
-            // No existing vote — create a new one
-            Vote::create([
-                'lesson_plan_id' => $lessonPlan->id,
-                'user_id'        => Auth::id(),
-                'value'          => $data['value'],
-            ]);
+            // No existing vote — create a new one.
+            // Wrapped in try/catch to handle the rare race condition where two
+            // concurrent requests both pass the "no existing vote" check above
+            // and then both attempt to insert, triggering a unique index violation.
+            try {
+                Vote::create([
+                    'lesson_plan_id' => $lessonPlan->id,
+                    'user_id'        => Auth::id(),
+                    'value'          => $data['value'],
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // SQLSTATE 23000 = integrity constraint violation (duplicate key).
+                // The other request already inserted — treat as a no-op.
+                if ($e->getCode() !== '23000') {
+                    throw $e;
+                }
+            }
         }
 
         // Recalculate the cached vote_score column on the lesson plan

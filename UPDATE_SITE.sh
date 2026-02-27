@@ -30,20 +30,24 @@ echo "  Fetching latest from GitHub..."
 rm -rf /tmp/LPC
 git clone --depth 1 --quiet -c pack.threads=1 https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC
 
-# Overlay custom files (repo has files at the root, not in a subfolder)
+# Overlay custom files (repo has files at the root, not in a subfolder).
+# Required directories: errors are printed but the script continues (|| true keeps
+# set -e from aborting on DreamHost filesystem quirks — but we no longer suppress
+# error output so failures are visible in the terminal).
 echo "  Copying updated files..."
-cp -a /tmp/LPC/app/. ~/LessonPlanShare/app/ 2>/dev/null || true
-cp -a /tmp/LPC/database/. ~/LessonPlanShare/database/ 2>/dev/null || true
-cp -a /tmp/LPC/resources/. ~/LessonPlanShare/resources/ 2>/dev/null || true
-cp -a /tmp/LPC/routes/. ~/LessonPlanShare/routes/ 2>/dev/null || true
-cp -a /tmp/LPC/public/. ~/LessonPlanShare/public/ 2>/dev/null || true
-cp -a /tmp/LPC/storage/. ~/LessonPlanShare/storage/ 2>/dev/null || true
+cp -a /tmp/LPC/app/.       ~/LessonPlanShare/app/       || true
+cp -a /tmp/LPC/database/.  ~/LessonPlanShare/database/  || true
+cp -a /tmp/LPC/resources/. ~/LessonPlanShare/resources/ || true
+cp -a /tmp/LPC/routes/.    ~/LessonPlanShare/routes/    || true
+cp -a /tmp/LPC/public/.    ~/LessonPlanShare/public/    || true
+cp -a /tmp/LPC/storage/.   ~/LessonPlanShare/storage/   || true
+# Optional files — suppress missing-file noise
 cp -a /tmp/LPC/tests/. ~/LessonPlanShare/tests/ 2>/dev/null || true
-cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example 2>/dev/null || true
-cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
-cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
-cp /tmp/LPC/UPDATE_SITE.sh ~/LessonPlanShare/ 2>/dev/null || true
-cp /tmp/LPC/VERSION ~/LessonPlanShare/ 2>/dev/null || true
+cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example  2>/dev/null || true
+cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/             2>/dev/null || true
+cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/       2>/dev/null || true
+cp /tmp/LPC/UPDATE_SITE.sh ~/LessonPlanShare/            2>/dev/null || true
+cp /tmp/LPC/VERSION ~/LessonPlanShare/                   2>/dev/null || true
 
 # ── Stale file cleanup (explicit list) ──
 # When a file is removed from the repo, add it here so it gets cleaned up

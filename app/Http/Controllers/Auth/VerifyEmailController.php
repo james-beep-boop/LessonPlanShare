@@ -33,11 +33,13 @@ class VerifyEmailController extends Controller
             abort(403, 'Invalid verification link.');
         }
 
-        // Already verified? Just redirect.
+        // Already verified? Redirect without logging in.
+        // Do NOT call Auth::login() here — this branch can be triggered by
+        // replaying the verification link (e.g. clicking it a second time, or
+        // sharing the link). Granting a session via a replayed signed URL is a
+        // security risk; the user should sign in normally instead.
         if ($user->hasVerifiedEmail()) {
-            Auth::login($user);
-            $request->session()->regenerate();
-            return redirect()->route('dashboard')->with('success', 'Your email is already verified.');
+            return redirect()->route('dashboard')->with('success', 'Your email is already verified. Please sign in.');
         }
 
         // Mark as verified and fire the Verified event
