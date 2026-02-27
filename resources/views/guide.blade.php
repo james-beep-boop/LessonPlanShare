@@ -24,8 +24,7 @@
                 <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">1. Signing In</h2>
                 <p class="mb-3">You need an account to view, download, vote, or upload. Here is how:</p>
                 <ol class="list-decimal pl-5 space-y-1.5 mb-4">
-                    <li>Go to <strong>www.sheql.com</strong></li>
-                    <li>Click <strong>Sign In</strong> (top-right corner)</li>
+                    <li>At <strong>www.sheql.com</strong> click <strong>Sign In</strong> (top-right corner)</li>
                     <li>Type your <strong>Teacher Name</strong> (the name other teachers will see), your <strong>email address</strong>, and a <strong>password</strong></li>
                     <li>Click <strong>Sign In</strong></li>
                 </ol>
@@ -48,10 +47,10 @@
                 <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">2. Finding Lesson Plans</h2>
                 <p class="mb-3">After signing in you land on the <strong>Dashboard</strong> — your main screen. Quick ways to find what you need:</p>
                 <ul class="list-disc pl-5 space-y-1 mb-3">
+                     <li>Click any column heading (Class, Day&nbsp;#, Author, Rating, Updated) to sort the list</li>
                     <li>Type in the <strong>Search</strong> box (class name, topic, or teacher name)</li>
                     <li>Choose a <strong>Class</strong> from the dropdown filter</li>
-                    <li>Tick <strong>Latest version only</strong> — recommended, hides older versions</li>
-                    <li>Click any column heading (Class, Day&nbsp;#, Author, Rating, Updated) to sort the list</li>
+                    <li>Tick <strong>Latest version only</strong> — if you want to see just the latest version, as it hides older versions</li>
                 </ul>
                 <p>Click the <strong>View/Edit/Vote</strong> button on any row to open that lesson plan.</p>
             </section>
