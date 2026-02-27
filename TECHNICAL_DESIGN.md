@@ -458,7 +458,8 @@ Eight columns, all sortable by clicking the header:
 ### 9.2 Document Viewer
 
 - Uses Google Docs Viewer to render `.doc`/`.docx` files in an iframe without server-side conversion
-- The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true`
+- The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true&t={time()}`
+- The `&t=` Unix timestamp is a required cache-buster: without it, Google's viewer silently goes blank on the second and subsequent views of the same document URL
 - The file must be publicly accessible via its storage URL for the viewer to work
 - Iframe height: `75vh` (minimum 500px)
 - Below the iframe: a gray-50 footer bar with a note about Google Docs Viewer and a secondary download link
