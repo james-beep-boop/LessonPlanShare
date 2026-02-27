@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (semantic versioning: major.minor.patch per class/day, revision type selector, live AJAX version preview, canonical filename suffix `_v{major}-{minor}-{patch}`, backfill migration, feature tests)
+**Last updated:** 2026-02-27 (semantic versioning, back buttons on guide/admin/stats pages)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -34,7 +34,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Guide page (`/guide`): public, linked in header for all users; covers login, version numbering, view/download, upload, delete, voting, and admin rules
 - Plan detail page (two-column layout, voting, version history sidebar)
 - Print/Save PDF button on plan detail page (`window.print()`)
-- Back button on show page is a prominent styled button ("← Back to Dashboard")
+- Black `← Back to Dashboard` button (white text, `bg-gray-900 hover:bg-gray-700`) in the top-right header area on: show page, guide page, admin panel, stats page
 - Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
 - Preview page buttons: "Home" (→ dashboard) and "← Back to Details" (→ show page)
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)

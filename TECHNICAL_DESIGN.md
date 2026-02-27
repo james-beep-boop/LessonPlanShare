@@ -496,7 +496,7 @@ In-browser editing is intentionally deferred to a future version. When implement
 3. **Top Contributors** — top 5 authors by total uploads (all versions counted). Numbered list with upload count.
 4. **Most Revised Plan** — the plan family with the most versions. Shows class/day as a link, original author, and version count. Only shown if at least one family has more than 1 version.
 
-**Footer:** "Back to Browse" link to dashboard.
+**Header:** Black `← Back to Dashboard` button (top-right, same style as show page).
 
 ---
 
@@ -598,7 +598,7 @@ The `vote-buttons` Blade component operates in four modes:
 
 **Access:** Requires authentication + verified email + `is_admin = true`. Enforced by `AdminMiddleware`.
 
-**Layout:** Two-section page within `<x-layout>`. Admin link appears in the header for admin users only.
+**Layout:** Two-section page within `<x-layout>`. Header row: page title + black `← Back to Dashboard` button (top-right). Admin link appears in the site header for admin users only.
 
 **Setting admin status:** The first admin must be set via tinker on the server. All subsequent promotions can be done through the Admin panel UI.
 ```bash
