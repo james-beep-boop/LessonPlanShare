@@ -302,15 +302,22 @@ Visible to authenticated + verified users only. A prominent "Upload New Lesson" 
 
 ### 4.3 Search & Filter Bar
 
-Contained in a bordered card:
+**Search bar** (bordered card):
 - **Search** (text input): Free-text search across document name, class name, description, and author name. Uses SQL `LIKE %term%` queries.
 - **Class** (dropdown): Filters by class name. Options are dynamically populated from the distinct `class_name` values that exist in the database.
-- **Latest version only** (checkbox): When unchecked (default), shows ALL versions as separate rows. When checked, restricts to the latest version of each plan family.
 - **Search** button (gray-900) and **Clear** link.
+
+**Filter utility bar** (below search bar, separate form with auto-submit checkboxes):
+- Hint text: "Sort by clicking a blue column header below"
+- **Show only latest** checkbox (`latest_only=1`): restricts to one row per plan family (highest-id version per `COALESCE(original_id, id)` group).
+- **Show only my favorites** checkbox (`favorites_only=1`): restricts to plans the logged-in verified user has favorited. Hidden for guests and unverified users.
+- Checkboxes auto-submit via `onchange="this.form.submit()"`. Hidden inputs carry forward current `search`, `class_name`, `sort`, `order` params.
+
+Responses include `Cache-Control: no-store` and `Pragma: no-cache` headers to prevent proxy/browser serving stale counts.
 
 ### 4.4 Results Table
 
-Eight columns, all sortable by clicking the header:
+Eight columns. Sort headers are styled as distinct blue button pills (active = blue-600 filled, inactive = blue-600 text with hover highlight). Clicking a header sorts ascending; clicking again toggles to descending.
 
 | # | Column | Alignment | Content |
 |---|---|---|---|
@@ -318,7 +325,7 @@ Eight columns, all sortable by clicking the header:
 | 2 | **Day #** | center | Lesson number |
 | 3 | **Author** | left | Teacher Name (from `users.name` via LEFT JOIN; sortable) |
 | 4 | **Version** | center | Semantic version string in `major.minor.patch` format (e.g., `1.0.0`, `1.2.3`). Sorted via three-column numeric `ORDER BY version_major, version_minor, version_patch`. |
-| 5 | **Rating** | center | **Guest:** readonly "Vote 👍 👎 +N". **Authenticated, unviewed plan:** greyed locked ▲▼ (tooltip: "View this plan to unlock voting"). **Authenticated, viewed plan (not author):** interactive AJAX ▲▼ with live score update. **Author:** greyed (can't self-vote). |
+| 5 | **Rating** | center | **Guest:** readonly "Vote 👍 👎 +N". **Authenticated, unviewed plan:** greyed 👍👎 (tooltip: "View this plan to unlock voting"). **Authenticated, viewed plan (not author):** interactive AJAX 👍👎 with live score update. **Author:** greyed (can't self-vote). |
 | 6 | **Updated** | left | Date only in "Mon D, YYYY" format (no time) |
 | 7 | **Actions** | center | Single button: "View/Edit/Vote" (gray-100, links to plan detail page). **Greyed out and non-clickable for guests and unverified users.** No Download button on the dashboard. |
 | 8 | **Favorite** | center | ★ star toggle. Authenticated + verified: yellow (★) when favorited, grey otherwise; AJAX POST to `favorites.toggle`. Guests and unverified users: grey non-clickable star. |
@@ -356,7 +363,7 @@ Eight columns, all sortable by clicking the header:
 - Large vote score number (green if positive, red if negative, gray if zero)
 - Text: "{N} upvotes, {N} downvotes"
 - Vote display label: "Vote 👍 👎"
-- **If authenticated and not the author:** Interactive upvote/downvote buttons (chevron arrows). The active vote direction is highlighted (green background for upvote, red for downvote). Clicking the same direction again removes the vote (toggle off). Clicking the opposite direction switches the vote. A helper text appears when a vote is active: "Click the same arrow again to remove your vote."
+- **If authenticated and not the author:** Interactive upvote/downvote buttons (Material Design thumbs-up/down SVG). The active vote direction is highlighted (green background for upvote, red for downvote). Clicking the same direction again removes the vote (toggle off). Clicking the opposite direction switches the vote. A helper text appears when a vote is active: "Click the same thumb again to remove your vote."
 - **If authenticated and is the author:** Text: "You cannot vote on your own lesson plan."
 - **If not authenticated:** "Sign in to vote on this plan." with a clickable "Sign in" link that opens the auth modal.
 
@@ -458,8 +465,10 @@ Eight columns, all sortable by clicking the header:
 ### 9.2 Document Viewer
 
 - Uses Google Docs Viewer to render `.doc`/`.docx` files in an iframe without server-side conversion
-- The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true&t={time()}`
-- The `&t=` Unix timestamp is a required cache-buster: without it, Google's viewer silently goes blank on the second and subsequent views of the same document URL
+- The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true&t={timestamp}`
+- The `&t=` timestamp is a required cache-buster: without it, Google's viewer silently goes blank on the second and subsequent views of the same document URL
+- Alpine.js manages the iframe `:src` reactively: initial `ts` = PHP `time()` (server); clicking "↻ Refresh Viewer" updates `ts = Date.now()` client-side, triggering an iframe reload without a full page reload
+- **↻ Refresh Viewer button:** small button above the iframe, right-aligned. Sufficient for most cases of a stuck/blank viewer without requiring a full page reload.
 - The file must be publicly accessible via its storage URL for the viewer to work
 - Iframe height: `75vh` (minimum 500px)
 - Below the iframe: a gray-50 footer bar with a note about Google Docs Viewer and a secondary download link
@@ -585,11 +594,11 @@ The `vote-buttons` Blade component operates in four modes:
 
 **Readonly** (guests): Shows the score with label "Vote 👍 👎 +N". No interactive elements.
 
-**Locked** (authenticated; plan not yet viewed, or is author): Greyed ▲ score ▼. Tooltip: "View this plan to unlock voting". No action on click.
+**Locked** (authenticated; plan not yet viewed, or is author): Greyed 👍 score 👎. Tooltip: "View this plan to unlock voting". No action on click.
 
-**Inline/AJAX** (authenticated; plan viewed; not author): Alpine.js ▲ score ▼ buttons. Clicking sends a `fetch()` POST with `Accept: application/json`. The `VoteController` returns `{ score, userVote }` JSON. Score and highlighting update in place without page reload.
+**Inline/AJAX** (authenticated; plan viewed; not author): Alpine.js 👍 score 👎 buttons. Clicking sends a `fetch()` POST with `Accept: application/json`. On non-ok responses, the handler returns early and swallows errors (`.catch(() => {})`), preventing unhandled rejections. The `VoteController` returns `{ score, userVote }` JSON. Score and highlighting update in place without page reload.
 
-**Form-based** (plan detail page): Standard POST form buttons (upvote/downvote chevrons). Active direction highlighted (green/red). Helper text when vote is active: "Click the same arrow again to remove your vote."
+**Form-based** (plan detail page): Standard POST form buttons (Material Design thumbs-up/down SVG). Active direction highlighted (green/red). Helper text when vote is active: "Click the same thumb again to remove your vote."
 
 ---
 
@@ -741,7 +750,14 @@ The application uses a clean, monochromatic black-and-white design language with
 
 ### 17.4 Footer
 
-Simple centered text: "© {year} ARES Education — Kenya Lesson Plan Repository" in `text-gray-400`. Separated from content by `border-t border-gray-200` and `mt-16` margin.
+Centered flex row (wraps on mobile) in `text-gray-400`. Separated from content by `border-t border-gray-200` and `mt-16` margin.
+
+Format: **"Kenya Lesson Plan Repository version {VERSION} © {year} ARES Education — This work is licensed under CC BY-SA 4.0"** followed by three inline SVG badge circles: CC · BY · SA.
+
+- `{VERSION}`: read from `storage/app/version.txt` (written by `UPDATE_SITE.sh`; defaults to `'dev'` if file missing)
+- `UPDATE_SITE.sh` writes the version using `git describe --tags --abbrev=0` (clean tag, e.g. `v1.2.0`), falling back to full describe then short hash then `'dev'`
+- CC BY-SA symbols are inline SVG circles with `CC`/`BY`/`SA` text — no external CDN; `aria-hidden="true"` on SVGs; containing `<span>` has `aria-label="Creative Commons Attribution ShareAlike 4.0"`
+- "CC BY-SA 4.0" text links to `https://creativecommons.org/licenses/by-sa/4.0/` (opens in new tab, `rel="license"`)
 
 ### 17.5 Form Styling
 

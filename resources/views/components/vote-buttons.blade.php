@@ -33,15 +33,15 @@
     </span>
 
 @elseif($locked)
-    {{-- Greyed arrows: auth user who hasn't viewed the plan yet (or is the author) --}}
+    {{-- Greyed thumbs: auth user who hasn't viewed the plan yet (or is the author) --}}
     <span class="inline-flex items-center gap-1 text-xs whitespace-nowrap"
           title="View this plan first to unlock voting">
-        <span class="px-0.5 text-gray-300 select-none">▲</span>
+        <span class="px-0.5 text-gray-300 select-none" aria-hidden="true">👍</span>
         <span class="font-semibold min-w-[2rem] text-center
               {{ $score > 0 ? 'text-green-600' : ($score < 0 ? 'text-red-600' : 'text-gray-400') }}">
             {{ $score > 0 ? '+' : '' }}{{ $score }}
         </span>
-        <span class="px-0.5 text-gray-300 select-none">▼</span>
+        <span class="px-0.5 text-gray-300 select-none" aria-hidden="true">👎</span>
     </span>
 
 @elseif($inline)
@@ -58,22 +58,26 @@
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({ value: value })
-                }).then(r => r.json()).then(d => {
+                }).then(r => {
+                    if (!r.ok) return null;
+                    return r.json();
+                }).then(d => {
+                    if (!d) return;
                     this.score = d.score;
                     this.userVote = d.userVote;
-                });
+                }).catch(() => {});
             }
          }"
          class="inline-flex items-center gap-1 text-xs whitespace-nowrap">
         <button @click="vote(1)" type="button" title="Upvote"
-                :class="userVote === 1 ? 'text-green-600 font-bold' : 'text-gray-400 hover:text-green-600'"
-                class="px-0.5 rounded transition">▲</button>
+                :class="userVote === 1 ? 'opacity-100' : 'opacity-40 hover:opacity-100'"
+                class="px-0.5 transition">👍</button>
         <span :class="score > 0 ? 'text-green-600' : (score < 0 ? 'text-red-600' : 'text-gray-400')"
               class="font-semibold min-w-[2rem] text-center"
               x-text="(score > 0 ? '+' : '') + score"></span>
         <button @click="vote(-1)" type="button" title="Downvote"
-                :class="userVote === -1 ? 'text-red-600 font-bold' : 'text-gray-400 hover:text-red-600'"
-                class="px-0.5 rounded transition">▼</button>
+                :class="userVote === -1 ? 'opacity-100' : 'opacity-40 hover:opacity-100'"
+                class="px-0.5 transition">👎</button>
     </div>
 
 @else
@@ -88,8 +92,8 @@
             <input type="hidden" name="value" value="1">
             <button type="submit" title="Upvote"
                     class="p-1.5 rounded-md transition {{ $currentValue === 1 ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:text-green-600 hover:bg-green-50' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"/>
                 </svg>
             </button>
         </form>
@@ -105,14 +109,14 @@
             <input type="hidden" name="value" value="-1">
             <button type="submit" title="Downvote"
                     class="p-1.5 rounded-md transition {{ $currentValue === -1 ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50' }}">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/>
                 </svg>
             </button>
         </form>
     </div>
 
     @if ($currentValue !== 0)
-        <p class="text-xs text-gray-400 mt-1">Click the same arrow again to remove your vote.</p>
+        <p class="text-xs text-gray-400 mt-1">Click the same thumb again to remove your vote.</p>
     @endif
 @endif

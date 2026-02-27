@@ -65,9 +65,13 @@ remove_if_exists "DEPLOY_DREAMHOST.sh"
 remove_if_exists "Claude_Lesson_Deployment_Findings_2_22.docx"
 remove_if_exists "public/images/ARES_Logo_300.jpg"
 
-# Write git version string to storage so the page footer can display it
+# Write git version string to storage so the page footer can display it.
+# Prefer a clean tag (e.g. v1.2.0) over a hash-suffixed describe string.
 echo "  Writing version info..."
-GIT_VERSION=$(git -C /tmp/LPC describe --tags --always 2>/dev/null || git -C /tmp/LPC rev-parse --short HEAD 2>/dev/null || echo "dev")
+GIT_VERSION=$(git -C /tmp/LPC describe --tags --abbrev=0 2>/dev/null \
+    || git -C /tmp/LPC describe --tags --always 2>/dev/null \
+    || git -C /tmp/LPC rev-parse --short HEAD 2>/dev/null \
+    || echo "dev")
 echo "$GIT_VERSION" > ~/LessonPlanShare/storage/app/version.txt
 
 # Clean up temp

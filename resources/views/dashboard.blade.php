@@ -3,52 +3,64 @@
 
     {{-- ── Dashboard Counters + Favorite ── --}}
     <div class="mb-8 border border-gray-200 rounded-lg p-4 sm:p-5">
-        <div class="flex flex-wrap gap-6 items-start">
+        <div class="flex flex-wrap gap-6 items-start justify-between">
 
-            {{-- Counter: Unique Classes --}}
-            <div class="text-center px-4">
-                <p class="text-3xl font-bold text-gray-900">{{ $uniqueClassCount }}</p>
-                <p class="text-xs text-gray-500 mt-1">Unique {{ Str::plural('Class', $uniqueClassCount) }}</p>
+            <div class="flex flex-wrap gap-6 items-start">
+
+                {{-- Counter: Unique Classes --}}
+                <div class="text-center px-4">
+                    <p class="text-3xl font-bold text-gray-900">{{ $uniqueClassCount }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Unique {{ Str::plural('Class', $uniqueClassCount) }}</p>
+                </div>
+
+                {{-- Counter: Total Lesson Plans --}}
+                <div class="text-center px-4">
+                    <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
+                </div>
+
+                {{-- Counter: Registered Users --}}
+                <div class="text-center px-4">
+                    <p class="text-3xl font-bold text-gray-900">{{ $userCount }}</p>
+                    <p class="text-xs text-gray-500 mt-1">Registered {{ Str::plural('User', $userCount) }}</p>
+                </div>
+
+                {{-- Divider --}}
+                <div class="hidden sm:block w-px h-14 bg-gray-200"></div>
+
+                {{-- Favorite Lesson Plan — truncated to 20 chars --}}
+                <div class="flex-1 min-w-[200px]">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Favorite Lesson Plan</p>
+                    @if ($favoritePlan && $favoritePlan->vote_score > 0)
+                        <a href="{{ route('lesson-plans.show', $favoritePlan) }}"
+                           class="text-sm font-medium text-gray-900 hover:text-gray-600 underline underline-offset-2"
+                           title="{{ $favoritePlan->name }}">
+                            {{ Str::limit($favoritePlan->name, 20) }}
+                        </a>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            by {{ $favoritePlan->author->name ?? 'Unknown' }}
+                            &middot;
+                            <span class="text-green-600 font-medium">+{{ $favoritePlan->vote_score }}</span> rating
+                        </p>
+                    @else
+                        <p class="text-sm text-gray-400 italic">No votes yet</p>
+                    @endif
+                </div>
+
             </div>
 
-            {{-- Counter: Total Lesson Plans --}}
-            <div class="text-center px-4">
-                <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
-                <p class="text-xs text-gray-500 mt-1">Total Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
-            </div>
-
-            {{-- Counter: Registered Users --}}
-            <div class="text-center px-4">
-                <p class="text-3xl font-bold text-gray-900">{{ $userCount }}</p>
-                <p class="text-xs text-gray-500 mt-1">Registered {{ Str::plural('User', $userCount) }}</p>
-            </div>
-
-            {{-- Divider --}}
-            <div class="hidden sm:block w-px h-14 bg-gray-200"></div>
-
-            {{-- Favorite Lesson Plan --}}
-            <div class="flex-1 min-w-[200px]">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Favorite Lesson Plan</p>
-                @if ($favoritePlan && $favoritePlan->vote_score > 0)
-                    <a href="{{ route('lesson-plans.show', $favoritePlan) }}"
-                       class="text-sm font-medium text-gray-900 hover:text-gray-600 underline underline-offset-2">
-                        {{ $favoritePlan->name }}
-                    </a>
-                    <p class="text-xs text-gray-500 mt-0.5">
-                        by {{ $favoritePlan->author->name ?? 'Unknown' }}
-                        &middot;
-                        <span class="text-green-600 font-medium">+{{ $favoritePlan->vote_score }}</span> rating
-                    </p>
-                @else
-                    <p class="text-sm text-gray-400 italic">No votes yet</p>
-                @endif
-            </div>
+            {{-- Refresh link: forces a fresh page load to update counters --}}
+            <a href="{{ route('dashboard', request()->except('page')) }}"
+               class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 self-start pt-1 shrink-0"
+               title="Refresh counters and table">
+                ↻ Refresh
+            </a>
 
         </div>
     </div>
 
-    {{-- Search & Filter Bar --}}
-    <form method="GET" action="{{ route('dashboard') }}" class="mb-8 border border-gray-200 rounded-lg p-4 sm:p-5">
+    {{-- Search & Filter Bar — class dropdown and free-text search only --}}
+    <form method="GET" action="{{ route('dashboard') }}" class="mb-3 border border-gray-200 rounded-lg p-4 sm:p-5">
         <div class="flex flex-wrap gap-3 items-end">
             {{-- Search --}}
             <div class="flex-1 min-w-[200px]">
@@ -72,20 +84,45 @@
                 </select>
             </div>
 
-            {{-- Latest Version Filter (default: show all; check to restrict) --}}
-            <div class="flex items-center space-x-2">
-                <input type="checkbox" name="latest_only" id="latest_only" value="1"
-                       {{ request('latest_only') ? 'checked' : '' }}
-                       class="rounded border-gray-300 text-gray-900 focus:ring-gray-400">
-                <label for="latest_only" class="text-sm text-gray-600">Latest version only</label>
-            </div>
-
             {{-- Buttons --}}
             <button type="submit"
                     class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                 Search
             </button>
             <a href="{{ route('dashboard') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900">Clear</a>
+        </div>
+    </form>
+
+    {{-- Filter Utility Bar — sort hint + auto-submit checkboxes --}}
+    <form method="GET" action="{{ route('dashboard') }}" id="filter-form" class="mb-6">
+        {{-- Carry forward current search/class/sort params so checkboxes don't lose them --}}
+        <input type="hidden" name="search"     value="{{ request('search') }}">
+        <input type="hidden" name="class_name" value="{{ request('class_name') }}">
+        <input type="hidden" name="sort"       value="{{ request('sort') }}">
+        <input type="hidden" name="order"      value="{{ request('order') }}">
+
+        <div class="flex flex-wrap items-center gap-5 px-1 text-sm text-gray-500">
+            <span class="text-xs text-gray-400 italic">Sort by clicking a blue column header below</span>
+
+            {{-- Latest version filter --}}
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="latest_only" value="1"
+                       {{ request('latest_only') ? 'checked' : '' }}
+                       onchange="this.form.submit()"
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
+                <span class="text-sm text-gray-600">Show only latest</span>
+            </label>
+
+            {{-- Favorites filter — only shown to verified users --}}
+            @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="favorites_only" value="1"
+                           {{ request('favorites_only') ? 'checked' : '' }}
+                           onchange="this.form.submit()"
+                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
+                    <span class="text-sm text-gray-600">Show only my favorites</span>
+                </label>
+            @endif
         </div>
     </form>
 
@@ -113,9 +150,13 @@
                                 $thAlign   = $col['align'] === 'center' ? 'text-center' : 'text-left';
                                 $linkAlign = $col['align'] === 'center' ? 'justify-center w-full' : '';
                             @endphp
-                            <th class="px-4 py-3 {{ $thAlign }} text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
+                                {{-- Each sort header styled as a distinct blue button pill --}}
                                 <a href="{{ route('dashboard', array_merge(request()->query(), ['sort' => $field, 'order' => $nextOrder])) }}"
-                                   class="inline-flex items-center {{ $linkAlign }} hover:text-gray-900 {{ $isActive ? 'text-gray-900' : '' }}">
+                                   class="inline-flex items-center {{ $linkAlign }} px-2 py-1 rounded font-semibold transition-colors
+                                          {{ $isActive
+                                              ? 'bg-blue-600 text-white'
+                                              : 'text-blue-600 hover:bg-blue-50' }}">
                                     {{ $col['label'] }}
                                     @if ($isActive)
                                         <span class="ml-1">{!! $sortOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
@@ -171,7 +212,10 @@
                                                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                                                     'Accept': 'application/json'
                                                 }
-                                            }).then(r => { if (r.ok) r.json().then(d => { this.fav = d.favorited; }); });
+                                            }).then(r => {
+                                                if (!r.ok) return;
+                                                r.json().then(d => { this.fav = d.favorited; }).catch(() => {});
+                                            }).catch(() => {});
                                         }
                                     }">
                                         <button @click="toggle" title="Toggle favorite"

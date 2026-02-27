@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (semantic versioning, back buttons, code review fixes: B1–B5 C1 R1–R3; second-pass fixes: @js edit form, login Sign Up link, backfill chunkById, doc sync)
+**Last updated:** 2026-02-27 (semantic versioning, back buttons, code review fixes, targeted fix pass: thumbs icons, preview refresh, filter bar, sort UX, CC footer, favorites_only filter, cache-control headers)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -24,19 +24,30 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - `recalculateVoteScore()` uses raw `DB::table()` update — does NOT touch `updated_at`
 - VoteController returns JSON for `Accept: application/json` requests (AJAX support)
 - Dashboard with counters (unique classes, total plans, favorite plan), search, filter, sort, pagination (10/page)
-- Dashboard shows all versions by default; "Latest version only" checkbox to filter
+- Dashboard shows all versions by default; filter bar below search has "Show only latest" and "Show only my favorites" (verified users only) checkboxes that auto-submit
+- Dashboard filter bar also shows hint "Sort by clicking a blue column header below"
+- Sort column headers styled as distinct blue button pills (active = blue filled, inactive = blue text with hover)
+- Dashboard counters + table + favorite plan all re-fetched on page load (live DB queries); ↻ Refresh link forces fresh load
+- Dashboard/Stats responses include `Cache-Control: no-store` headers to prevent proxy/browser caching of stale counts
+- Favorite Lesson Plan title truncated to 20 chars with ellipsis; full filename in tooltip
 - Dashboard Author column: shows Teacher Name (LEFT JOIN on users, sortable)
-- Dashboard Rating column: "Vote 👍 👎 +N" for guests; locked ▲▼ (greyed) for unviewed plans; AJAX ▲▼ for viewed plans
+- Dashboard Rating column: "Vote 👍 👎 +N" for guests; locked 👍👎 (greyed) for unviewed plans; AJAX 👍👎 for viewed plans
 - Dashboard column alignments: Class left, Day# center, Author left, Version center, Rating center, Updated left
 - Dashboard Actions: "View/Edit/Vote" button (greyed out for guests **and unverified users**); no Download button on dashboard
 - View tracking: visiting `lesson-plans.show` records a view in `lesson_plan_views` table; gates AJAX voting
 - Favorites: AJAX star toggle on dashboard; yellow when favorited, grey when not; greyed out for guests **and unverified users**; `favorites` table with unique `[user_id, lesson_plan_id]` index; `FavoriteController::toggle()` returns JSON
 - Guide page (`/guide`): public, linked in header for all users; covers login, version numbering, view/download, upload, delete, voting, and admin rules
+- Footer: "Kenya Lesson Plan Repository version {VERSION} © YEAR ARES Education — This work is licensed under CC BY-SA 4.0" + inline SVG CC/BY/SA badge icons (no external CDN)
+- Footer version from `storage/app/version.txt` (written by `UPDATE_SITE.sh` using `git describe --tags --abbrev=0` to prefer clean tag, falls back to full describe/hash/dev)
+- Vote buttons: thumbs-up/down (👍👎) everywhere — locked mode, inline AJAX mode, form mode (SVG). Arrow icons removed.
+- Vote AJAX (inline dashboard): error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
+- `favorites_only` filter on dashboard: `Favorite::where('user_id',...)->pluck('lesson_plan_id')` + `whereIn` on `lesson_plans.id`; only active for verified users
 - Plan detail page (two-column layout, voting, version history sidebar)
 - Print/Save PDF button on plan detail page (`window.print()`)
 - Black `← Back to Dashboard` button (white text, `bg-gray-900 hover:bg-gray-700`) in the top-right header area on: show page, guide page, admin panel, stats page
 - Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
-- Preview page buttons: "Home" (→ dashboard) and "← Back to Details" (→ show page)
+- Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
+- Preview page buttons: "↻ Refresh Viewer", "Download File", "← Back to Details", "Home"
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
 - Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised) — **public, no auth required** (route is outside the auth+verified middleware group)
 - Stats `groupBy` bug fixed: uses `DB::raw('COALESCE(original_id, id)')` not the alias
@@ -101,7 +112,7 @@ No major features remain. All spec items are implemented.
 | `app/Models/User.php` | Auth user; Teacher Name (unique); `is_admin` flag |
 | `app/Models/LessonPlanView.php` | View tracking pivot (user_id, lesson_plan_id) |
 | `resources/views/components/layout.blade.php` | Master layout: header, merged auth modal, admin link |
-| `resources/views/components/vote-buttons.blade.php` | 4-mode vote display (readonly/locked/inline/form) |
+| `resources/views/components/vote-buttons.blade.php` | 4-mode vote display (readonly/locked/inline/form); all use 👍👎 thumbs icons |
 | `resources/views/dashboard.blade.php` | 7-column table with inline AJAX vote buttons |
 | `resources/views/admin/index.blade.php` | Admin panel: plans + users tables with delete/bulk-delete |
 | `database/migrations/` | 7 migrations (views, is_admin, favorites, semantic_version) |

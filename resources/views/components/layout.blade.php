@@ -254,8 +254,34 @@
             @php
                 $appVersion = trim(@file_get_contents(storage_path('app/version.txt')) ?: 'dev');
             @endphp
-            &copy; {{ date('Y') }} ARES Education &mdash; Kenya Lesson Plan Repository
-            &middot; <span class="font-mono text-xs">{{ $appVersion }}</span>
+            <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                <span>Kenya Lesson Plan Repository version <span class="font-mono text-xs">{{ $appVersion }}</span> &copy; {{ date('Y') }} ARES Education</span>
+                <span class="hidden sm:inline">&mdash;</span>
+                <span>This work is licensed under
+                    <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" target="_blank"
+                       class="underline hover:text-gray-600">CC&nbsp;BY-SA&nbsp;4.0</a>
+                </span>
+                {{-- CC BY SA symbols: inline SVG circles, no external CDN --}}
+                <span class="inline-flex items-center gap-0.5"
+                      aria-label="Creative Commons Attribution ShareAlike 4.0"
+                      title="Creative Commons Attribution-ShareAlike 4.0 International">
+                    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                        <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+                              font-size="6.5" font-weight="bold" fill="currentColor">CC</text>
+                    </svg>
+                    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                        <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+                              font-size="6.5" font-weight="bold" fill="currentColor">BY</text>
+                    </svg>
+                    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                        <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+                              font-size="6.5" font-weight="bold" fill="currentColor">SA</text>
+                    </svg>
+                </span>
+            </div>
         </div>
     </footer>
 

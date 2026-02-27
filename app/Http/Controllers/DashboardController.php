@@ -53,6 +53,12 @@ class DashboardController extends Controller
             $query->latestVersions();
         }
 
+        // Filter: show only the authenticated user's favorited plans.
+        if ($request->boolean('favorites_only') && Auth::check() && Auth::user()->hasVerifiedEmail()) {
+            $favoritedPlanIds = Favorite::where('user_id', Auth::id())->pluck('lesson_plan_id');
+            $query->whereIn('lesson_plans.id', $favoritedPlanIds);
+        }
+
         // Free-text search across multiple fields including author name.
         // Uses LIKE with wildcards — adequate for the expected data volume.
         if ($search = $request->input('search')) {
@@ -152,11 +158,14 @@ class DashboardController extends Controller
             ->orderByDesc('updated_at')
             ->first();
 
-        return view('dashboard', compact(
-            'plans', 'classNames', 'sortField', 'sortOrder',
-            'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
-            'userVotes', 'viewedIds', 'favoritedIds', 'userCount'
-        ));
+        return response()
+            ->view('dashboard', compact(
+                'plans', 'classNames', 'sortField', 'sortOrder',
+                'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
+                'userVotes', 'viewedIds', 'favoritedIds', 'userCount'
+            ))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+            ->header('Pragma', 'no-cache');
     }
 
     /**
@@ -224,10 +233,13 @@ class DashboardController extends Controller
             }
         }
 
-        return view('stats', compact(
-            'uniqueClassCount', 'totalPlanCount', 'contributorCount',
-            'plansPerClass', 'topRated', 'topContributors', 'mostRevisedPlan'
-        ));
+        return response()
+            ->view('stats', compact(
+                'uniqueClassCount', 'totalPlanCount', 'contributorCount',
+                'plansPerClass', 'topRated', 'topContributors', 'mostRevisedPlan'
+            ))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+            ->header('Pragma', 'no-cache');
     }
 
     /**

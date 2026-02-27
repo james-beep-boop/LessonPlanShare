@@ -31,36 +31,56 @@
         {{-- ── Document Viewer ── --}}
         {{-- Uses Google Docs Viewer to render .doc/.docx files in an iframe.
              The file must be publicly accessible via URL for this to work.
-             Falls back to a friendly message if the preview fails to load. --}}
+             Falls back to a friendly message if the preview fails to load.
+             Alpine.js ts variable provides client-side cache-busting on Refresh. --}}
         @php
             // Build the full public URL to the stored file
             $fileUrl = asset('storage/' . $lessonPlan->file_path);
-            // Google Docs Viewer URL — renders Office docs in the browser.
-            // The &t= timestamp busts Google's cache so the viewer reloads the
-            // document on every visit (without it the iframe silently goes blank
-            // on second and subsequent views of the same document).
-            $viewerUrl = 'https://docs.google.com/gview?url=' . urlencode($fileUrl) . '&embedded=true&t=' . time();
+            // Base viewer URL without the timestamp; Alpine.js appends &t={ts} reactively.
+            // Splitting here (instead of server-side time()) lets the client refresh
+            // without a full page reload.
+            $viewerUrlBase = 'https://docs.google.com/gview?url=' . urlencode($fileUrl) . '&embedded=true&t=';
+            $initialTs     = time();
         @endphp
 
-        <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-            {{-- Viewer iframe --}}
-            <iframe src="{{ $viewerUrl }}"
-                    class="w-full bg-white"
-                    style="height: 75vh; min-height: 500px;"
-                    frameborder="0"
-                    loading="lazy"
-                    title="Document Preview: {{ $lessonPlan->file_name }}">
-            </iframe>
+        {{-- Alpine.js manages the iframe src so "Refresh Viewer" can bust Google's cache
+             without a full page reload. ts starts at server time, updates to Date.now()
+             on each refresh click. --}}
+        <div x-data="{
+            viewerBase: @js($viewerUrlBase),
+            ts: {{ $initialTs }},
+            refresh() { this.ts = Date.now(); }
+        }">
+            {{-- Refresh Viewer button — above the iframe --}}
+            <div class="flex justify-end mb-2">
+                <button @click="refresh()" type="button"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                               bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700
+                               rounded-md transition-colors">
+                    ↻ Refresh Viewer
+                </button>
+            </div>
 
-            {{-- Fallback note below the viewer --}}
-            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <p class="text-xs text-gray-400">
-                    Preview powered by Google Docs Viewer. If the document does not load, refresh the page. If that does not work, download the file.
-                </p>
-                <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                   class="text-xs text-gray-900 font-medium hover:text-gray-600 underline flex-shrink-0">
-                    Download {{ $lessonPlan->file_name }}
-                </a>
+            <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                {{-- Viewer iframe — src is reactive via Alpine.js :src binding --}}
+                <iframe :src="viewerBase + ts"
+                        class="w-full bg-white"
+                        style="height: 75vh; min-height: 500px;"
+                        frameborder="0"
+                        loading="lazy"
+                        title="Document Preview: {{ $lessonPlan->file_name }}">
+                </iframe>
+
+                {{-- Fallback note below the viewer --}}
+                <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p class="text-xs text-gray-400">
+                        Preview powered by Google Docs Viewer. If the document does not load, click ↻ Refresh Viewer above. If that does not work, download the file.
+                    </p>
+                    <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                       class="text-xs text-gray-900 font-medium hover:text-gray-600 underline flex-shrink-0">
+                        Download {{ $lessonPlan->file_name }}
+                    </a>
+                </div>
             </div>
         </div>
 
