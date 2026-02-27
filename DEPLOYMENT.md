@@ -129,6 +129,7 @@ routes/web.php                                          →  (REPLACE)
 routes/auth.php                                         →  (REPLACE — standard Breeze auth routes)
 .gitignore                                              →  (REPLACE)
 .env.example                                            →  (REPLACE)
+VERSION                                                 →  (NEW — human-readable version number, read by UPDATE_SITE.sh)
 ```
 
 ### Step 5: Configure your local .env

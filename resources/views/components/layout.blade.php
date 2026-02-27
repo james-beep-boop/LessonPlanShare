@@ -257,7 +257,7 @@
             <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                 <span>Kenya Lesson Plan Repository version <span class="font-mono text-xs">{{ $appVersion }}</span> &copy; {{ date('Y') }} ARES Education</span>
                 <span class="hidden sm:inline">&mdash;</span>
-                <span>This work is licensed under
+                <span>Lesson Plans are licensed under
                     <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" target="_blank"
                        class="underline hover:text-gray-600">CC&nbsp;BY-SA&nbsp;4.0</a>
                 </span>

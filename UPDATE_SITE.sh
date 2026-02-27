@@ -43,6 +43,7 @@ cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example 2>/dev/null || true
 cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/ 2>/dev/null || true
 cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/ 2>/dev/null || true
 cp /tmp/LPC/UPDATE_SITE.sh ~/LessonPlanShare/ 2>/dev/null || true
+cp /tmp/LPC/VERSION ~/LessonPlanShare/ 2>/dev/null || true
 
 # ── Stale file cleanup (explicit list) ──
 # When a file is removed from the repo, add it here so it gets cleaned up
@@ -65,13 +66,16 @@ remove_if_exists "DEPLOY_DREAMHOST.sh"
 remove_if_exists "Claude_Lesson_Deployment_Findings_2_22.docx"
 remove_if_exists "public/images/ARES_Logo_300.jpg"
 
-# Write git version string to storage so the page footer can display it.
-# Prefer a clean tag (e.g. v1.2.0) over a hash-suffixed describe string.
+# Write version string to storage so the page footer can display it.
+# Source of truth: the VERSION file in the repo (e.g. "0.61").
+# Falls back to git tag, then git hash, then "dev" if nothing else is available.
 echo "  Writing version info..."
-GIT_VERSION=$(git -C /tmp/LPC describe --tags --abbrev=0 2>/dev/null \
-    || git -C /tmp/LPC describe --tags --always 2>/dev/null \
-    || git -C /tmp/LPC rev-parse --short HEAD 2>/dev/null \
-    || echo "dev")
+GIT_VERSION=$(cat /tmp/LPC/VERSION 2>/dev/null | tr -d '[:space:]')
+if [ -z "$GIT_VERSION" ]; then
+    GIT_VERSION=$(git -C /tmp/LPC describe --tags --abbrev=0 2>/dev/null \
+        || git -C /tmp/LPC rev-parse --short HEAD 2>/dev/null \
+        || echo "dev")
+fi
 echo "$GIT_VERSION" > ~/LessonPlanShare/storage/app/version.txt
 
 # Clean up temp
