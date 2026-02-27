@@ -123,25 +123,30 @@ class DetectDuplicateContent extends Command
 
     /**
      * Back-fill file_hash for any lesson plan records that are missing it.
+     *
+     * Uses chunkById (50 at a time) rather than get() to avoid loading the
+     * entire table into memory on first run — important on shared hosting.
      */
     private function backfillHashes(): void
     {
-        $missing = LessonPlan::whereNull('file_hash')
-            ->whereNotNull('file_path')
-            ->get();
+        $count = LessonPlan::whereNull('file_hash')->whereNotNull('file_path')->count();
 
-        if ($missing->isEmpty()) {
+        if ($count === 0) {
             return;
         }
 
-        $this->info("Back-filling hashes for {$missing->count()} record(s)...");
+        $this->info("Back-filling hashes for {$count} record(s)...");
 
-        foreach ($missing as $plan) {
-            $fullPath = Storage::disk('public')->path($plan->file_path);
-            if (file_exists($fullPath)) {
-                $plan->file_hash = hash_file('sha256', $fullPath);
-                $plan->saveQuietly();
-            }
-        }
+        LessonPlan::whereNull('file_hash')
+            ->whereNotNull('file_path')
+            ->chunkById(50, function ($chunk) {
+                foreach ($chunk as $plan) {
+                    $fullPath = Storage::disk('public')->path($plan->file_path);
+                    if (file_exists($fullPath)) {
+                        $plan->file_hash = hash_file('sha256', $fullPath);
+                        $plan->saveQuietly();
+                    }
+                }
+            });
     }
 }

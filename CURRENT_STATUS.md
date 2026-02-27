@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (semantic versioning, back buttons, code review fixes: B1–B5 C1 R1–R3)
+**Last updated:** 2026-02-27 (semantic versioning, back buttons, code review fixes: B1–B5 C1 R1–R3; second-pass fixes: @js edit form, login Sign Up link, backfill chunkById, doc sync)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -11,7 +11,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - User registration: Teacher Name (unique display name) + Teacher Email + Password in a single merged modal
 - Single auth modal — no separate Sign In / Sign Up panels; three-case server-side logic:
   - New email → create account, send verification, redirect to "Check Your Email"
-  - Unverified existing email → resend verification email
+  - Unverified existing email → password verified first (`Hash::check`), then resend verification email (password gate prevents session hijacking of unverified accounts)
   - Verified existing email → standard authentication (wrong password = error)
 - Teacher Name uniqueness enforced server-side (new accounts only)
 - Login/logout with Alpine.js modal + standalone fallback pages

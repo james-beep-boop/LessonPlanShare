@@ -223,7 +223,7 @@ The auth modal is a single form — there are no separate "Sign In" and "Sign Up
 
 1. **New email (registration):** Teacher Name is required and validated for uniqueness. A new `User` record is created. The `Registered` event fires (sends verification email). The user is logged in (so the verification notice page can display their email and offer "Resend"). They are redirected to `verification.notice` — they cannot access authenticated routes until clicking the link.
 
-2. **Unverified existing email:** The password is ignored. The verification email is resent. The user is logged in and redirected to `verification.notice`.
+2. **Unverified existing email:** The password **is verified** (`Hash::check`) before proceeding — this prevents anyone who knows an email address from hijacking an unverified session. If the password is wrong, a validation error is returned. If correct, the verification email is resent, the user is logged in, and they are redirected to `verification.notice`.
 
 3. **Verified existing email:** Standard authentication. Wrong password returns a validation error. On success, redirects to dashboard.
 
@@ -787,7 +787,6 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 |---|---|---|---|
 | GET | `/` | DashboardController@index | `dashboard` |
 | GET | `/stats` | DashboardController@stats | `stats` |
-| POST | `/users/{user}/send-verification` | DashboardController@sendVerification | `users.send-verification` |
 
 ### 18.2 Authenticated + Verified Routes
 
@@ -803,7 +802,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | PUT | `/lesson-plans/{lessonPlan}` | LessonPlanController@update | `lesson-plans.update` |
 | DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` |
 | POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` |
-| POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` *(not yet implemented)* |
+| POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` |
 
 ### 18.3 Admin Routes (auth + verified + is_admin)
 
@@ -816,6 +815,8 @@ Prefix: `/admin`. Middleware: `['auth', 'verified', AdminMiddleware::class]`.
 | POST | `/admin/lesson-plans/bulk-delete` | AdminController@bulkDestroyPlans | `admin.lesson-plans.bulk-delete` |
 | DELETE | `/admin/users/{user}` | AdminController@destroyUser | `admin.users.destroy` |
 | POST | `/admin/users/bulk-delete` | AdminController@bulkDestroyUsers | `admin.users.bulk-delete` |
+| POST | `/admin/users/{user}/toggle-admin` | AdminController@toggleAdmin | `admin.users.toggle-admin` |
+| POST | `/admin/users/{user}/send-verification` | DashboardController@sendVerification | `users.send-verification` |
 
 ### 18.4 Auth Routes (Breeze)
 

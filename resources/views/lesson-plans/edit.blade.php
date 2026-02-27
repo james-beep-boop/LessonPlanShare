@@ -33,8 +33,8 @@
                 $isKnownClass = in_array($currentClass, $classNames);
             @endphp
             <div x-data="{
-                    selected: '{{ $isKnownClass ? $currentClass : '__other__' }}',
-                    custom: '{{ !$isKnownClass ? $currentClass : '' }}',
+                    selected: @js($isKnownClass ? $currentClass : '__other__'),
+                    custom: @js($isKnownClass ? '' : $currentClass),
                     isOther: {{ !$isKnownClass && $currentClass ? 'true' : 'false' }}
                  }">
                 <label for="edit_class_name_select" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>

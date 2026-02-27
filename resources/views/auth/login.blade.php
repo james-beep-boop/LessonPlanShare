@@ -52,10 +52,10 @@
         </form>
 
         <div class="mt-6 pt-4 border-t border-gray-200 text-center">
-            <span class="text-sm text-gray-500">New User?</span>
-            <a href="{{ route('register') }}"
+            <span class="text-sm text-gray-500">New user?</span>
+            <a href="{{ route('dashboard') }}"
                class="ml-1 text-sm font-medium text-gray-900 hover:text-gray-600 underline">
-                Sign Up
+                Register via the Sign In / Up button on the main page
             </a>
         </div>
     </div>
