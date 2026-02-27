@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Admin panel controller.
@@ -63,7 +64,7 @@ class AdminController extends Controller
 
         foreach ($plans as $plan) {
             if ($plan->file_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($plan->file_path);
+                Storage::disk('public')->delete($plan->file_path);
             }
             $plan->delete();
         }
@@ -98,7 +99,7 @@ class AdminController extends Controller
             : "Admin privileges revoked from {$user->name}.");
     }
 
-    /** Delete a single user account. */
+    /** Delete a single user account and all their uploaded lesson plan files. */
     public function destroyUser(User $user)
     {
         // Prevent self-deletion
@@ -106,12 +107,22 @@ class AdminController extends Controller
             return redirect()->route('admin.index')->with('error', 'You cannot delete your own account.');
         }
 
+        // Remove every lesson plan file this user uploaded before deleting the DB rows.
+        // The foreign-key CASCADE would remove lesson_plan rows automatically, but it
+        // would leave orphaned files on disk — so we clean up manually first.
+        $plans = LessonPlan::where('author_id', $user->id)->get();
+        foreach ($plans as $plan) {
+            if ($plan->file_path) {
+                Storage::disk('public')->delete($plan->file_path);
+            }
+        }
+
         $user->delete();
 
         return redirect()->route('admin.index')->with('success', 'User deleted.');
     }
 
-    /** Bulk-delete multiple user accounts by ID array. */
+    /** Bulk-delete multiple user accounts and all their uploaded lesson plan files. */
     public function bulkDestroyUsers(Request $request)
     {
         $data = $request->validate([
@@ -127,9 +138,20 @@ class AdminController extends Controller
             return redirect()->route('admin.index')->with('error', 'No users selected (or only yourself).');
         }
 
-        $count = User::whereIn('id', $ids)->delete();
+        // Load users individually so we can clean up their files before deleting.
+        // Using a mass-delete (whereIn->delete()) would skip file cleanup.
+        $users = User::whereIn('id', $ids)->get();
+        foreach ($users as $user) {
+            $plans = LessonPlan::where('author_id', $user->id)->get();
+            foreach ($plans as $plan) {
+                if ($plan->file_path) {
+                    Storage::disk('public')->delete($plan->file_path);
+                }
+            }
+            $user->delete();
+        }
 
         return redirect()->route('admin.index')
-            ->with('success', $count . ' user(s) deleted.');
+            ->with('success', count($users) . ' user(s) deleted.');
     }
 }

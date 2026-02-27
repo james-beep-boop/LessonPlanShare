@@ -8,10 +8,12 @@ use App\Models\LessonPlanView;
 use App\Http\Requests\StoreLessonPlanRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Handles CRUD operations for lesson plans.
@@ -39,13 +41,29 @@ use Illuminate\Support\Facades\Storage;
 class LessonPlanController extends Controller
 {
     /**
-     * Allowed class names for the upload dropdown.
+     * Allowed class names for the upload dropdown (seed list).
      *
-     * To add new subjects, simply append them to this array.
-     * The StoreLessonPlanRequest validation references this constant
-     * to enforce the allowed values server-side.
+     * create() and edit() merge this with distinct class_name values from the DB
+     * via buildClassNames(), so any class that already exists in the archive
+     * also appears even if it's not in this seed list.
      */
     public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
+
+    /**
+     * Build the sorted class-name list for upload/edit dropdowns.
+     *
+     * Merges the hardcoded seed list with distinct class names that already exist
+     * in the DB. Sorted alphabetically; duplicates removed.
+     * This satisfies the spec requirement that the dropdown includes all classes
+     * that teachers have previously uploaded, not just the seed list.
+     */
+    private function buildClassNames(): array
+    {
+        $dbClasses = LessonPlan::distinct()->orderBy('class_name')->pluck('class_name')->toArray();
+        $merged    = array_values(array_unique(array_merge(self::CLASS_NAMES, $dbClasses)));
+        sort($merged);
+        return $merged;
+    }
 
     /**
      * Compute the next semantic version for a given class/day pair.
@@ -89,6 +107,42 @@ class LessonPlanController extends Controller
 
         // 'major': bump the minor number, reset patch to 0
         return [1, $latest->version_minor + 1, 0];
+    }
+
+    /**
+     * Validate the uploaded file's derived extension against the allowed list,
+     * store it under the canonical name, and return file metadata for DB persistence.
+     *
+     * Uses $file->extension() (derived from the MIME type via finfo) rather than
+     * $file->getClientOriginalExtension() (which trusts the client-supplied filename).
+     * This prevents extension spoofing — a file renamed to .docx but containing
+     * executable content would have its true MIME-derived extension checked here.
+     *
+     * StoreLessonPlanRequest already validates MIME types; this is a second defence layer
+     * that also ensures the stored filename extension reflects the actual file type.
+     *
+     * @return array{diskName: string, fileSize: int, fileHash: string, filePath: string}
+     * @throws ValidationException if the derived extension is not in the allowlist
+     */
+    private function persistUploadedFile(UploadedFile $file, string $canonicalName): array
+    {
+        $extension = strtolower($file->extension() ?: '');
+
+        if (!in_array($extension, ['doc', 'docx', 'txt', 'rtf', 'odt'], true)) {
+            throw ValidationException::withMessages([
+                'file' => ['Invalid file type.'],
+            ]);
+        }
+
+        $diskName = $canonicalName . '.' . $extension;
+        $filePath = $file->storeAs('lessons', $diskName, 'public');
+
+        return [
+            'diskName' => $diskName,
+            'fileSize' => $file->getSize(),
+            'fileHash' => hash_file('sha256', $file->getRealPath()),
+            'filePath' => $filePath,
+        ];
     }
 
     /**
@@ -140,7 +194,7 @@ class LessonPlanController extends Controller
      */
     public function create()
     {
-        $classNames    = self::CLASS_NAMES;
+        $classNames    = $this->buildClassNames();
         $lessonNumbers = range(1, 20);
 
         return view('lesson-plans.create', compact('classNames', 'lessonNumbers'));
@@ -181,12 +235,7 @@ class LessonPlanController extends Controller
                 . 'Please wait a moment and try again.');
         }
 
-        $file      = $request->file('file');
-        $extension = $file->getClientOriginalExtension();
-        $fileSize  = $file->getSize();
-        $diskName  = $canonicalName . '.' . $extension;
-        $fileHash  = hash_file('sha256', $file->getRealPath());
-        $filePath  = $file->storeAs('lessons', $diskName, 'public');
+        $upload = $this->persistUploadedFile($request->file('file'), $canonicalName);
 
         try {
             $plan = LessonPlan::create([
@@ -199,13 +248,13 @@ class LessonPlanController extends Controller
                 'version_major'  => $major,
                 'version_minor'  => $minor,
                 'version_patch'  => $patch,
-                'file_path'      => $filePath,
-                'file_name'      => $diskName,
-                'file_size'      => $fileSize,
-                'file_hash'      => $fileHash,
+                'file_path'      => $upload['filePath'],
+                'file_name'      => $upload['diskName'],
+                'file_size'      => $upload['fileSize'],
+                'file_hash'      => $upload['fileHash'],
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
-            Storage::disk('public')->delete($filePath);
+            Storage::disk('public')->delete($upload['filePath']);
             if ($e->getCode() === '23000') {
                 return back()->withInput()->with('error',
                     'A version conflict occurred (another upload happened simultaneously). Please try again.');
@@ -213,11 +262,11 @@ class LessonPlanController extends Controller
             throw $e;
         }
 
-        $this->sendUploadConfirmationEmail($plan, $diskName);
+        $this->sendUploadConfirmationEmail($plan, $upload['diskName']);
 
         return redirect()->route('lesson-plans.show', $plan)
             ->with('upload_success', true)
-            ->with('upload_filename', $diskName);
+            ->with('upload_filename', $upload['diskName']);
     }
 
     /**
@@ -257,7 +306,7 @@ class LessonPlanController extends Controller
      */
     public function edit(LessonPlan $lessonPlan)
     {
-        $classNames    = self::CLASS_NAMES;
+        $classNames    = $this->buildClassNames();
         $lessonNumbers = range(1, 20);
 
         [$mj, $mn, $mp] = $this->computeNextSemanticVersion(
@@ -314,12 +363,7 @@ class LessonPlanController extends Controller
                 . 'Please wait a moment and try again.');
         }
 
-        $file      = $request->file('file');
-        $extension = $file->getClientOriginalExtension();
-        $fileSize  = $file->getSize();
-        $diskName  = $canonicalName . '.' . $extension;
-        $fileHash  = hash_file('sha256', $file->getRealPath());
-        $filePath  = $file->storeAs('lessons', $diskName, 'public');
+        $upload = $this->persistUploadedFile($request->file('file'), $canonicalName);
 
         // ── Author check: link to family or create standalone ──
         if ($lessonPlan->author_id !== $author->id) {
@@ -330,27 +374,27 @@ class LessonPlanController extends Controller
                     'description'    => $data['description'] ?? null,
                     'name'           => $canonicalName,
                     'author_id'      => $author->id,
-                    'file_path'      => $filePath,
-                    'file_name'      => $diskName,
-                    'file_size'      => $fileSize,
-                    'file_hash'      => $fileHash,
+                    'file_path'      => $upload['filePath'],
+                    'file_name'      => $upload['diskName'],
+                    'file_size'      => $upload['fileSize'],
+                    'file_hash'      => $upload['fileHash'],
                     'version_number' => 1,
                     'version_major'  => $major,
                     'version_minor'  => $minor,
                     'version_patch'  => $patch,
                 ]);
             } catch (\Illuminate\Database\QueryException $e) {
-                Storage::disk('public')->delete($filePath);
+                Storage::disk('public')->delete($upload['filePath']);
                 if ($e->getCode() === '23000') {
                     return back()->withInput()->with('error',
                         'A version conflict occurred. Please try again.');
                 }
                 throw $e;
             }
-            $this->sendUploadConfirmationEmail($newPlan, $diskName);
+            $this->sendUploadConfirmationEmail($newPlan, $upload['diskName']);
             return redirect()->route('dashboard')
                 ->with('upload_success', true)
-                ->with('upload_filename', $diskName)
+                ->with('upload_filename', $upload['diskName'])
                 ->with('status', 'Your plan was saved as a new standalone plan (you are not the original author).');
         }
 
@@ -362,16 +406,16 @@ class LessonPlanController extends Controller
                 'description'   => $data['description'] ?? null,
                 'name'          => $canonicalName,
                 'author_id'     => $author->id,
-                'file_path'     => $filePath,
-                'file_name'     => $diskName,
-                'file_size'     => $fileSize,
-                'file_hash'     => $fileHash,
+                'file_path'     => $upload['filePath'],
+                'file_name'     => $upload['diskName'],
+                'file_size'     => $upload['fileSize'],
+                'file_hash'     => $upload['fileHash'],
                 'version_major' => $major,
                 'version_minor' => $minor,
                 'version_patch' => $patch,
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
-            Storage::disk('public')->delete($filePath);
+            Storage::disk('public')->delete($upload['filePath']);
             if ($e->getCode() === '23000') {
                 return back()->withInput()->with('error',
                     'A version conflict occurred. Please try again.');
@@ -379,11 +423,11 @@ class LessonPlanController extends Controller
             throw $e;
         }
 
-        $this->sendUploadConfirmationEmail($newVersion, $diskName);
+        $this->sendUploadConfirmationEmail($newVersion, $upload['diskName']);
 
         return redirect()->route('dashboard')
             ->with('upload_success', true)
-            ->with('upload_filename', $diskName);
+            ->with('upload_filename', $upload['diskName']);
     }
 
     /**

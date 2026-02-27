@@ -218,7 +218,7 @@
                 precomputedMajor: precomputedMajor,
                 precomputedMinor: precomputedMinor,
                 loading: false,
-                parentClassName: '{{ $lessonPlan->class_name }}',
+                parentClassName: @js($lessonPlan->class_name),
                 parentLessonDay: {{ $lessonPlan->lesson_day }},
 
                 // Use precomputed values when class/day match the parent plan;

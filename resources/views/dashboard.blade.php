@@ -101,7 +101,7 @@
                                 'class_name'     => ['label' => 'Class',   'align' => 'left'],
                                 'lesson_day'     => ['label' => 'Day #',   'align' => 'center'],
                                 'author_name'    => ['label' => 'Author',  'align' => 'left'],
-                                'version_number' => ['label' => 'Version', 'align' => 'center'],
+                                'semantic_version' => ['label' => 'Version', 'align' => 'center'],
                                 'vote_score'     => ['label' => 'Rating',  'align' => 'center'],
                                 'updated_at'     => ['label' => 'Updated', 'align' => 'left'],
                             ];
@@ -159,9 +159,9 @@
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
 
-                            {{-- Favorite star: AJAX toggle for logged-in users; greyed for guests --}}
+                            {{-- Favorite star: AJAX toggle for verified users; greyed for guests/unverified --}}
                             <td class="px-4 py-3 text-center">
-                                @auth
+                                @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                                     <div x-data="{
                                         fav: {{ in_array($plan->id, $favoritedIds) ? 'true' : 'false' }},
                                         toggle() {
@@ -171,7 +171,7 @@
                                                     'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                                                     'Accept': 'application/json'
                                                 }
-                                            }).then(r => r.json()).then(d => { this.fav = d.favorited; });
+                                            }).then(r => { if (r.ok) r.json().then(d => { this.fav = d.favorited; }); });
                                         }
                                     }">
                                         <button @click="toggle" title="Toggle favorite"
@@ -180,22 +180,22 @@
                                     </div>
                                 @else
                                     <span class="text-lg leading-none text-gray-200" title="Sign in to favorite">★</span>
-                                @endauth
+                                @endif
                             </td>
 
                             <td class="px-4 py-3 text-center whitespace-nowrap">
-                                @auth
+                                @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                                     <a href="{{ route('lesson-plans.show', $plan) }}"
                                        class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
                                         View/Edit/Vote
                                     </a>
                                 @else
-                                    {{-- Greyed out for guests — sign in required to view plans --}}
+                                    {{-- Greyed out for guests and unverified users --}}
                                     <span class="inline-block px-3 py-1 text-xs font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed"
-                                          title="Sign in to view lesson plans">
+                                          title="Sign in and verify email to view lesson plans">
                                         View/Edit/Vote
                                     </span>
-                                @endauth
+                                @endif
                             </td>
                         </tr>
                     @empty

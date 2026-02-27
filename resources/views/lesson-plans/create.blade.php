@@ -10,8 +10,8 @@
 
             {{-- Class Name (dropdown with "Other" option for new classes) --}}
             <div x-data="{
-                    selected: '{{ old('class_name_select', old('class_name', '')) }}',
-                    custom: '{{ old('custom_class_name', '') }}',
+                    selected: @js(old('class_name_select', old('class_name', ''))),
+                    custom: @js(old('custom_class_name', '')),
                     isOther: {{ old('class_name_select') === '__other__' || (old('class_name') && !in_array(old('class_name'), $classNames)) ? 'true' : 'false' }}
                  }">
                 <label for="class_name_select" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>

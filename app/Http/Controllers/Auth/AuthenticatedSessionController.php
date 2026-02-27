@@ -71,8 +71,16 @@ class AuthenticatedSessionController extends Controller
             return redirect(route('verification.notice', absolute: false));
         }
 
-        // Case 2: email exists but not yet verified — resend verification email.
+        // Case 2: email exists but not yet verified — verify password first, then resend.
+        // Password check is required to prevent anyone who knows an email address from
+        // hijacking an unverified session and spamming the verification resend endpoint.
         if (! $user->hasVerifiedEmail()) {
+            if (! Hash::check($request->input('password'), $user->password)) {
+                return back()
+                    ->withErrors(['email' => 'These credentials do not match our records.'])
+                    ->withInput(['email' => $email]);
+            }
+
             $user->sendEmailVerificationNotification();
 
             Auth::login($user);

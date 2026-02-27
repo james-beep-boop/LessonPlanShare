@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/guide', fn () => view('guide'))->name('guide');
+Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
 
 /*
 |--------------------------------------------------------------------------
@@ -26,8 +27,6 @@ Route::get('/guide', fn () => view('guide'))->name('guide');
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
-
-    Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
 
     // View, preview, and download require a verified account
     Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])

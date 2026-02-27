@@ -13,23 +13,25 @@ use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
 /**
- * Overrides the default Breeze RegisteredUserController.
+ * Fallback registration controller — NOT used in normal operation.
  *
- * Simplification: the "email" field serves as both the login identifier
- * AND the display name. There is no separate "name" field in our sign-up
- * form — we store the email address in both the name and email columns.
+ * All registration is handled by AuthenticatedSessionController::store()
+ * via the merged auth modal (three-case logic: new email / unverified / verified).
+ * That flow requires Teacher Name + email + password and enforces name uniqueness.
  *
- * The User model implements MustVerifyEmail, so after registration a
- * verification email is sent automatically via the Registered event.
- * The user must click the confirmation link before they can access
- * authenticated routes that use the 'verified' middleware.
+ * The routes/auth.php file redirects both GET /register and POST /register
+ * to the dashboard, so neither create() nor store() below is ever reached
+ * in the normal user flow. They are retained only as a documented dead-code
+ * stub so Breeze's route names remain resolvable.
+ *
+ * If a standalone register page is ever reintroduced, store() must be updated
+ * to accept and validate the 'teacher_name' field (matching the modal flow in
+ * AuthenticatedSessionController).
  */
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
-     * (Our modal in layout.blade.php handles the UI, but Breeze may
-     *  still route here for standalone page fallback.)
+     * Display the registration view (not reached — GET /register redirects to dashboard).
      */
     public function create(): View
     {
@@ -37,7 +39,11 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle an incoming registration request.
+     * Handle a registration request (not reached — POST /register redirects to dashboard).
+     *
+     * NOTE: This store() uses the old "email as name" pattern and does NOT
+     * collect Teacher Name. It must NOT be made reachable without first being
+     * updated to match the AuthenticatedSessionController three-case flow.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -47,7 +53,7 @@ class RegisteredUserController extends Controller
         ]);
 
         $user = User::create([
-            'name'     => $request->email,   // username = email address
+            'name'     => $request->email,   // stub only — real flow uses teacher_name
             'email'    => $request->email,
             'password' => Hash::make($request->password),
         ]);

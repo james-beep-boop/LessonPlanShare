@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (semantic versioning, back buttons on guide/admin/stats pages)
+**Last updated:** 2026-02-27 (semantic versioning, back buttons, code review fixes: B1–B5 C1 R1–R3)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -28,9 +28,9 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Dashboard Author column: shows Teacher Name (LEFT JOIN on users, sortable)
 - Dashboard Rating column: "Vote 👍 👎 +N" for guests; locked ▲▼ (greyed) for unviewed plans; AJAX ▲▼ for viewed plans
 - Dashboard column alignments: Class left, Day# center, Author left, Version center, Rating center, Updated left
-- Dashboard Actions: "View/Edit/Vote" button (greyed out for guests); no Download button on dashboard
+- Dashboard Actions: "View/Edit/Vote" button (greyed out for guests **and unverified users**); no Download button on dashboard
 - View tracking: visiting `lesson-plans.show` records a view in `lesson_plan_views` table; gates AJAX voting
-- Favorites: AJAX star toggle on dashboard; yellow when favorited, grey when not; greyed out for guests; `favorites` table with unique `[user_id, lesson_plan_id]` index; `FavoriteController::toggle()` returns JSON
+- Favorites: AJAX star toggle on dashboard; yellow when favorited, grey when not; greyed out for guests **and unverified users**; `favorites` table with unique `[user_id, lesson_plan_id]` index; `FavoriteController::toggle()` returns JSON
 - Guide page (`/guide`): public, linked in header for all users; covers login, version numbering, view/download, upload, delete, voting, and admin rules
 - Plan detail page (two-column layout, voting, version history sidebar)
 - Print/Save PDF button on plan detail page (`window.print()`)
@@ -38,12 +38,12 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
 - Preview page buttons: "Home" (→ dashboard) and "← Back to Details" (→ show page)
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
-- Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised)
+- Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised) — **public, no auth required** (route is outside the auth+verified middleware group)
 - Stats `groupBy` bug fixed: uses `DB::raw('COALESCE(original_id, id)')` not the alias
 - Upload success dialog (Alpine.js modal, canonical filename display)
 - Flash messages (success/error/status)
 - Duplicate content detection artisan command (`lessons:detect-duplicates [--dry-run]`)
-- File type restriction: DOC, DOCX, TXT, RTF, ODT only (client and server both validated)
+- File type restriction: DOC, DOCX, TXT, RTF, ODT only (client and server validated); server uses `$file->extension()` (MIME-derived, not client filename) as a second defence layer in `persistUploadedFile()` to prevent extension spoofing
 - SMTP configured for `smtp.dreamhost.com` (port 587, TLS)
 - **Semantic versioning:** `major.minor.patch` format per `(class_name, lesson_day)` scope
   - First upload for any class/day → `1.0.0`; first integer always stays `1`
@@ -60,6 +60,8 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - Unique constraint violation (race condition) caught and returns user-friendly error
   - `LessonPlanFactory` for tests; `tests/Feature/SemanticVersionTest.php` (11 tests)
   - Backfill migration assigns `1.N.0` to all existing rows grouped by class/day
+- Class name dropdown (upload + edit forms) built by `buildClassNames()`: merges the hard-coded `CLASS_NAMES` seed array with all distinct class names from the DB, de-duplicated and sorted — ensures existing archive classes always appear even if not in the seed list
+- Dashboard "Version" column sorts by three-column numeric `ORDER BY version_major, version_minor, version_patch` (not by string or a single column) so `1.10.0` sorts after `1.9.0`
 - `lesson-plans.show`, `lesson-plans.preview`, `lesson-plans.download` require `auth+verified`
 - "Favorite Lesson Plan" counter links to `lesson-plans.show`
 - Upload button (create + edit forms) greyed out until a valid file is chosen

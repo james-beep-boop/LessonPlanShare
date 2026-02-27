@@ -157,21 +157,28 @@ class LessonPlan extends Model
     /**
      * Count of upvotes (+1) for this version.
      *
-     * Note: This queries the database each time it's accessed.
-     * For display-heavy pages, prefer using the cached vote_score column.
+     * Uses the already-loaded votes collection (in-memory filter) when available,
+     * avoiding an extra query on pages that eager-load votes (e.g. show page).
+     * Falls back to a DB query if the relationship has not been loaded.
      */
     public function getUpvoteCountAttribute(): int
     {
+        if ($this->relationLoaded('votes')) {
+            return $this->votes->where('value', 1)->count();
+        }
         return $this->votes()->where('value', 1)->count();
     }
 
     /**
      * Count of downvotes (-1) for this version.
      *
-     * Same performance note as getUpvoteCountAttribute().
+     * Same eager-load optimisation as getUpvoteCountAttribute().
      */
     public function getDownvoteCountAttribute(): int
     {
+        if ($this->relationLoaded('votes')) {
+            return $this->votes->where('value', -1)->count();
+        }
         return $this->votes()->where('value', -1)->count();
     }
 

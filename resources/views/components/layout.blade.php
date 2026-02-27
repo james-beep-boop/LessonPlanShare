@@ -251,7 +251,11 @@
     ────────────────────────────────────────────────────────────── --}}
     <footer class="border-t border-gray-200 mt-16">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-gray-400">
+            @php
+                $appVersion = trim(@file_get_contents(storage_path('app/version.txt')) ?: 'dev');
+            @endphp
             &copy; {{ date('Y') }} ARES Education &mdash; Kenya Lesson Plan Repository
+            &middot; <span class="font-mono text-xs">{{ $appVersion }}</span>
         </div>
     </footer>
 

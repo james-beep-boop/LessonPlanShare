@@ -84,12 +84,17 @@ class DashboardController extends Controller
         // All other columns are prefixed with lesson_plans. to avoid JOIN ambiguity.
         $allowedSorts = [
             'class_name', 'lesson_day', 'author_name',
-            'version_number', 'vote_score', 'updated_at',
+            'semantic_version', 'vote_score', 'updated_at',
         ];
 
         if (in_array($sortField, $allowedSorts)) {
             if ($sortField === 'author_name') {
                 $query->orderBy('users.name', $sortOrder);
+            } elseif ($sortField === 'semantic_version') {
+                // Semantic version is stored in three integer columns; sort numerically.
+                $query->orderBy('lesson_plans.version_major', $sortOrder)
+                      ->orderBy('lesson_plans.version_minor', $sortOrder)
+                      ->orderBy('lesson_plans.version_patch', $sortOrder);
             } else {
                 $query->orderBy('lesson_plans.' . $sortField, $sortOrder);
             }

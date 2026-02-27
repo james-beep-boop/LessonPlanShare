@@ -14,7 +14,7 @@ This plan is written for the full Laravel install on server (`~/LessonPlanShare`
 
 ## 2) Preconditions
 - App deployed and reachable at `https://www.sheql.com`
-- Mail configured (`MAIL_HOST=mail.dreamhost.com` or `smtp.dreamhost.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`)
+- Mail configured (`MAIL_HOST=smtp.dreamhost.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`) — **must be `smtp.dreamhost.com`**, not `mail.dreamhost.com` (TLS cert mismatch on the latter)
 - At least 3 test users:
   - `user_a` (verified)
   - `user_b` (verified)
@@ -25,7 +25,7 @@ This plan is written for the full Laravel install on server (`~/LessonPlanShare`
 ## 3) Fast Smoke (run first)
 
 ### SM-01 Registration + verification email send
-- Register a new account from modal and from `/register`.
+- Register a new account from the Sign In / Up modal (Teacher Name + email + password). Note: `/register` redirects to the dashboard — all registration happens through the modal.
 - Expected: user record created, verification email sent, redirect to `/verify-email`.
 
 ### SM-02 Verification link validity

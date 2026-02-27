@@ -150,7 +150,7 @@ Visit http://localhost:8000 — you should see the dashboard.
 
 ### Step 6: Test locally
 
-1. Register a test account (click Sign In → Sign Up; the username must be a valid email)
+1. Register a test account via the Sign In / Up modal (enter a **Teacher Name** + email + password — Teacher Name is a unique display name, separate from email)
 2. Upload a lesson plan — you should see a dialog box confirming the upload
    and showing the renamed filename (e.g., `Science_Day3_youremailcom_20260223_143022UTC.docx`)
 3. Check your email (if SMTP is configured locally) for the upload confirmation

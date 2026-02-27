@@ -131,7 +131,7 @@ Enforced by `AdminMiddleware` on all `/admin` routes.
 
 **Behavior:** A view is recorded when an authenticated user visits the `lesson-plans.show` route. Views gate AJAX voting in the dashboard — a user must have viewed a plan before they can vote on it inline. See Section 14.4.
 
-### 2.5 `favorites` Table (NOT YET IMPLEMENTED)
+### 2.5 `favorites` Table
 
 | Column | Type | Notes |
 |---|---|---|
@@ -271,7 +271,7 @@ The route uses `signed` and `throttle:6,1` middleware but NOT `auth` middleware.
 | Create a new version | Authenticated + verified email |
 | Vote on a plan | Authenticated + verified email (not the author; must have viewed the plan) |
 | Inline AJAX vote from dashboard | Authenticated + verified email (not author; must have viewed plan) |
-| Favorite a plan | Authenticated + verified email (NOT YET IMPLEMENTED) |
+| Favorite a plan | Authenticated + verified email |
 | Delete a plan | Authenticated + verified email (only the plan's author) |
 | View "My Plans" | Authenticated + verified email |
 | Access admin panel (`/admin`) | Authenticated + verified email + `is_admin = true` |
@@ -317,13 +317,13 @@ Eight columns, all sortable by clicking the header:
 | 1 | **Class** | left | Subject name |
 | 2 | **Day #** | center | Lesson number |
 | 3 | **Author** | left | Teacher Name (from `users.name` via LEFT JOIN; sortable) |
-| 4 | **Version** | center | Integer only — NO "v" prefix (e.g., `1`, `2`, `3`) |
+| 4 | **Version** | center | Semantic version string in `major.minor.patch` format (e.g., `1.0.0`, `1.2.3`). Sorted via three-column numeric `ORDER BY version_major, version_minor, version_patch`. |
 | 5 | **Rating** | center | **Guest:** readonly "Vote 👍 👎 +N". **Authenticated, unviewed plan:** greyed locked ▲▼ (tooltip: "View this plan to unlock voting"). **Authenticated, viewed plan (not author):** interactive AJAX ▲▼ with live score update. **Author:** greyed (can't self-vote). |
 | 6 | **Updated** | left | Date only in "Mon D, YYYY" format (no time) |
-| 7 | **Actions** | center | Single button: "View/Edit/Vote" (gray-100, links to plan detail page). **Greyed out and non-clickable for guests** (not logged in). No Download button on the dashboard. |
-| 8 | **Favorite** | center | NOT YET IMPLEMENTED (spec placeholder) |
+| 7 | **Actions** | center | Single button: "View/Edit/Vote" (gray-100, links to plan detail page). **Greyed out and non-clickable for guests and unverified users.** No Download button on the dashboard. |
+| 8 | **Favorite** | center | ★ star toggle. Authenticated + verified: yellow (★) when favorited, grey otherwise; AJAX POST to `favorites.toggle`. Guests and unverified users: grey non-clickable star. |
 
-**Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`. Sort whitelist: `class_name`, `lesson_day`, `author_name`, `version_number`, `vote_score`, `updated_at`. Note: sorting by `author_name` requires a JOIN to the `users` table.
+**Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`. Sort whitelist: `class_name`, `lesson_day`, `author_name`, `semantic_version`, `vote_score`, `updated_at`. The `semantic_version` sort uses three numeric columns (`ORDER BY version_major, version_minor, version_patch`). Note: sorting by `author_name` requires a JOIN to the `users` table.
 
 **Pagination:** 10 rows per page. Standard Laravel pagination links. A summary line below the table shows "Showing X–Y of Z plans".
 
@@ -629,21 +629,21 @@ Displays ALL users (paginated 50/page) with columns: checkbox, Delete button, Te
 
 ---
 
-## 16. Favorites System (NOT YET IMPLEMENTED)
+## 16. Favorites System
 
-> **Modularity note:** This section fully describes the favorites system. Changes here should NOT require reading any other section except the Data Model (Section 2.4) for the favorites table.
+> **Modularity note:** This section fully describes the favorites system. Changes here should NOT require reading any other section except the Data Model (Section 2.5) for the favorites table.
 
-### 15.1 Behavior
+### 16.1 Behavior
 
-Each authenticated user can favorite any lesson plan. A checkbox appears in the rightmost column of the dashboard table. Toggling the checkbox sends an AJAX POST to `/lesson-plans/{id}/favorite`.
+Each authenticated + verified user can favorite any lesson plan. A ★ star button appears in the Favorite column of the dashboard table. Toggling it sends an AJAX POST to `/lesson-plans/{id}/favorite`. The star shows yellow (★) when favorited, grey otherwise.
 
-**Guest behavior:** The Favorite checkbox is visible but greyed out and non-clickable for guests. A tooltip or visual indicator suggests signing in.
+**Guest / unverified behavior:** The star (★) is visible but greyed out and non-clickable for guests and unverified users.
 
-### 15.2 Controller
+### 16.2 Controller
 
 `FavoriteController@toggle` — accepts POST, toggles the favorite record (creates if not exists, deletes if exists). Returns JSON response `{ favorited: true/false }`.
 
-### 15.3 Route
+### 16.3 Route
 
 `POST /lesson-plans/{lessonPlan}/favorite` — in the `auth + verified` middleware group. Named `favorites.toggle`.
 
@@ -857,7 +857,7 @@ Validation is handled in `AuthenticatedSessionController@store`, not via a Form 
 
 | Parameter | Validation |
 |---|---|
-| sort | Must be in whitelist: `class_name`, `lesson_day`, `author_name`, `version_number`, `vote_score`, `updated_at` |
+| sort | Must be in whitelist: `class_name`, `lesson_day`, `author_name`, `semantic_version`, `vote_score`, `updated_at` |
 | order | Must be 'asc' or 'desc' (case-insensitive); defaults to 'desc' |
 
 ---
@@ -902,7 +902,8 @@ If a lesson plan's file is missing from disk, the download route redirects back 
 
 - All user input is validated server-side via Form Request classes
 - Sort column and direction are validated against whitelists
-- File uploads are validated for size (1 MB max) and MIME type
+- File uploads are validated for size (1 MB max) and MIME type (via `StoreLessonPlanRequest`)
+- A second file-extension check is performed in `LessonPlanController::persistUploadedFile()` using `$file->extension()`, which derives the extension from the MIME type (via `finfo`) rather than from the client-supplied filename — prevents extension spoofing where the attacker names a file `evil.php` but sends a DOCX MIME type
 - Class names are validated as strings (max 100 characters)
 
 ### 21.3 Authorization
@@ -981,7 +982,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | `LessonPlanController` | CRUD for lesson plans: upload, show (records view), preview, new version, delete, download |
 | `VoteController` | Cast/toggle votes; returns JSON for AJAX requests |
 | `AdminController` | Admin panel: per-row and bulk delete for plans and users |
-| `FavoriteController` | Toggle favorite status on lesson plans — NOT YET IMPLEMENTED |
+| `FavoriteController` | Toggle favorite status on lesson plans (AJAX POST, returns JSON) |
 | `Auth/AuthenticatedSessionController` | Custom three-case login+register (new/unverified/verified) |
 | `Auth/VerifyEmailController` | Custom email verification: works without active session (validates signed URL, logs user in) |
 
@@ -993,7 +994,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | `LessonPlan` | Plan version with versioning, canonical naming, vote caching, family queries |
 | `Vote` | Single upvote/downvote on a lesson plan version |
 | `LessonPlanView` | View tracking pivot (user_id + lesson_plan_id, created_at only) |
-| `Favorite` | User-plan favorite relationship — NOT YET IMPLEMENTED |
+| `Favorite` | User-plan favorite relationship (`user_id`, `lesson_plan_id`, `created_at`) |
 
 ### 24.3 Middleware
 

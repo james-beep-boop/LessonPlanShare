@@ -41,3 +41,6 @@ yarn-error.log
 # ─── Uploaded lesson plan files (stored in storage, not repo) ─
 /storage/app/public/lessons/*
 !/storage/app/public/lessons/.gitkeep
+
+# ─── Generated at deploy time (not part of source) ───────────
+/storage/app/version.txt

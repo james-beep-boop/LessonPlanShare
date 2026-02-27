@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Favorite;
 use App\Models\LessonPlan;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,10 +29,18 @@ class FavoriteController extends Controller
             return response()->json(['favorited' => false]);
         }
 
-        Favorite::create([
-            'user_id'        => Auth::id(),
-            'lesson_plan_id' => $lessonPlan->id,
-        ]);
+        // Wrap in try/catch: a rapid double-click can send two concurrent requests that both
+        // pass the first() check above (returning null) and both attempt create(). The unique
+        // index on [user_id, lesson_plan_id] will reject the second with a QueryException.
+        // We treat that as idempotent — the row was already created, so return favorited: true.
+        try {
+            Favorite::create([
+                'user_id'        => Auth::id(),
+                'lesson_plan_id' => $lessonPlan->id,
+            ]);
+        } catch (QueryException) {
+            // Unique constraint violation — concurrent request beat us to it; already favorited.
+        }
 
         return response()->json(['favorited' => true]);
     }
