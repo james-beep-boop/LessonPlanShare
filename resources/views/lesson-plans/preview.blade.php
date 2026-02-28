@@ -64,20 +64,13 @@
              Clicking "Refresh Viewer" updates ts = Date.now(), forcing a new &t=
              query param that busts Google's cache without a full page reload. --}}
         <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-            {{-- The gview toolbar contains an "open in new tab" icon that leads to a blank page.
-                 CSS overlays don't reliably intercept touch events over cross-origin iframes on
-                 iOS Safari. Instead, shift the iframe up by the toolbar height (≈44 px) so the
-                 toolbar scrolls out of view and is clipped by the wrapper's overflow: hidden.
-                 Document content starts below the toolbar, so nothing useful is clipped. --}}
-            <div style="overflow: hidden; height: 75vh; min-height: 500px;">
-                <iframe :src="viewerBase + ts"
-                        class="w-full bg-white"
-                        style="height: calc(75vh + 44px); min-height: 544px; margin-top: -44px;"
-                        frameborder="0"
-                        loading="lazy"
-                        title="Document Preview: {{ $lessonPlan->file_name }}">
-                </iframe>
-            </div>
+            <iframe :src="viewerBase + ts"
+                    class="w-full bg-white"
+                    style="height: 75vh; min-height: 500px;"
+                    frameborder="0"
+                    loading="lazy"
+                    title="Document Preview: {{ $lessonPlan->file_name }}">
+            </iframe>
 
             {{-- Fallback note --}}
             <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

@@ -167,6 +167,32 @@
                         </p>
                     @endauth
                 </div>
+
+                {{-- ── Alternative Viewer Comparison — temporary testing feature ── --}}
+                @if ($lessonPlan->file_path)
+                    @php $altFileUrl = asset('storage/' . $lessonPlan->file_path); @endphp
+                    <div class="border border-dashed border-gray-300 rounded-lg p-4"
+                         x-data="{ open: false }">
+                        <button @click="open = !open" type="button"
+                                class="flex items-center justify-between w-full text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                            <span>Alternative Viewers (for testing)</span>
+                            <span x-text="open ? '▲' : '▼'"></span>
+                        </button>
+                        <div x-show="open" x-cloak class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <a href="https://docs.google.com/gview?url={{ urlencode($altFileUrl) }}"
+                               target="_blank" rel="noopener"
+                               class="text-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                Preview in Google Docs ↗
+                            </a>
+                            <a href="https://view.officeapps.live.com/op/view.aspx?src={{ urlencode($altFileUrl) }}"
+                               target="_blank" rel="noopener"
+                               class="text-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                Preview in Microsoft Office ↗
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
             {{-- Sidebar: Version History (right 1/3) --}}
