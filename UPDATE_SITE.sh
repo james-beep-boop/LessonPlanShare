@@ -70,6 +70,9 @@ remove_if_exists "DEPLOY_DREAMHOST.sh"
 remove_if_exists "Claude_Lesson_Deployment_Findings_2_22.docx"
 remove_if_exists "public/images/ARES_Logo_300.jpg"
 
+# Files removed 2026-02-27:
+remove_if_exists "resources/views/stats.blade.php"
+
 # Write version string to storage so the page footer can display it.
 # Source of truth: the VERSION file in the repo (e.g. "0.61").
 # Falls back to git tag, then git hash, then "dev" if nothing else is available.

@@ -35,8 +35,6 @@ class DashboardController extends Controller
      * - sort: column to sort by (name, class_name, lesson_day, etc.)
      * - order: 'asc' or 'desc' (validated server-side; bad values default to 'desc')
      *
-     * Pagination: 10 rows per page (matching the design spec for
-     * "first 10 rows sorted by most recent").
      */
     public function index(Request $request)
     {
@@ -109,8 +107,9 @@ class DashboardController extends Controller
             $query->orderBy('lesson_plans.updated_at', 'desc');
         }
 
-        // Paginate at 10 per page; withQueryString() preserves search/sort params
-        $plans = $query->paginate(10)->withQueryString();
+        // Paginate at 20 per page. withQueryString() threads search/sort/filter params
+        // through pagination links so they survive page navigation.
+        $plans = $query->paginate(20)->withQueryString();
 
         // For logged-in users: load their existing votes, viewed plan IDs, and favorites.
         // Used to show interactive vote buttons and pre-populate favorite checkboxes.
@@ -142,101 +141,31 @@ class DashboardController extends Controller
             ->pluck('class_name');
 
         // ── Dashboard counters ──
-        // Unique classes: how many distinct class names have at least one plan
-        $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
-
         // Total plans: every version counts as one (not just latest)
         $totalPlanCount = LessonPlan::count();
 
-        // Registered users: total number of accounts (verified or not)
-        $userCount = User::count();
+        // Contributors: distinct authors who have uploaded at least one plan
+        $contributorCount = LessonPlan::distinct('author_id')->count('author_id');
 
-        // Favorite plan: the single plan with the highest net vote score
-        // (upvotes minus downvotes). Ties broken by most recent. Eager-load author.
-        $favoritePlan = LessonPlan::with('author')
+        // Top-rated plan: highest net vote_score (upvotes − downvotes). Used in counter box.
+        $topRatedPlan = LessonPlan::with('author')
+            ->where('vote_score', '>', 0)
             ->orderByDesc('vote_score')
             ->orderByDesc('updated_at')
+            ->first();
+
+        // Top contributor: the author with the most uploads
+        $topContributor = LessonPlan::select('author_id', DB::raw('COUNT(*) as upload_count'))
+            ->with('author')
+            ->groupBy('author_id')
+            ->orderByDesc('upload_count')
             ->first();
 
         return response()
             ->view('dashboard', compact(
                 'plans', 'classNames', 'sortField', 'sortOrder',
-                'uniqueClassCount', 'totalPlanCount', 'favoritePlan',
-                'userVotes', 'viewedIds', 'favoritedIds', 'userCount'
-            ))
-            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
-            ->header('Pragma', 'no-cache');
-    }
-
-    /**
-     * Display the Stats page with detailed archive statistics.
-     *
-     * Public route — anyone can view statistics, no auth required.
-     * Computes aggregate data about the lesson plan archive including:
-     * - Total plans and unique classes (same as dashboard counters)
-     * - Total contributors (distinct authors)
-     * - Plans per class (bar-chart-style breakdown)
-     * - Top 5 highest-rated plans
-     * - Top 5 most prolific contributors
-     * - Most revised plan family (most versions)
-     */
-    public function stats()
-    {
-        // ── Basic counters ──
-        $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
-        $totalPlanCount   = LessonPlan::count();
-        $contributorCount = LessonPlan::distinct('author_id')->count('author_id');
-
-        // ── Plans per class ──
-        // Returns a collection of objects with class_name and plan_count
-        $plansPerClass = LessonPlan::select('class_name', DB::raw('COUNT(*) as plan_count'))
-            ->groupBy('class_name')
-            ->orderByDesc('plan_count')
-            ->get();
-
-        // ── Top 5 highest-rated plans ──
-        $topRated = LessonPlan::with('author')
-            ->where('vote_score', '>', 0)
-            ->orderByDesc('vote_score')
-            ->orderByDesc('updated_at')
-            ->limit(5)
-            ->get();
-
-        // ── Top 5 most prolific contributors ──
-        // Counts how many plans each author has uploaded (all versions)
-        $topContributors = LessonPlan::select('author_id', DB::raw('COUNT(*) as upload_count'))
-            ->with('author')
-            ->groupBy('author_id')
-            ->orderByDesc('upload_count')
-            ->limit(5)
-            ->get();
-
-        // ── Most revised plan family ──
-        // The root plan whose family has the most versions.
-        // Alias is 'family_root_id' (not 'root_id') to avoid triggering the
-        // model's getRootIdAttribute() accessor, which would throw a TypeError
-        // because this partial SELECT omits the 'id' and 'original_id' columns.
-        // Must group by the full expression (not the alias) for MySQL ONLY_FULL_GROUP_BY.
-        $mostRevised = LessonPlan::select(
-                DB::raw('COALESCE(original_id, id) as family_root_id'),
-                DB::raw('COUNT(*) as version_count')
-            )
-            ->groupBy(DB::raw('COALESCE(original_id, id)'))
-            ->orderByDesc('version_count')
-            ->first();
-
-        $mostRevisedPlan = null;
-        if ($mostRevised && $mostRevised->version_count > 1) {
-            $mostRevisedPlan = LessonPlan::with('author')->find($mostRevised->family_root_id);
-            if ($mostRevisedPlan) {
-                $mostRevisedPlan->family_version_count = $mostRevised->version_count;
-            }
-        }
-
-        return response()
-            ->view('stats', compact(
-                'uniqueClassCount', 'totalPlanCount', 'contributorCount',
-                'plansPerClass', 'topRated', 'topContributors', 'mostRevisedPlan'
+                'totalPlanCount', 'contributorCount', 'topRatedPlan', 'topContributor',
+                'userVotes', 'viewedIds', 'favoritedIds'
             ))
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
             ->header('Pragma', 'no-cache');

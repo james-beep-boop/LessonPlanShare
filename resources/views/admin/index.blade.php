@@ -14,11 +14,47 @@
             </a>
         </div>
 
+        {{-- ── Counters ── --}}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="border border-gray-200 rounded-lg p-4 text-center">
+                <p class="text-3xl font-bold text-gray-900">{{ $uniqueClassCount }}</p>
+                <p class="text-xs text-gray-500 mt-1">Unique {{ Str::plural('Class', $uniqueClassCount) }}</p>
+            </div>
+            <div class="border border-gray-200 rounded-lg p-4 text-center">
+                <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
+                <p class="text-xs text-gray-500 mt-1">Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
+            </div>
+            <div class="border border-gray-200 rounded-lg p-4 text-center">
+                <p class="text-3xl font-bold text-gray-900">{{ $contributorCount }}</p>
+                <p class="text-xs text-gray-500 mt-1">{{ Str::plural('Contributor', $contributorCount) }}</p>
+            </div>
+        </div>
+
         {{-- ══════════════════════════════════════════════════════════
              LESSON PLANS TABLE
         ══════════════════════════════════════════════════════════ --}}
         <div class="mb-12">
             <h2 class="text-lg font-semibold text-gray-900 mb-3">Lesson Plans ({{ $plans->total() }})</h2>
+
+            {{-- Search form for plans --}}
+            <form method="GET" action="{{ route('admin.index') }}" class="mb-3 flex gap-2 flex-wrap">
+                {{-- Preserve user table state --}}
+                <input type="hidden" name="user_search" value="{{ $userSearch }}">
+                <input type="hidden" name="user_sort"   value="{{ $userSort }}">
+                <input type="hidden" name="user_order"  value="{{ $userOrder }}">
+                <input type="text" name="plan_search" value="{{ $planSearch }}"
+                       placeholder="Search class, name, or author…"
+                       class="flex-1 min-w-[200px] border border-gray-300 rounded-md px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                <button type="submit"
+                        class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                    Search
+                </button>
+                @if ($planSearch)
+                    <a href="{{ route('admin.index', ['user_search' => $userSearch, 'user_sort' => $userSort, 'user_order' => $userOrder]) }}"
+                       class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900">Clear</a>
+                @endif
+            </form>
 
             {{-- Bulk-delete form (checkboxes in the table reference this via form="bulk-plans-form") --}}
             <form id="bulk-plans-form"
@@ -38,21 +74,43 @@
             <div class="border border-gray-200 rounded-lg overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="bg-gray-50 border-b border-gray-200">
+                        <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                             <tr>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    {{-- Select-all checkbox --}}
                                     <input type="checkbox"
                                            onclick="document.querySelectorAll('.plan-cb').forEach(cb => cb.checked = this.checked)"
                                            class="rounded border-gray-300">
                                 </th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Delete</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Day #</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Author</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Ver.</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
+                                @php
+                                    // Sortable plan column headers
+                                    $planCols = [
+                                        'class_name'       => ['label' => 'Class',   'align' => 'left'],
+                                        'lesson_day'       => ['label' => 'Day #',   'align' => 'center'],
+                                        'author_name'      => ['label' => 'Author',  'align' => 'left'],
+                                        'semantic_version' => ['label' => 'Ver.',    'align' => 'center'],
+                                        'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
+                                    ];
+                                @endphp
+                                @foreach ($planCols as $field => $col)
+                                    @php
+                                        $isActive  = ($planSort === $field);
+                                        $nextOrder = ($isActive && $planOrder === 'asc') ? 'desc' : 'asc';
+                                        $thAlign   = $col['align'] === 'center' ? 'text-center' : 'text-left';
+                                        $linkAlign = $col['align'] === 'center' ? 'justify-center w-full' : '';
+                                    @endphp
+                                    <th class="px-3 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
+                                        <a href="{{ route('admin.index', array_merge(request()->query(), ['plan_sort' => $field, 'plan_order' => $nextOrder, 'plans_page' => 1])) }}"
+                                           class="inline-flex items-center {{ $linkAlign }} px-2 py-0.5 rounded font-semibold transition-colors
+                                                  {{ $isActive ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50' }}">
+                                            {{ $col['label'] }}
+                                            @if ($isActive)
+                                                <span class="ml-1">{!! $planOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
+                                            @endif
+                                        </a>
+                                    </th>
+                                @endforeach
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Updated</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -73,7 +131,7 @@
                                             @method('DELETE')
                                             <button type="submit"
                                                     class="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded hover:bg-red-200 transition-colors">
-                                                Delete
+                                                Del
                                             </button>
                                         </form>
                                     </td>
@@ -81,23 +139,27 @@
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
-                                    <td class="px-3 py-2 text-gray-500 text-xs font-mono">{{ $plan->file_name }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs font-mono truncate max-w-[160px]">{{ $plan->file_name }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-4 py-6 text-center text-gray-400">No lesson plans.</td>
+                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
+                                        No lesson plans{{ $planSearch ? ' matching "' . e($planSearch) . '"' : '' }}.
+                                    </td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-                @if ($plans->hasPages())
-                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                        {{ $plans->links() }}
-                    </div>
-                @endif
             </div>
+
+            {{-- Plans pagination --}}
+            @if ($plans->hasPages())
+                <div class="mt-3">
+                    {{ $plans->links() }}
+                </div>
+            @endif
         </div>
 
         {{-- ══════════════════════════════════════════════════════════
@@ -105,6 +167,26 @@
         ══════════════════════════════════════════════════════════ --}}
         <div>
             <h2 class="text-lg font-semibold text-gray-900 mb-3">Registered Users ({{ $users->total() }})</h2>
+
+            {{-- Search form for users --}}
+            <form method="GET" action="{{ route('admin.index') }}" class="mb-3 flex gap-2 flex-wrap">
+                {{-- Preserve plan table state --}}
+                <input type="hidden" name="plan_search" value="{{ $planSearch }}">
+                <input type="hidden" name="plan_sort"   value="{{ $planSort }}">
+                <input type="hidden" name="plan_order"  value="{{ $planOrder }}">
+                <input type="text" name="user_search" value="{{ $userSearch }}"
+                       placeholder="Search name or email…"
+                       class="flex-1 min-w-[200px] border border-gray-300 rounded-md px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                <button type="submit"
+                        class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                    Search
+                </button>
+                @if ($userSearch)
+                    <a href="{{ route('admin.index', ['plan_search' => $planSearch, 'plan_sort' => $planSort, 'plan_order' => $planOrder]) }}"
+                       class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900">Clear</a>
+                @endif
+            </form>
 
             {{-- Bulk-delete form for users --}}
             <form id="bulk-users-form"
@@ -124,19 +206,41 @@
             <div class="border border-gray-200 rounded-lg overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="bg-gray-50 border-b border-gray-200">
+                        <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                             <tr>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     <input type="checkbox"
                                            onclick="document.querySelectorAll('.user-cb').forEach(cb => cb.checked = this.checked)"
                                            class="rounded border-gray-300">
                                 </th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Delete</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher Name</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Verified</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
+                                @php
+                                    $userCols = [
+                                        'name'               => ['label' => 'Teacher Name', 'align' => 'left'],
+                                        'email'              => ['label' => 'Email',         'align' => 'left'],
+                                        'email_verified_at'  => ['label' => 'Verified',      'align' => 'center'],
+                                        'created_at'         => ['label' => 'Registered',    'align' => 'left'],
+                                    ];
+                                @endphp
+                                @foreach ($userCols as $field => $col)
+                                    @php
+                                        $isActive  = ($userSort === $field);
+                                        $nextOrder = ($isActive && $userOrder === 'asc') ? 'desc' : 'asc';
+                                        $thAlign   = $col['align'] === 'center' ? 'text-center' : 'text-left';
+                                        $linkAlign = $col['align'] === 'center' ? 'justify-center w-full' : '';
+                                    @endphp
+                                    <th class="px-3 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
+                                        <a href="{{ route('admin.index', array_merge(request()->query(), ['user_sort' => $field, 'user_order' => $nextOrder, 'users_page' => 1])) }}"
+                                           class="inline-flex items-center {{ $linkAlign }} px-2 py-0.5 rounded font-semibold transition-colors
+                                                  {{ $isActive ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50' }}">
+                                            {{ $col['label'] }}
+                                            @if ($isActive)
+                                                <span class="ml-1">{!! $userOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
+                                            @endif
+                                        </a>
+                                    </th>
+                                @endforeach
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Registered</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
@@ -161,7 +265,7 @@
                                                 @method('DELETE')
                                                 <button type="submit"
                                                         class="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded hover:bg-red-200 transition-colors">
-                                                    Delete
+                                                    Del
                                                 </button>
                                             </form>
                                         @else
@@ -177,6 +281,7 @@
                                             <span class="text-red-500 text-xs font-medium">No</span>
                                         @endif
                                     </td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y') }}</td>
                                     <td class="px-3 py-2 text-center">
                                         @if ($u->is_admin)
                                             <span class="text-blue-600 text-xs font-medium">Yes</span>
@@ -184,7 +289,6 @@
                                             <span class="text-gray-400 text-xs">—</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y g:ia') }}</td>
                                     <td class="px-3 py-2">
                                         <div class="flex items-center gap-1.5 flex-wrap">
 
@@ -244,18 +348,22 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-4 py-6 text-center text-gray-400">No users.</td>
+                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
+                                        No users{{ $userSearch ? ' matching "' . e($userSearch) . '"' : '' }}.
+                                    </td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-                @if ($users->hasPages())
-                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                        {{ $users->links() }}
-                    </div>
-                @endif
             </div>
+
+            {{-- Users pagination --}}
+            @if ($users->hasPages())
+                <div class="mt-3">
+                    {{ $users->links() }}
+                </div>
+            @endif
         </div>
 
     </div>

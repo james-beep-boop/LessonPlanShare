@@ -61,44 +61,55 @@
                     {{-- Action Buttons --}}
                     <div class="mt-6 pt-4 border-t border-gray-100 space-y-2">
 
-                        {{-- Row 1: Preview · Download File · Print/Save PDF --}}
-                        <div class="flex flex-wrap items-center gap-3">
-                            @if ($lessonPlan->file_path)
+                        {{-- Row 1: Preview · Download File · Print/Save PDF — stacks on mobile, 3-col on sm+ --}}
+                        @if ($lessonPlan->file_path)
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
-                                   class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                                   class="text-center px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                                     Preview
                                 </a>
                                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                                   class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Download File
+                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Download
                                 </a>
-                            @endif
-                            {{-- Print button — opens browser print dialog (supports print-to-PDF) --}}
-                            <button type="button" onclick="window.print()"
-                                    class="px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                Print / Save PDF
-                            </button>
-                        </div>
+                                {{-- Print button — opens browser print dialog (supports print-to-PDF) --}}
+                                <button type="button" onclick="window.print()"
+                                        class="px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Print / PDF
+                                </button>
+                            </div>
+                        @else
+                            <div class="grid grid-cols-1 gap-2">
+                                <button type="button" onclick="window.print()"
+                                        class="px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Print / Save PDF
+                                </button>
+                            </div>
+                        @endif
 
-                        {{-- Row 2: Create New Version — full width below the three buttons --}}
-                        @auth
-                            <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
-                               class="block w-full text-center px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                Create New Version
-                            </a>
-                        @endauth
-
-                        {{-- Delete — only shown to the plan's author; same full width as Create New Version --}}
+                        {{-- Row 2: Create New Version + Delete (author only) — equal-width grid --}}
                         @auth
                             @if ($lessonPlan->author_id === auth()->id())
-                                <form method="POST" action="{{ route('lesson-plans.destroy', $lessonPlan) }}" class="w-full">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="block w-full text-center px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
-                                        Delete This Document - Cannot Be Undone
-                                    </button>
-                                </form>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
+                                       class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                        New Version
+                                    </a>
+                                    <form method="POST" action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
+                                          onsubmit="return confirm('Permanently delete this lesson plan? This cannot be undone.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="w-full text-center px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
+                                            Delete — No Undo
+                                        </button>
+                                    </form>
+                                </div>
+                            @else
+                                <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
+                                   class="block w-full text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Create New Version
+                                </a>
                             @endif
                         @endauth
 

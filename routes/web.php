@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/guide', fn () => view('guide'))->name('guide');
-Route::get('/stats', [DashboardController::class, 'stats'])->name('stats');
 
 /*
 |--------------------------------------------------------------------------

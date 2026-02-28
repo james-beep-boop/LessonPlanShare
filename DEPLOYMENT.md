@@ -110,7 +110,6 @@ resources/views/admin/index.blade.php                   →  (NEW)
 resources/views/components/layout.blade.php             →  (NEW)
 resources/views/components/vote-buttons.blade.php       →  (NEW)
 resources/views/dashboard.blade.php                     →  (REPLACE Breeze's)
-resources/views/stats.blade.php                         →  (NEW)
 resources/views/auth/login.blade.php                    →  (REPLACE or NEW)
 resources/views/auth/register.blade.php                 →  (REPLACE or NEW)
 resources/views/auth/forgot-password.blade.php          →  (REPLACE Breeze's)
@@ -504,7 +503,7 @@ LessonPlanShare/
 │   ├── Auth/RegisteredUserController.php
 │   ├── Auth/VerifyEmailController.php                  (session-free verification)
 │   ├── AdminController.php                             (admin panel: delete plans + users)
-│   ├── DashboardController.php                         (index + stats pages)
+│   ├── DashboardController.php                         (index page + sendVerification)
 │   ├── FavoriteController.php                          (AJAX favorite toggle)
 │   ├── LessonPlanController.php                        (CRUD + preview + download + versioning)
 │   └── VoteController.php
@@ -534,8 +533,7 @@ LessonPlanShare/
 │   ├── components/
 │   │   ├── layout.blade.php                            (master layout with auth modal)
 │   │   └── vote-buttons.blade.php
-│   ├── dashboard.blade.php                             (main page with counters)
-│   ├── stats.blade.php                                 (statistics page)
+│   ├── dashboard.blade.php                             (main page with 4-box counters)
 │   ├── emails/
 │   │   ├── lesson-plan-uploaded.blade.php
 │   │   └── duplicate-content-removed.blade.php

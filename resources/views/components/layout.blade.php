@@ -29,33 +29,23 @@
                     </p>
                 </a>
 
-                {{-- Right: Upload, username, Admin, Stats, Sign Out (or Sign In for guests/unverified) --}}
-                <div class="flex items-center pt-2 space-x-5">
+                {{-- Right: username, Admin, Guide, Sign Out (or Sign In for guests/unverified) --}}
+                <div class="flex items-center flex-wrap gap-3 sm:gap-5 justify-end pt-2">
                     @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                        <a href="{{ route('lesson-plans.create') }}"
-                           class="px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors whitespace-nowrap">
-                            Upload New Lesson
-                        </a>
-                        <span class="text-base sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
+                        <span class="text-sm sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
                     @endif
 
                     {{-- Admin link — only for administrators --}}
                     @if(auth()->check() && auth()->user()->is_admin)
                     <a href="{{ route('admin.index') }}"
-                       class="text-base sm:text-lg font-medium {{ request()->routeIs('admin.*') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                       class="text-sm sm:text-lg font-medium {{ request()->routeIs('admin.*') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
                         Admin
                     </a>
                     @endif
 
-                    {{-- Stats link — visible to all (route is public) --}}
-                    <a href="{{ route('stats') }}"
-                       class="text-base sm:text-lg font-medium {{ request()->routeIs('stats') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
-                        Stats
-                    </a>
-
                     {{-- Guide — visible to all users --}}
                     <a href="{{ route('guide') }}"
-                       class="text-base sm:text-lg font-medium {{ request()->routeIs('guide') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                       class="text-sm sm:text-lg font-medium {{ request()->routeIs('guide') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
                         Guide
                     </a>
 
@@ -63,7 +53,7 @@
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
                             <button type="submit"
-                                    class="text-base sm:text-lg text-gray-500 hover:text-gray-900 underline">
+                                    class="text-sm sm:text-lg text-gray-500 hover:text-gray-900 underline min-h-[44px] sm:min-h-0">
                                 Sign Out
                             </button>
                         </form>
@@ -71,7 +61,7 @@
                         <button
                             x-data
                             @click="$dispatch('open-auth-modal')"
-                            class="text-base sm:text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer">
+                            class="text-sm sm:text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer min-h-[44px] sm:min-h-0">
                             Sign In
                         </button>
                     @endif

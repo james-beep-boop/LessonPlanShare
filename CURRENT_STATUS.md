@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (Codex security hardening pass: vote race-condition fix, verify-email replay hardening, UPDATE_SITE.sh error visibility, stats nav always visible, guide.blade.php stale wording fixed)
+**Last updated:** 2026-02-27 (UI/UX restructuring: Upload button moved to below dashboard table, 4-box counters on dashboard, Stats removed from nav, admin panel counters/search/sort, show page equal-width button grid)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -50,8 +50,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
 - Preview page buttons: "↻ Refresh Viewer", "Download File", "← Back to Details", "Home"
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
-- Stats page (counters + 4 detail cards: per-class, top-rated, top-contributors, most-revised) — **public, no auth required** (route is outside the auth+verified middleware group); Stats link in header is visible to **all users including guests** (consistent with the public route)
-- Stats `groupBy` bug fixed: uses `DB::raw('COALESCE(original_id, id)')` not the alias
+- Stats page **removed** — route, view, and `DashboardController::stats()` deleted. Key counters (Lesson Plans, Contributors, Top Rated, Top Contributor) now shown in the dashboard 4-box counter row.
 - Upload success dialog (Alpine.js modal, canonical filename display)
 - Flash messages (success/error/status)
 - Duplicate content detection artisan command (`lessons:detect-duplicates [--dry-run]`)
@@ -84,10 +83,13 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - `is_admin` boolean column on `users` table (migration `2026_02_26_210000_add_is_admin_to_users_table.php`)
   - `AdminMiddleware` enforces the flag; 403 if not admin
   - `AdminController` with per-row delete and bulk-delete for both plans and users
-  - `/admin` page: two tables (lesson plans + registered users) with checkboxes, bulk-delete, Verify AJAX button
+  - `/admin` page: 3 counter boxes (Unique Classes, Total Plans, Contributors) + two searchable/sortable tables (lesson plans + registered users) paginated at 12, with checkboxes, bulk-delete, Verify AJAX button
   - Admin link in header (visible to admins only, left of username)
-  - Sub-navigation links (Browse All / My Plans / Upload New Lesson) removed from layout
+  - Sub-navigation links removed from layout; Upload button moved to below the dashboard table
+  - Stats page fully removed (route, view, controller method all deleted)
   - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
+- **Dashboard:** 4-box counters (Lesson Plans, Contributors, Top Rated, Top Contributor); Upload New Lesson button below table (verified users only)
+- **Show page (lesson-plans.show):** Row 1 = `grid-cols-3` (Preview, Download, Print/PDF); Row 2 = `grid-cols-2` for authors (New Version + Delete) or full-width for non-authors (Create New Version)
 
 ---
 

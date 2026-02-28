@@ -1,56 +1,49 @@
 <x-layout>
     <x-slot:title>ARES: Lesson Plans</x-slot>
 
-    {{-- ── Dashboard Counters + Favorite ── --}}
-    <div class="mb-8 border border-gray-200 rounded-lg p-4 sm:p-5">
-        <div class="flex flex-wrap gap-6 items-start justify-between">
+    {{-- ── Dashboard Counters ── --}}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
 
-            <div class="flex flex-wrap gap-6 items-start">
-
-                {{-- Counter: Total Lesson Plans --}}
-                <div class="text-center px-4">
-                    <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
-                </div>
-
-                {{-- Counter: Registered Users --}}
-                <div class="text-center px-4">
-                    <p class="text-3xl font-bold text-gray-900">{{ $userCount }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Registered {{ Str::plural('User', $userCount) }}</p>
-                </div>
-
-                {{-- Divider --}}
-                <div class="hidden sm:block w-px h-14 bg-gray-200"></div>
-
-                {{-- Favorite Lesson Plan — truncated to 20 chars --}}
-                <div class="flex-1 min-w-[200px]">
-                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Favorite Lesson Plan</p>
-                    @if ($favoritePlan && $favoritePlan->vote_score > 0)
-                        <a href="{{ route('lesson-plans.show', $favoritePlan) }}"
-                           class="text-sm font-medium text-gray-900 hover:text-gray-600 underline underline-offset-2"
-                           title="{{ $favoritePlan->name }}">
-                            {{ Str::limit($favoritePlan->name, 20) }}
-                        </a>
-                        <p class="text-xs text-gray-500 mt-0.5">
-                            by {{ $favoritePlan->author->name ?? 'Unknown' }}
-                            &middot;
-                            <span class="text-green-600 font-medium">+{{ $favoritePlan->vote_score }}</span> rating
-                        </p>
-                    @else
-                        <p class="text-sm text-gray-400 italic">No votes yet</p>
-                    @endif
-                </div>
-
-            </div>
-
-            {{-- Refresh link: forces a fresh page load to update counters --}}
-            <a href="{{ route('dashboard', request()->except('page')) }}"
-               class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 self-start pt-1 shrink-0"
-               title="Refresh counters and table">
-                ↻ Refresh
-            </a>
-
+        {{-- Lesson Plans --}}
+        <div class="border border-gray-200 rounded-lg p-4 text-center">
+            <p class="text-3xl font-bold text-gray-900">{{ $totalPlanCount }}</p>
+            <p class="text-xs text-gray-500 mt-1">Lesson {{ Str::plural('Plan', $totalPlanCount) }}</p>
         </div>
+
+        {{-- Contributors --}}
+        <div class="border border-gray-200 rounded-lg p-4 text-center">
+            <p class="text-3xl font-bold text-gray-900">{{ $contributorCount }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ Str::plural('Contributor', $contributorCount) }}</p>
+        </div>
+
+        {{-- Top Rated Plan --}}
+        <div class="border border-gray-200 rounded-lg p-4">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Top Rated</p>
+            @if ($topRatedPlan)
+                <a href="{{ route('lesson-plans.show', $topRatedPlan) }}"
+                   class="text-sm font-medium text-gray-900 hover:text-gray-600 underline underline-offset-2 block truncate"
+                   title="{{ $topRatedPlan->name }}">
+                    {{ Str::limit($topRatedPlan->name, 20) }}
+                </a>
+                <p class="text-xs text-gray-500 mt-0.5">
+                    <span class="text-green-600 font-medium">+{{ $topRatedPlan->vote_score }}</span> rating
+                </p>
+            @else
+                <p class="text-sm text-gray-400 italic">No votes yet</p>
+            @endif
+        </div>
+
+        {{-- Top Contributor --}}
+        <div class="border border-gray-200 rounded-lg p-4">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Top Contributor</p>
+            @if ($topContributor && $topContributor->author)
+                <p class="text-sm font-medium text-gray-900 truncate">{{ $topContributor->author->name }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">{{ $topContributor->upload_count }} {{ Str::plural('plan', $topContributor->upload_count) }}</p>
+            @else
+                <p class="text-sm text-gray-400 italic">—</p>
+            @endif
+        </div>
+
     </div>
 
     {{-- Search & Filter Bar — class dropdown and free-text search only --}}
@@ -124,7 +117,7 @@
     <div class="border border-gray-200 rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
+                <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
                         @php
                             // align: controls th text-align and the flex justification of the sort link
@@ -247,18 +240,28 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
-        @if ($plans->hasPages())
-            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                {{ $plans->links() }}
-            </div>
-        @endif
     </div>
+
+    {{-- Pagination --}}
+    @if ($plans->hasPages())
+        <div class="mt-4">
+            {{ $plans->links() }}
+        </div>
+    @endif
 
     {{-- Summary --}}
     <div class="mt-3 text-xs text-gray-400">
-        Showing {{ $plans->firstItem() ?? 0 }}–{{ $plans->lastItem() ?? 0 }} of {{ $plans->total() }} plans
+        {{ $plans->count() }} of {{ $plans->total() }} {{ Str::plural('plan', $plans->total()) }} shown
     </div>
 
+    {{-- Upload button — only for verified users; prominent below the table --}}
+    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+        <div class="mt-6 flex justify-center">
+            <a href="{{ route('lesson-plans.create') }}"
+               class="w-full sm:w-auto sm:min-w-[260px] text-center px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                Upload New Lesson
+            </a>
+        </div>
+    @endif
 
 </x-layout>

@@ -62,7 +62,7 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 | remember_token | varchar(100) nullable | Laravel session persistence |
 | created_at / updated_at | timestamps | Standard Laravel |
 
-**Design decision — Teacher Name:** The registration form has three fields: Teacher Name (any unique string), Teacher Email, and Password. The Teacher Name is stored in the `name` column and displayed throughout the UI (dashboard Author column, plan detail pages, stats). It is distinct from the email address. Teacher Name uniqueness is enforced server-side.
+**Design decision — Teacher Name:** The registration form has three fields: Teacher Name (any unique string), Teacher Email, and Password. The Teacher Name is stored in the `name` column and displayed throughout the UI (dashboard Author column, plan detail pages, admin panel). It is distinct from the email address. Teacher Name uniqueness is enforced server-side.
 
 **`is_admin` flag:** Defaults to `false`. Set manually via `php artisan tinker`:
 ```
@@ -330,7 +330,7 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 
 **Sorting:** Clicking a column header sorts by that column. A second click on the same column reverses the direction. The active sort column shows an up/down triangle indicator. Default sort: `updated_at DESC` (most recent first). Sort direction is validated server-side to only allow `asc` or `desc`. Sort whitelist: `class_name`, `lesson_day`, `author_name`, `semantic_version`, `vote_score`, `updated_at`. The `semantic_version` sort uses three numeric columns (`ORDER BY version_major, version_minor, version_patch`). Note: sorting by `author_name` requires a JOIN to the `users` table.
 
-**Pagination:** 10 rows per page. Standard Laravel pagination links. A summary line below the table shows "Showing X–Y of Z plans".
+**Pagination:** 20 rows per page. Standard Laravel Tailwind pagination links appear below the table when there are more than 20 results. A summary line below shows "X of Y plans shown".
 
 ---
 
@@ -481,30 +481,17 @@ In-browser editing is intentionally deferred to a future version. When implement
 
 ---
 
-## 10. Stats Page (`/stats`)
+## 10. Dashboard Counters (formerly Stats Page)
 
-> **Modularity note:** This section fully describes the stats page. Changes here should NOT require reading any other section.
+> The dedicated `/stats` route and view were removed. Key aggregate statistics now appear as a 4-box counter row at the top of the main dashboard.
 
-**Access:** Public — no login required.
+**Counter boxes (grid-cols-2 sm:grid-cols-4):**
+1. **Lesson Plans** — total count of all plan records
+2. **Contributors** — count of distinct author IDs
+3. **Top Rated** — plan with highest positive `vote_score` (links to detail page)
+4. **Top Contributor** — author with the most total uploads
 
-**Layout:** Centered max-width 4xl page with summary counters and four detail cards in a 2×2 grid.
-
-### 10.1 Summary Counters
-
-3-column grid of bordered cards:
-- **Total Lesson Plans** — count of all plan records
-- **Unique Classes** — count of distinct class names
-- **Contributors** — count of distinct author IDs
-
-### 10.2 Detail Cards
-
-2-column grid:
-1. **Plans per Class** — each class name with a proportional horizontal bar showing plan count relative to the largest class. Bar width is percentage-based.
-2. **Top Rated Plans** — top 5 plans with positive vote scores, sorted by `vote_score DESC` then `updated_at DESC`. Each entry shows class/day as a link to the detail page, author name, and green score badge.
-3. **Top Contributors** — top 5 authors by total uploads (all versions counted). Numbered list with upload count.
-4. **Most Revised Plan** — the plan family with the most versions. Shows class/day as a link, original author, and version count. Only shown if at least one family has more than 1 version.
-
-**Header:** Black `← Back to Dashboard` button (top-right, same style as show page).
+**Admin panel** (`/admin`) also shows 3 counters above the tables: Unique Classes, Total Lesson Plans, Contributors.
 
 ---
 
@@ -618,7 +605,7 @@ php artisan tinker
 
 ### 15.1 Lesson Plans Table
 
-Displays ALL lesson plans (paginated 50/page) with columns: checkbox, Delete button, Class, Day#, Author, Version, File, Updated.
+Displays ALL lesson plans (paginated 20/page) with columns: checkbox, Delete button, Class, Day#, Author, Version, File, Updated.
 
 - **Per-row Delete:** individual form POST with browser `confirm()` guard. Admin can delete any plan (bypasses author check).
 - **Bulk Delete:** checkboxes use HTML5 `form="bulk-plans-form"` attribute to link to a `<form>` outside the table (avoids nested forms). Select-all checkbox via inline JS.
@@ -626,7 +613,7 @@ Displays ALL lesson plans (paginated 50/page) with columns: checkbox, Delete but
 
 ### 15.2 Registered Users Table
 
-Displays ALL users (paginated 50/page) with columns: checkbox, Delete button, Teacher Name, Email, Verified, Admin, Registered, Action.
+Displays ALL users (paginated 20/page) with columns: checkbox, Delete button, Teacher Name, Email, Verified, Admin, Registered, Action.
 
 - **Per-row Delete:** admin can delete any user except themselves (self-deletion is blocked both in UI and controller).
 - **Bulk Delete:** same checkbox pattern as plans table; own ID is filtered out server-side.
@@ -735,11 +722,11 @@ The application uses a clean, monochromatic black-and-white design language with
 **Left side:** "ARES Education" heading (`text-3xl sm:text-4xl font-bold text-gray-900`) + "Kenya Lesson Plan Repository" subtitle (`text-base sm:text-lg text-gray-500`). All wrapped in a link to the dashboard. No logo image.
 
 **Right side** (reading left to right, authenticated + verified):
-- **"Upload New Lesson"** button (gray-900 pill)
 - User's **Teacher Name** (hidden on small screens)
 - **Admin** link — visible only when `is_admin = true`; underlined when on admin pages
-- **Stats** link — underlined when active
 - **Sign Out** form button
+
+**Upload New Lesson button:** Displayed below the dashboard results table (not in the header). Visible to authenticated + verified users only; full-width on mobile, centered pill on desktop.
 
 **Right side (guest / unverified):**
 - **Sign In** button (text-only, dispatches `open-auth-modal`)
@@ -800,7 +787,6 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | Method | URI | Controller@Method | Name |
 |---|---|---|---|
 | GET | `/` | DashboardController@index | `dashboard` |
-| GET | `/stats` | DashboardController@stats | `stats` |
 | GET | `/guide` | Closure → view('guide') | `guide` |
 
 ### 18.2 Authenticated + Verified Routes
@@ -996,7 +982,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 
 | File | Responsibility |
 |---|---|
-| `DashboardController` | Public homepage (search, filter, sort, counters, loads userVotes + viewedIds) + Stats page |
+| `DashboardController` | Public homepage (search, filter, sort, counters, loads userVotes + viewedIds) |
 | `LessonPlanController` | CRUD for lesson plans: upload, show (records view), preview, new version, delete, download |
 | `VoteController` | Cast/toggle votes; returns JSON for AJAX requests |
 | `AdminController` | Admin panel: per-row and bulk delete for plans and users |
@@ -1027,7 +1013,6 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | `components/layout.blade.php` | Master layout: header, merged auth modal, Admin link, upload dialog, footer |
 | `components/vote-buttons.blade.php` | 4-mode vote component (readonly / locked / inline AJAX / form) |
 | `dashboard.blade.php` | Main public page with counters, search/filter/sort table, AJAX vote buttons |
-| `stats.blade.php` | Archive statistics page with detailed breakdowns |
 | `admin/index.blade.php` | Admin panel: lesson plans + users tables with delete/bulk-delete |
 | `lesson-plans/show.blade.php` | Plan detail page with voting, version history, Print button |
 | `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer |

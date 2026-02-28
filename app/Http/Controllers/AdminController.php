@@ -24,18 +24,81 @@ class AdminController extends Controller
 {
     /** The email address of the super-administrator (only account that can revoke admin). */
     private const SUPER_ADMIN_EMAIL = 'priority2@protonmail.ch';
-    /** Display the admin panel. */
-    public function index()
+    /** Display the admin panel with searchable/sortable tables and counters. */
+    public function index(Request $request)
     {
-        $plans = LessonPlan::query()
+        // ── Lesson Plans: search + sort ──
+        $planSearch = $request->input('plan_search', '');
+        $planSort   = $request->input('plan_sort', 'updated_at');
+        $planOrder  = in_array(strtolower($request->input('plan_order', 'desc')), ['asc', 'desc'])
+            ? strtolower($request->input('plan_order', 'desc'))
+            : 'desc';
+        $allowedPlanSorts = ['class_name', 'lesson_day', 'author_name', 'semantic_version', 'updated_at'];
+
+        $plansQuery = LessonPlan::query()
             ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
-            ->select('lesson_plans.*', 'users.name as author_name')
-            ->orderByDesc('lesson_plans.updated_at')
-            ->paginate(50, ['*'], 'plans_page');
+            ->select('lesson_plans.*', 'users.name as author_name');
 
-        $users = User::orderBy('created_at')->paginate(50, ['*'], 'users_page');
+        if ($planSearch) {
+            $plansQuery->where(function ($q) use ($planSearch) {
+                $q->where('lesson_plans.class_name', 'like', "%{$planSearch}%")
+                  ->orWhere('lesson_plans.name', 'like', "%{$planSearch}%")
+                  ->orWhere('users.name', 'like', "%{$planSearch}%");
+            });
+        }
 
-        return view('admin.index', compact('plans', 'users'));
+        if (in_array($planSort, $allowedPlanSorts)) {
+            if ($planSort === 'author_name') {
+                $plansQuery->orderBy('users.name', $planOrder);
+            } elseif ($planSort === 'semantic_version') {
+                $plansQuery->orderBy('lesson_plans.version_major', $planOrder)
+                           ->orderBy('lesson_plans.version_minor', $planOrder)
+                           ->orderBy('lesson_plans.version_patch', $planOrder);
+            } else {
+                $plansQuery->orderBy('lesson_plans.' . $planSort, $planOrder);
+            }
+        } else {
+            $plansQuery->orderByDesc('lesson_plans.updated_at');
+        }
+
+        $plans = $plansQuery->paginate(20, ['*'], 'plans_page')->withQueryString();
+
+        // ── Users: search + sort ──
+        $userSearch = $request->input('user_search', '');
+        $userSort   = $request->input('user_sort', 'created_at');
+        $userOrder  = in_array(strtolower($request->input('user_order', 'asc')), ['asc', 'desc'])
+            ? strtolower($request->input('user_order', 'asc'))
+            : 'asc';
+        $allowedUserSorts = ['name', 'email', 'created_at', 'email_verified_at'];
+
+        $usersQuery = User::query();
+
+        if ($userSearch) {
+            $usersQuery->where(function ($q) use ($userSearch) {
+                $q->where('name', 'like', "%{$userSearch}%")
+                  ->orWhere('email', 'like', "%{$userSearch}%");
+            });
+        }
+
+        if (in_array($userSort, $allowedUserSorts)) {
+            $usersQuery->orderBy($userSort, $userOrder);
+        } else {
+            $usersQuery->orderBy('created_at', 'asc');
+        }
+
+        $users = $usersQuery->paginate(20, ['*'], 'users_page')->withQueryString();
+
+        // ── Summary counters ──
+        $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
+        $totalPlanCount   = LessonPlan::count();
+        $contributorCount = LessonPlan::distinct('author_id')->count('author_id');
+
+        return view('admin.index', compact(
+            'plans', 'users',
+            'uniqueClassCount', 'totalPlanCount', 'contributorCount',
+            'planSearch', 'planSort', 'planOrder',
+            'userSearch', 'userSort', 'userOrder'
+        ));
     }
 
     /** Delete a single lesson plan (admin bypasses author check). */
