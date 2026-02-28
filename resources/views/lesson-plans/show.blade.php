@@ -61,71 +61,77 @@
                     {{-- Action Buttons --}}
                     <div class="mt-6 pt-4 border-t border-gray-100 space-y-2">
 
-                        {{-- Row 1: Preview · Download — stacks on mobile, 2-col on sm+ --}}
-                        {{-- Print/PDF is on the Preview page (opens raw file URL there). --}}
+                        {{-- Row 1: External viewers — open document in a new tab --}}
                         @if ($lessonPlan->file_path)
+                            @php $viewerUrl = asset('storage/' . $lessonPlan->file_path); @endphp
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
+                                <a href="https://docs.google.com/gview?url={{ urlencode($viewerUrl) }}"
+                                   target="_blank" rel="noopener"
                                    class="text-center px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                                    Preview
+                                    View in Google Docs ↗
                                 </a>
-                                <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                                <a href="https://view.officeapps.live.com/op/view.aspx?src={{ urlencode($viewerUrl) }}"
+                                   target="_blank" rel="noopener"
                                    class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Download
+                                    View in Microsoft Office ↗
                                 </a>
                             </div>
                         @endif
 
-                        {{-- Row 2: New Version + Delete (author only) — equal-width 2-col grid --}}
+                        {{-- Row 2: Download · Upload New Version (auth users only) --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            @if ($lessonPlan->file_path)
+                                <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Download
+                                </a>
+                            @endif
+                            @auth
+                                <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
+                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    Upload New Version
+                                </a>
+                            @endauth
+                        </div>
+
+                        {{-- Row 3: Delete (author only) — full width, same span as two-button rows --}}
+                        {{-- Alpine modal replaces native confirm() to give an exact labelled CTA --}}
                         @auth
                             @if ($lessonPlan->author_id === auth()->id())
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
-                                       class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                        Upload New Version
-                                    </a>
+                                <div x-data="{ confirmOpen: false }">
+                                    <button type="button"
+                                            @click="confirmOpen = true"
+                                            class="w-full text-center px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
+                                        Delete — Cannot Be Undone!
+                                    </button>
 
-                                    {{-- Delete: Alpine modal gives exact "Yes, Delete" CTA (native confirm() cannot do this) --}}
-                                    <div x-data="{ confirmOpen: false }">
-                                        <button type="button"
-                                                @click="confirmOpen = true"
-                                                class="w-full text-center px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
-                                            Delete
-                                        </button>
-
-                                        <div x-show="confirmOpen" x-cloak
-                                             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                                            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6"
-                                                 @click.away="confirmOpen = false">
-                                                <p class="text-gray-900 font-medium text-center mb-6">
-                                                    Are you sure? This action cannot be undone
-                                                </p>
-                                                <div class="flex gap-3">
-                                                    <button type="button"
-                                                            @click="confirmOpen = false"
-                                                            class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                                        Cancel
+                                    <div x-show="confirmOpen" x-cloak
+                                         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6"
+                                             @click.away="confirmOpen = false">
+                                            <p class="text-gray-900 font-medium text-center mb-6">
+                                                Are you sure? This action cannot be undone
+                                            </p>
+                                            <div class="flex gap-3">
+                                                <button type="button"
+                                                        @click="confirmOpen = false"
+                                                        class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                                                    Cancel
+                                                </button>
+                                                <form method="POST"
+                                                      action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
+                                                      class="flex-1">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                            class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
+                                                        Yes, Delete
                                                     </button>
-                                                    <form method="POST"
-                                                          action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
-                                                          class="flex-1">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit"
-                                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
-                                                            Yes, Delete
-                                                        </button>
-                                                    </form>
-                                                </div>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            @else
-                                <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
-                                   class="block w-full text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Upload New Version
-                                </a>
                             @endif
                         @endauth
 
@@ -168,30 +174,6 @@
                     @endauth
                 </div>
 
-                {{-- ── Alternative Viewer Comparison — temporary testing feature ── --}}
-                @if ($lessonPlan->file_path)
-                    @php $altFileUrl = asset('storage/' . $lessonPlan->file_path); @endphp
-                    <div class="border border-dashed border-gray-300 rounded-lg p-4"
-                         x-data="{ open: false }">
-                        <button @click="open = !open" type="button"
-                                class="flex items-center justify-between w-full text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
-                            <span>Alternative Viewers (for testing)</span>
-                            <span x-text="open ? '▲' : '▼'"></span>
-                        </button>
-                        <div x-show="open" x-cloak class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <a href="https://docs.google.com/gview?url={{ urlencode($altFileUrl) }}"
-                               target="_blank" rel="noopener"
-                               class="text-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                Preview in Google Docs ↗
-                            </a>
-                            <a href="https://view.officeapps.live.com/op/view.aspx?src={{ urlencode($altFileUrl) }}"
-                               target="_blank" rel="noopener"
-                               class="text-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                Preview in Microsoft Office ↗
-                            </a>
-                        </div>
-                    </div>
-                @endif
 
             </div>
 
