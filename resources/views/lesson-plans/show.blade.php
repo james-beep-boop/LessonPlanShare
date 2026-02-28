@@ -79,7 +79,7 @@
                         {{-- Row 2: New Version + Delete (author only) — equal-width 2-col grid --}}
                         @auth
                             @if ($lessonPlan->author_id === auth()->id())
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
                                        class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                         Upload New Version
