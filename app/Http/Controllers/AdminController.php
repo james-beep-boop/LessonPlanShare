@@ -106,11 +106,7 @@ class AdminController extends Controller
     /** Delete a single lesson plan (admin bypasses author check). */
     public function destroyPlan(LessonPlan $lessonPlan)
     {
-        // Remove the file from storage
-        if ($lessonPlan->file_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($lessonPlan->file_path);
-        }
-
+        $this->deletePlanFile($lessonPlan);
         $lessonPlan->delete();
 
         return redirect()->route('admin.index')->with('success', 'Lesson plan deleted.');
@@ -128,9 +124,7 @@ class AdminController extends Controller
         $plans = LessonPlan::whereIn('id', $ids)->get();
 
         foreach ($plans as $plan) {
-            if ($plan->file_path) {
-                Storage::disk('public')->delete($plan->file_path);
-            }
+            $this->deletePlanFile($plan);
             $plan->delete();
         }
 
@@ -177,9 +171,7 @@ class AdminController extends Controller
         // would leave orphaned files on disk — so we clean up manually first.
         $plans = LessonPlan::where('author_id', $user->id)->get();
         foreach ($plans as $plan) {
-            if ($plan->file_path) {
-                Storage::disk('public')->delete($plan->file_path);
-            }
+            $this->deletePlanFile($plan);
         }
 
         $user->delete();
@@ -209,14 +201,20 @@ class AdminController extends Controller
         foreach ($users as $user) {
             $plans = LessonPlan::where('author_id', $user->id)->get();
             foreach ($plans as $plan) {
-                if ($plan->file_path) {
-                    Storage::disk('public')->delete($plan->file_path);
-                }
+                $this->deletePlanFile($plan);
             }
             $user->delete();
         }
 
         return redirect()->route('admin.index')
             ->with('success', count($users) . ' user(s) deleted.');
+    }
+
+    /** Delete the stored file for a lesson plan, if one exists. */
+    private function deletePlanFile(LessonPlan $plan): void
+    {
+        if ($plan->file_path) {
+            Storage::disk('public')->delete($plan->file_path);
+        }
     }
 }
