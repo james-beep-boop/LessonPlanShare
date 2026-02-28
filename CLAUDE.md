@@ -1,6 +1,6 @@
 # CLAUDE.md — Project Guide for Claude Code
 
-**Last updated:** 2026-02-25
+**Last updated:** 2026-02-28
 **Auto-loaded in every session.** Keep this file short and high-signal.
 
 ## Project Overview
@@ -36,7 +36,7 @@ A Laravel 12 web app for Kenyan high school teachers (ARES Education) to upload,
 - Alpine.js for client-side interactivity (modals, toggles, combos)
 - Comments: Explain *why*, not *what*. Use `{{-- Blade comment --}}` in views
 - Error handling: Always user-friendly flash messages + logging to laravel.log
-- Security: Author identity always from `Auth::id()`, never user input. All inputs validated server-side via Form Request classes.
+- Security: Author identity always from `Auth::id()`, never user input. All inputs validated server-side via Form Request classes (`StoreLessonPlanRequest` for new plans, `StoreVersionRequest` for new versions). Authorization via `LessonPlanPolicy` (delete: author only; `before()` gives admins blanket pass).
 
 ## Architecture Principles (from TECHNICAL_DESIGN.md)
 - Follow existing patterns exactly. Read the relevant TECHNICAL_DESIGN.md section before changing anything.
@@ -45,6 +45,9 @@ A Laravel 12 web app for Kenyan high school teachers (ARES Education) to upload,
 - No new NPM packages or build tools. CDN only.
 - File uploads are renamed to canonical format. Original filenames are discarded.
 - Version families use `original_id` / `parent_id` tree structure.
+- **Engineering philosophy (§1.5):** Code quality and best practices are an ongoing priority, not an afterthought. Controllers stay thin (no inline validation, authorization, or business logic). Follow Laravel conventions: Form Requests for validation, Policies for authorization, private helpers for DRY code. Design for 100+ concurrent users.
+- **New version upload route:** `POST /lesson-plans/{id}/versions` → `LessonPlanController@storeVersion` (name: `lesson-plans.store-version`). Not `PUT /lesson-plans/{id}` — that old route no longer exists.
+- **Rate limiting on routes:** upload/store → `throttle:10,1`; download → `throttle:60,1`; sendVerification → `throttle:6,1`.
 
 ## Deployment Workflow (DreamHost)
 See DEPLOYMENT.md for full details, quirks, and the exact update script.

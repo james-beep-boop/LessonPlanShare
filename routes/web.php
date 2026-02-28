@@ -27,13 +27,14 @@ Route::get('/guide', fn () => view('guide'))->name('guide');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // View, preview, and download require a verified account
+    // View, preview, download — download throttled to discourage bulk scraping
     Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])
         ->name('lesson-plans.show');
     Route::get('/lesson-plans/{lessonPlan}/preview', [LessonPlanController::class, 'preview'])
         ->name('lesson-plans.preview');
     Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 'download'])
-        ->name('lesson-plans.download');
+        ->name('lesson-plans.download')
+        ->middleware('throttle:60,1');
 
     // My Plans
     Route::get('/my-plans', [LessonPlanController::class, 'myPlans'])
@@ -43,19 +44,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/lesson-plans-next-version', [LessonPlanController::class, 'nextVersion'])
         ->name('lesson-plans.next-version');
 
-    // Create new plan
+    // Create new plan — throttled to limit upload spam
     Route::get('/lesson-plans-create', [LessonPlanController::class, 'create'])
         ->name('lesson-plans.create');
     Route::post('/lesson-plans', [LessonPlanController::class, 'store'])
-        ->name('lesson-plans.store');
+        ->name('lesson-plans.store')
+        ->middleware('throttle:10,1');
 
-    // Create new version of an existing plan
+    // Upload new version of an existing plan — throttled same as store
     Route::get('/lesson-plans/{lessonPlan}/new-version', [LessonPlanController::class, 'edit'])
         ->name('lesson-plans.new-version');
-    Route::put('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'update'])
-        ->name('lesson-plans.update');
+    Route::post('/lesson-plans/{lessonPlan}/versions', [LessonPlanController::class, 'storeVersion'])
+        ->name('lesson-plans.store-version')
+        ->middleware('throttle:10,1');
 
-    // Delete (author only, enforced in controller)
+    // Delete (author only, enforced via LessonPlanPolicy)
     Route::delete('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'destroy'])
         ->name('lesson-plans.destroy');
 
@@ -95,7 +98,7 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
         ->name('admin.users.toggle-admin');
 
     // Resend verification email — admin-only; throttled to prevent email spam
-    Route::post('/users/{user}/send-verification', [DashboardController::class, 'sendVerification'])
+    Route::post('/users/{user}/send-verification', [AdminController::class, 'sendVerification'])
         ->middleware('throttle:6,1')
         ->name('users.send-verification');
 

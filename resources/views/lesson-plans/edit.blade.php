@@ -1,12 +1,12 @@
 <x-layout>
-    <x-slot:title>Create New Version — {{ $lessonPlan->class_name }} — ARES Education</x-slot>
+    <x-slot:title>Upload New Version — {{ $lessonPlan->class_name }} — ARES Education</x-slot>
 
     <div class="max-w-2xl mx-auto">
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Create New Version</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Upload New Version</h1>
         <p class="text-sm text-gray-600 mb-6">
-            You are creating a new version based on
+            You are uploading a new version based on
             <strong>{{ $lessonPlan->class_name }} Day {{ $lessonPlan->lesson_day }}</strong> (Version {{ $lessonPlan->semantic_version }})
-            by {{ $lessonPlan->author->name ?? 'Unknown' }}.
+            by {{ $lessonPlan->author->name ?? 'Anonymous' }}.
         </p>
 
         {{-- Download the current version first --}}
@@ -22,10 +22,9 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('lesson-plans.update', $lessonPlan) }}" enctype="multipart/form-data"
+        <form method="POST" action="{{ route('lesson-plans.store-version', $lessonPlan) }}" enctype="multipart/form-data"
               class="border border-gray-200 rounded-lg p-6 space-y-5">
             @csrf
-            @method('PUT')
 
             {{-- Class Name (dropdown with "Other" option for new classes) --}}
             @php

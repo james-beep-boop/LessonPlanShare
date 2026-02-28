@@ -1,7 +1,7 @@
 # ARES Education — Kenya Lesson Plan Repository: Technical Design Document
 
-**Version:** 3.1
-**Date:** February 2026 (updated 2026-02-26)
+**Version:** 3.2
+**Date:** February 2026 (updated 2026-02-28)
 **Status:** Deployed at www.sheql.com
 
 ---
@@ -42,6 +42,23 @@ The application is deployed on DreamHost shared hosting (www.sheql.com) with the
 | File Storage | Local disk (`storage/app/public`) | Simplest option for shared hosting |
 | Email | SMTP (DreamHost) | Direct SMTP; no third-party mail service needed |
 | Session/Cache | File driver | No Redis available on shared hosting |
+
+### 1.5 Engineering Philosophy and Scalability Goals
+
+**Coding best practices** are a standing priority for this project. All code should conform to Laravel conventions and PSR-12 style, and improvements to conformance are welcome as an ongoing concern — not just when building new features. The standard practice is to use idiomatic Laravel patterns (Form Request classes for validation, Policy classes for authorization, Route middleware for rate limiting, `private` visibility for internal helpers) rather than ad-hoc solutions embedded in controllers.
+
+**Standardization** goals:
+- Each type of concern lives in exactly one place: validation → Form Requests, authorization → Policies, side-effects → service methods or private helpers, presentation → Blade components.
+- Avoid "clever" shorthand that obscures intent. Prefer readable, self-documenting code.
+- Controllers stay thin: they orchestrate, they do not compute, validate, or authorize inline.
+- All controller input must come through Form Request classes (never `$request->input()` raw in the controller without a prior Form Request guard).
+
+**Scalability target:** The system is currently used by a small group (~5–30 teachers). The codebase must, however, be ready to support **100+ concurrent users** without architectural rework. Decisions that affect scalability:
+- Database queries are kept lean (indexed columns, no N+1, eager-load relationships where needed).
+- Vote score is a cached integer column (no per-request `SUM` aggregation at scale).
+- Rate limiting is applied to expensive endpoints (upload, download) to prevent abuse under load.
+- Session/cache are file-based (DreamHost constraint), which is acceptable at current scale; a future move to database sessions or Redis is a one-line `.env` change given how Laravel's drivers work.
+- No in-memory global state. Every request is fully stateless beyond the session.
 
 ---
 
@@ -422,8 +439,10 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 - Class Name and Lesson Number are pre-filled from the parent version (can be changed)
 - Description is pre-filled from the parent version
 
+**Route:** `POST /lesson-plans/{id}/versions` → `LessonPlanController@storeVersion` (name: `lesson-plans.store-version`). Validated by `StoreVersionRequest` (always requires `file` and `revision_type`; no conditional branching needed).
+
 **On submit:**
-- Same validation and naming as Upload Form
+- Same validation and naming as Upload Form, plus `revision_type` (major or minor) which determines the semantic version bump
 - If the uploading user IS the same author as the parent: creates record with `original_id` = root of parent's family, `parent_id` = parent's id, `version_number` = `MAX(version_number)` in the family + 1
 - If the uploading user is NOT the same author: creates a brand new plan (version 1) with no `original_id` or `parent_id`. This "breaks the link" — a completely independent plan.
 
@@ -802,7 +821,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | GET | `/lesson-plans-create` | LessonPlanController@create | `lesson-plans.create` |
 | POST | `/lesson-plans` | LessonPlanController@store | `lesson-plans.store` |
 | GET | `/lesson-plans/{lessonPlan}/new-version` | LessonPlanController@edit | `lesson-plans.new-version` |
-| PUT | `/lesson-plans/{lessonPlan}` | LessonPlanController@update | `lesson-plans.update` |
+| POST | `/lesson-plans/{lessonPlan}/versions` | LessonPlanController@storeVersion | `lesson-plans.store-version` |
 | DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` |
 | POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` |
 | POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` |
@@ -820,7 +839,7 @@ Prefix: `/admin`. Middleware: `['auth', 'verified', AdminMiddleware::class]`.
 | DELETE | `/admin/users/{user}` | AdminController@destroyUser | `admin.users.destroy` |
 | POST | `/admin/users/bulk-delete` | AdminController@bulkDestroyUsers | `admin.users.bulk-delete` |
 | POST | `/admin/users/{user}/toggle-admin` | AdminController@toggleAdmin | `admin.users.toggle-admin` |
-| POST | `/admin/users/{user}/send-verification` | DashboardController@sendVerification | `users.send-verification` |
+| POST | `/admin/users/{user}/send-verification` | AdminController@sendVerification | `users.send-verification` |
 
 ### 18.4 Auth Routes (Breeze)
 
@@ -832,7 +851,16 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 
 > **Modularity note:** This section lists all validation rules. Changes here should NOT require reading any other section.
 
-### 19.1 Upload / New Version (StoreLessonPlanRequest)
+### 19.1 Upload New Plan (`StoreLessonPlanRequest`)
+
+| Field | Rules |
+|---|---|
+| class_name | required, string, max 100 characters |
+| lesson_day | required, integer, min 1, max 20 |
+| description | nullable, string, max 2000 characters |
+| file | required on POST (new plan), max 1024 KB (1 MB), mimes: doc,docx,txt,rtf,odt |
+
+### 19.2 Upload New Version (`StoreVersionRequest`)
 
 | Field | Rules |
 |---|---|
@@ -840,14 +868,17 @@ Standard Laravel Breeze routes in `routes/auth.php`: login, register, logout, pa
 | lesson_day | required, integer, min 1, max 20 |
 | description | nullable, string, max 2000 characters |
 | file | required, max 1024 KB (1 MB), mimes: doc,docx,txt,rtf,odt |
+| revision_type | required, string, must be `major` or `minor` |
 
-### 19.2 Voting
+`StoreVersionRequest` uses no `isMethod()` branching — file and revision_type are always required.
+
+### 19.3 Voting
 
 | Field | Rules |
 |---|---|
 | value | required, integer, must be -1 or 1 |
 
-### 19.3 Login / Registration (`AuthenticatedSessionController`)
+### 19.4 Login / Registration (`AuthenticatedSessionController`)
 
 The same form is used for both. Validation differs by case:
 
@@ -859,7 +890,7 @@ The same form is used for both. Validation differs by case:
 
 Validation is handled in `AuthenticatedSessionController@store`, not via a Form Request class.
 
-### 19.4 Dashboard Sort Parameters
+### 19.5 Dashboard Sort Parameters
 
 | Parameter | Validation |
 |---|---|
@@ -906,16 +937,16 @@ If a lesson plan's file is missing from disk, the download route redirects back 
 
 ### 21.2 Input Validation
 
-- All user input is validated server-side via Form Request classes
+- All user input is validated server-side via Form Request classes (`StoreLessonPlanRequest` for new plans, `StoreVersionRequest` for new versions)
 - Sort column and direction are validated against whitelists
-- File uploads are validated for size (1 MB max) and MIME type (via `StoreLessonPlanRequest`)
+- File uploads are validated for size (1 MB max) and MIME type server-side
 - A second file-extension check is performed in `LessonPlanController::persistUploadedFile()` using `$file->extension()`, which derives the extension from the MIME type (via `finfo`) rather than from the client-supplied filename — prevents extension spoofing where the attacker names a file `evil.php` but sends a DOCX MIME type
 - Class names are validated as strings (max 100 characters)
 
 ### 21.3 Authorization
 
 - Author identity is always set server-side to `Auth::id()` — never from user input
-- Delete operations verify author ownership in the controller
+- Delete authorization is handled by `LessonPlanPolicy` (auto-discovered): `before()` grants admins a blanket pass; `delete()` checks `user_id === plan->author_id`. Called via `$this->authorize('delete', $lessonPlan)` in the controller.
 - Vote self-prevention is enforced in the controller
 
 ### 21.4 File Security
@@ -966,7 +997,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 
 | Page | Items per page |
 |---|---|
-| Dashboard | 10 |
+| Dashboard | 20 |
 | My Plans | 25 |
 
 ### 23.4 File Upload Limits
@@ -987,7 +1018,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | `DashboardController` | Public homepage (search, filter, sort, counters, loads userVotes + viewedIds) |
 | `LessonPlanController` | CRUD for lesson plans: upload, show (records view), preview, new version, delete, download |
 | `VoteController` | Cast/toggle votes; returns JSON for AJAX requests |
-| `AdminController` | Admin panel: per-row and bulk delete for plans and users |
+| `AdminController` | Admin panel: per-row and bulk delete for plans and users; `sendVerification()` (resend verification email to a user); `deletePlanFile()` private DRY helper |
 | `FavoriteController` | Toggle favorite status on lesson plans (AJAX POST, returns JSON) |
 | `Auth/AuthenticatedSessionController` | Custom three-case login+register (new/unverified/verified) |
 | `Auth/VerifyEmailController` | Custom email verification: works without active session (validates signed URL, logs user in) |
@@ -1002,13 +1033,26 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | `LessonPlanView` | View tracking pivot (user_id + lesson_plan_id, created_at only) |
 | `Favorite` | User-plan favorite relationship (`user_id`, `lesson_plan_id`, `created_at`) |
 
-### 24.3 Middleware
+### 24.3 Form Requests
+
+| File | Responsibility |
+|---|---|
+| `StoreLessonPlanRequest` | Validates new-plan upload (file conditional on POST; no revision_type) |
+| `StoreVersionRequest` | Validates new-version upload (file always required; revision_type always required) |
+
+### 24.4 Policies
+
+| File | Responsibility |
+|---|---|
+| `LessonPlanPolicy` | `before()`: admin bypass. `delete()`: author check. Auto-discovered by Laravel. |
+
+### 24.5 Middleware
 
 | File | Responsibility |
 |---|---|
 | `AdminMiddleware` | Checks `is_admin = true`; aborts 403 otherwise. Applied to `/admin` route group. |
 
-### 24.4 Views
+### 24.6 Views
 
 | File | Responsibility |
 |---|---|

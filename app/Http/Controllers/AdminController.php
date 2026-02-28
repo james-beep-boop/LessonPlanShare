@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -208,6 +209,22 @@ class AdminController extends Controller
 
         return redirect()->route('admin.index')
             ->with('success', count($users) . ' user(s) deleted.');
+    }
+
+    /**
+     * Resend the email verification notification for a specific user.
+     *
+     * Called by the "Verify" AJAX button in the admin users table.
+     * Returns JSON so Alpine.js can update the button label without a page reload.
+     * Route is throttled at 6/minute (defined in routes/web.php).
+     */
+    public function sendVerification(User $user): JsonResponse
+    {
+        if (! $user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
+
+        return response()->json(['sent' => true]);
     }
 
     /** Delete the stored file for a lesson plan, if one exists. */

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Mail\LessonPlanUploaded;
 use App\Models\LessonPlan;
 use App\Models\LessonPlanView;
+use App\Models\User;
 use App\Http\Requests\StoreLessonPlanRequest;
+use App\Http\Requests\StoreVersionRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -47,7 +49,7 @@ class LessonPlanController extends Controller
      * via buildClassNames(), so any class that already exists in the archive
      * also appears even if it's not in this seed list.
      */
-    public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
+    private const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
 
     /**
      * Build the sorted class-name list for upload/edit dropdowns.
@@ -238,21 +240,9 @@ class LessonPlanController extends Controller
         $upload = $this->persistUploadedFile($request->file('file'), $canonicalName);
 
         try {
-            $plan = LessonPlan::create([
-                'class_name'     => $data['class_name'],
-                'lesson_day'     => $data['lesson_day'],
-                'description'    => $data['description'] ?? null,
-                'name'           => $canonicalName,
-                'author_id'      => $author->id,
-                'version_number' => 1,
-                'version_major'  => $major,
-                'version_minor'  => $minor,
-                'version_patch'  => $patch,
-                'file_path'      => $upload['filePath'],
-                'file_name'      => $upload['diskName'],
-                'file_size'      => $upload['fileSize'],
-                'file_hash'      => $upload['fileHash'],
-            ]);
+            $plan = LessonPlan::create(
+                $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch)
+            );
         } catch (\Illuminate\Database\QueryException $e) {
             Storage::disk('public')->delete($upload['filePath']);
             if ($e->getCode() === '23000') {
@@ -336,7 +326,7 @@ class LessonPlanController extends Controller
      * In both cases, the semantic version is computed GLOBALLY for the selected
      * class/day using the user's chosen revision_type (major or minor).
      */
-    public function update(StoreLessonPlanRequest $request, LessonPlan $lessonPlan)
+    public function storeVersion(StoreVersionRequest $request, LessonPlan $lessonPlan)
     {
         $data = $request->validated();
 
@@ -368,21 +358,9 @@ class LessonPlanController extends Controller
         // ── Author check: link to family or create standalone ──
         if ($lessonPlan->author_id !== $author->id) {
             try {
-                $newPlan = LessonPlan::create([
-                    'class_name'     => $data['class_name'],
-                    'lesson_day'     => $data['lesson_day'],
-                    'description'    => $data['description'] ?? null,
-                    'name'           => $canonicalName,
-                    'author_id'      => $author->id,
-                    'file_path'      => $upload['filePath'],
-                    'file_name'      => $upload['diskName'],
-                    'file_size'      => $upload['fileSize'],
-                    'file_hash'      => $upload['fileHash'],
-                    'version_number' => 1,
-                    'version_major'  => $major,
-                    'version_minor'  => $minor,
-                    'version_patch'  => $patch,
-                ]);
+                $newPlan = LessonPlan::create(
+                    $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch)
+                );
             } catch (\Illuminate\Database\QueryException $e) {
                 Storage::disk('public')->delete($upload['filePath']);
                 if ($e->getCode() === '23000') {
@@ -467,9 +445,8 @@ class LessonPlanController extends Controller
      */
     public function destroy(LessonPlan $lessonPlan)
     {
-        if ($lessonPlan->author_id !== Auth::id()) {
-            abort(403, 'You can only delete your own lesson plans.');
-        }
+        // LessonPlanPolicy::delete() — allows author; LessonPlanPolicy::before() gives admins a pass.
+        $this->authorize('delete', $lessonPlan);
 
         if ($lessonPlan->is_original) {
             $hasDescendants = LessonPlan::where('original_id', $lessonPlan->id)->exists();
@@ -490,11 +467,44 @@ class LessonPlanController extends Controller
             Storage::disk('public')->delete($lessonPlan->file_path);
         }
 
-        $lessonPlan->votes()->delete();
+        // votes has ON DELETE CASCADE — no manual delete needed.
         $lessonPlan->delete();
 
         return redirect()->route('my-plans')
             ->with('success', 'Lesson plan deleted.');
+    }
+
+    /**
+     * Build the attribute array for creating a standalone lesson plan record.
+     *
+     * Used by both store() (first upload) and storeVersion() (different-author fork).
+     * The same-author version-chain path uses LessonPlan::createNewVersion() instead,
+     * which adds original_id / parent_id linkage automatically.
+     */
+    private function buildPlanAttributes(
+        array $data,
+        string $canonicalName,
+        User $author,
+        array $upload,
+        int $major,
+        int $minor,
+        int $patch
+    ): array {
+        return [
+            'class_name'     => $data['class_name'],
+            'lesson_day'     => $data['lesson_day'],
+            'description'    => $data['description'] ?? null,
+            'name'           => $canonicalName,
+            'author_id'      => $author->id,
+            'version_number' => 1,
+            'version_major'  => $major,
+            'version_minor'  => $minor,
+            'version_patch'  => $patch,
+            'file_path'      => $upload['filePath'],
+            'file_name'      => $upload['diskName'],
+            'file_size'      => $upload['fileSize'],
+            'file_hash'      => $upload['fileHash'],
+        ];
     }
 
     /**

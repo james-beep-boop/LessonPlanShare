@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Favorite;
 use App\Models\LessonPlan;
 use App\Models\LessonPlanView;
-use App\Models\User;
 use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -171,17 +170,4 @@ class DashboardController extends Controller
             ->header('Pragma', 'no-cache');
     }
 
-    /**
-     * Resend the email verification notification for a specific user.
-     * Used by the "Verify" button in the debug registered-users table.
-     * Returns JSON so the button can update its label via Alpine.js.
-     */
-    public function sendVerification(User $user): \Illuminate\Http\JsonResponse
-    {
-        if (! $user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
-        }
-
-        return response()->json(['sent' => true]);
-    }
 }

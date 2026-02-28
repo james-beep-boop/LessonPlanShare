@@ -89,6 +89,9 @@ tests/Feature/SemanticVersionTest.php                   →  (NEW)
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 
 app/Http/Requests/StoreLessonPlanRequest.php            →  (NEW)
+app/Http/Requests/StoreVersionRequest.php               →  (NEW)
+
+app/Policies/LessonPlanPolicy.php                       →  (NEW)
 
 app/Mail/LessonPlanUploaded.php                         →  (NEW)
 app/Mail/DuplicateContentRemoved.php                    →  (NEW)
@@ -503,7 +506,7 @@ LessonPlanShare/
 │   ├── Auth/RegisteredUserController.php
 │   ├── Auth/VerifyEmailController.php                  (session-free verification)
 │   ├── AdminController.php                             (admin panel: delete plans + users)
-│   ├── DashboardController.php                         (index page + sendVerification)
+│   ├── DashboardController.php                         (index page)
 │   ├── FavoriteController.php                          (AJAX favorite toggle)
 │   ├── LessonPlanController.php                        (CRUD + preview + download + versioning)
 │   └── VoteController.php
@@ -512,7 +515,11 @@ LessonPlanShare/
 │   └── AdminMiddleware.php                             (enforces is_admin flag)
 │
 ├── app/Http/Requests/
-│   └── StoreLessonPlanRequest.php
+│   ├── StoreLessonPlanRequest.php                      (new plan upload validation)
+│   └── StoreVersionRequest.php                         (new version upload validation)
+│
+├── app/Policies/
+│   └── LessonPlanPolicy.php                            (delete: author or admin)
 │
 ├── app/Mail/
 │   ├── LessonPlanUploaded.php

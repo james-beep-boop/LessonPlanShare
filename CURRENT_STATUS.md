@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-28 (Print/PDF moved to preview page; Upload New Version rename; Anonymous fallback everywhere; admin DRY deletePlanFile(); TECHNICAL_DESIGN.md + CURRENT_STATUS.md synced)
+**Last updated:** 2026-02-28 (Laravel best-practices pass: rate limiting on upload/download; CLASS_NAMES private; LessonPlanPolicy; StoreVersionRequest; storeVersion() rename; buildPlanAttributes() DRY; sendVerification() moved to AdminController; votes cascade confirmed. TECHNICAL_DESIGN.md updated to v3.2 with §1.5 Engineering Philosophy, corrected routes, updated file inventory, fixed pagination entry.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -90,6 +90,12 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
 - **Dashboard:** 4-box counters (Lesson Plans, Contributors, Top Rated, Top Contributor); Upload New Lesson button below table (verified users only)
 - **Show page (lesson-plans.show):** Row 1 = `grid-cols-2` (Preview + Download only — Print/PDF is now on the preview page); Row 2 = `grid-cols-2` for authors (**Upload New Version** + Delete) or full-width for non-authors (**Upload New Version**); Delete uses Alpine modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel") — native `confirm()` removed; all author name displays fall back to "Anonymous" if user deleted; `AdminController` uses `deletePlanFile()` private method (DRY) for all 4 delete paths
+- **Route `lesson-plans.store-version`:** `POST /lesson-plans/{id}/versions` → `LessonPlanController::storeVersion()`. Replaces old `PUT /lesson-plans/{id}` (`lesson-plans.update`). Validated by `StoreVersionRequest` (always requires file + revision_type; no `isMethod()` branching).
+- **`LessonPlanPolicy`** (`app/Policies/LessonPlanPolicy.php`): auto-discovered. `before()` gives admins blanket pass; `delete()` checks author. Used by `LessonPlanController::destroy()` via `$this->authorize()`.
+- **`AdminController::sendVerification()`**: moved from `DashboardController`; route unchanged (`admin/users/{user}/send-verification`, throttle 6/min).
+- **Rate limiting:** upload routes (`store`, `storeVersion`) → `throttle:10,1`; download → `throttle:60,1`.
+- **`votes` table** has `ON DELETE CASCADE` FK — `$lessonPlan->votes()->delete()` in `destroy()` was redundant and removed.
+- **`CLASS_NAMES`** → `private const` (was `public const`); `buildPlanAttributes()` private method eliminates duplicate attribute array in `store()` and `storeVersion()`.
 
 ---
 
@@ -108,10 +114,12 @@ No major features remain. All spec items are implemented.
 | File | What it does |
 |---|---|
 | `routes/web.php` | All app routes — public / auth+verified / admin grouping |
-| `app/Http/Controllers/DashboardController.php` | Dashboard (LEFT JOIN users, loads userVotes + viewedIds) + Stats |
+| `app/Http/Controllers/DashboardController.php` | Dashboard (LEFT JOIN users, loads userVotes + viewedIds) |
 | `app/Http/Controllers/LessonPlanController.php` | CRUD + preview + download + view recording |
 | `app/Http/Controllers/VoteController.php` | Vote toggle; returns JSON for AJAX requests |
-| `app/Http/Controllers/AdminController.php` | Admin delete (plans + users), bulk-delete, toggleAdmin |
+| `app/Http/Controllers/AdminController.php` | Admin delete (plans + users), bulk-delete, toggleAdmin, sendVerification |
+| `app/Http/Requests/StoreVersionRequest.php` | Validation for Upload New Version form (always requires file + revision_type) |
+| `app/Policies/LessonPlanPolicy.php` | `delete`: author only; `before`: admin bypass |
 | `app/Http/Middleware/AdminMiddleware.php` | Enforces `is_admin` flag on admin routes |
 | `app/Models/User.php` | Auth user; Teacher Name (unique); `is_admin` flag |
 | `app/Models/LessonPlanView.php` | View tracking pivot (user_id, lesson_plan_id) |
