@@ -29,42 +29,118 @@
                     </p>
                 </a>
 
-                {{-- Right: username, Admin, Guide, Sign Out (or Sign In for guests/unverified) --}}
-                <div class="flex items-center flex-wrap gap-3 sm:gap-5 justify-end pt-2">
-                    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                        <span class="text-sm sm:text-lg text-gray-600 hidden sm:inline">{{ auth()->user()->name }}</span>
-                    @endif
+                {{-- Right: hamburger (mobile <768px) + horizontal nav (desktop ≥768px) --}}
+                <div class="pt-2 relative" x-data="{ menuOpen: false }">
 
-                    {{-- Admin link — only for administrators --}}
-                    @if(auth()->check() && auth()->user()->is_admin)
-                    <a href="{{ route('admin.index') }}"
-                       class="text-sm sm:text-lg font-medium {{ request()->routeIs('admin.*') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
-                        Admin
-                    </a>
-                    @endif
+                    {{-- ── Hamburger button — visible on mobile only ── --}}
+                    <button @click="menuOpen = !menuOpen"
+                            class="md:hidden inline-flex items-center justify-center w-10 h-10
+                                   text-gray-500 hover:text-gray-900 hover:bg-gray-100
+                                   rounded-md transition-colors"
+                            :aria-expanded="menuOpen.toString()"
+                            aria-label="Open navigation menu">
+                        {{-- Hamburger icon --}}
+                        <svg x-show="!menuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                        {{-- Close (X) icon --}}
+                        <svg x-show="menuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
 
-                    {{-- Guide — visible to all users --}}
-                    <a href="{{ route('guide') }}"
-                       class="text-sm sm:text-lg font-medium {{ request()->routeIs('guide') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
-                        Guide
-                    </a>
+                    {{-- ── Desktop nav — hidden on mobile, horizontal row on md+ ── --}}
+                    <div class="hidden md:flex items-center gap-5">
+                        @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                            <span class="text-lg text-gray-600">{{ auth()->user()->name }}</span>
+                        @endif
 
-                    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                        <form method="POST" action="{{ route('logout') }}" class="inline">
-                            @csrf
-                            <button type="submit"
-                                    class="text-sm sm:text-lg text-gray-500 hover:text-gray-900 underline min-h-[44px] sm:min-h-0">
-                                Sign Out
+                        @if(auth()->check() && auth()->user()->is_admin)
+                            <a href="{{ route('admin.index') }}"
+                               class="text-lg font-medium {{ request()->routeIs('admin.*') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                                Admin
+                            </a>
+                        @endif
+
+                        <a href="{{ route('guide') }}"
+                           class="text-lg font-medium {{ request()->routeIs('guide') ? 'text-gray-900 underline underline-offset-4' : 'text-gray-500 hover:text-gray-900' }}">
+                            Guide
+                        </a>
+
+                        @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                            <form method="POST" action="{{ route('logout') }}" class="inline">
+                                @csrf
+                                <button type="submit"
+                                        class="text-lg text-gray-500 hover:text-gray-900 underline">
+                                    Sign Out
+                                </button>
+                            </form>
+                        @else
+                            <button @click="$dispatch('open-auth-modal')"
+                                    class="text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer">
+                                Sign In
                             </button>
-                        </form>
-                    @else
-                        <button
-                            x-data
-                            @click="$dispatch('open-auth-modal')"
-                            class="text-sm sm:text-lg font-medium text-gray-900 hover:text-gray-600 cursor-pointer min-h-[44px] sm:min-h-0">
-                            Sign In
-                        </button>
-                    @endif
+                        @endif
+                    </div>
+
+                    {{-- ── Mobile dropdown — appears below hamburger, dismissed on outside click ── --}}
+                    <div x-show="menuOpen" x-cloak
+                         @click.away="menuOpen = false"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200
+                                rounded-lg shadow-lg py-2 z-20 md:hidden">
+
+                        {{-- Teacher name header (verified users only) --}}
+                        @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                            <div class="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100 mb-1">
+                                {{ auth()->user()->name }}
+                            </div>
+                        @endif
+
+                        @if(auth()->check() && auth()->user()->is_admin)
+                            <a href="{{ route('admin.index') }}"
+                               class="block px-4 py-3 text-sm font-medium transition-colors
+                                      {{ request()->routeIs('admin.*') ? 'text-gray-900 bg-gray-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}"
+                               @click="menuOpen = false">
+                                Admin
+                            </a>
+                        @endif
+
+                        <a href="{{ route('guide') }}"
+                           class="block px-4 py-3 text-sm font-medium transition-colors
+                                  {{ request()->routeIs('guide') ? 'text-gray-900 bg-gray-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }}"
+                           @click="menuOpen = false">
+                            Guide
+                        </a>
+
+                        <div class="border-t border-gray-100 mt-1 pt-1">
+                            @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit"
+                                            class="w-full text-left px-4 py-3 text-sm font-medium
+                                                   text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors">
+                                        Sign Out
+                                    </button>
+                                </form>
+                            @else
+                                <button @click="$dispatch('open-auth-modal'); menuOpen = false"
+                                        class="w-full text-left px-4 py-3 text-sm font-medium
+                                               text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer">
+                                    Sign In
+                                </button>
+                            @endif
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
 
