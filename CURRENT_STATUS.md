@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (Mobile hamburger nav menu added; paginate(20) on dashboard + admin; Upload button below table; 4-box dashboard counters; Stats removed; admin counters/search/sort; show page equal-width button grid; TECHNICAL_DESIGN.md synced)
+**Last updated:** 2026-02-27 (Print/PDF opens raw file URL in new tab; Delete uses Alpine confirmation modal with "Yes, Delete" CTA; admin default sort: plans → class_name asc, users → name asc; fallbacks aligned; mobile hamburger nav; paginate(20) on dashboard + admin; show page equal-width button grid; TECHNICAL_DESIGN.md synced)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -44,7 +44,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Vote AJAX (inline dashboard): error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
 - `favorites_only` filter on dashboard: `Favorite::where('user_id',...)->pluck('lesson_plan_id')` + `whereIn` on `lesson_plans.id`; only active for verified users
 - Plan detail page (two-column layout, voting, version history sidebar)
-- Print/Save PDF button on plan detail page (`window.print()`)
+- Print/PDF button on plan detail page opens raw storage URL in a new tab (`asset('storage/' . $file_path)` with `target="_blank"`); PDFs open in the browser's native viewer (Ctrl+P / ⌘+P prints the document, not the app); other formats download. `window.print()` is NOT used (would print app chrome, not the document).
 - Black `← Back to Dashboard` button (white text, `bg-gray-900 hover:bg-gray-700`) in the top-right header area on: show page, guide page, admin panel, stats page
 - Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
 - Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
@@ -83,13 +83,13 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - `is_admin` boolean column on `users` table (migration `2026_02_26_210000_add_is_admin_to_users_table.php`)
   - `AdminMiddleware` enforces the flag; 403 if not admin
   - `AdminController` with per-row delete and bulk-delete for both plans and users
-  - `/admin` page: 3 counter boxes (Unique Classes, Total Plans, Contributors) + two searchable/sortable tables (lesson plans + registered users) paginated at 12, with checkboxes, bulk-delete, Verify AJAX button
+  - `/admin` page: 3 counter boxes (Unique Classes, Total Plans, Contributors) + two searchable/sortable tables (lesson plans + registered users) paginated at 20, with checkboxes, bulk-delete, Verify AJAX button; default sort: Lesson Plans by Class name asc, Users by Teacher Name asc; fallback sort aligned with defaults
   - Admin link in header (visible to admins only, left of username)
   - Sub-navigation links removed from layout; Upload button moved to below the dashboard table
   - Stats page fully removed (route, view, controller method all deleted)
   - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
 - **Dashboard:** 4-box counters (Lesson Plans, Contributors, Top Rated, Top Contributor); Upload New Lesson button below table (verified users only)
-- **Show page (lesson-plans.show):** Row 1 = `grid-cols-3` (Preview, Download, Print/PDF); Row 2 = `grid-cols-2` for authors (New Version + Delete) or full-width for non-authors (Create New Version)
+- **Show page (lesson-plans.show):** Row 1 = `grid-cols-3` (Preview, Download, Print/PDF — Print/PDF opens raw file URL in new tab); Row 2 = `grid-cols-2` for authors (New Version + Delete) or full-width for non-authors (Create New Version); Delete uses Alpine modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel") — native `confirm()` was removed (cannot customise "OK" label)
 
 ---
 

@@ -29,10 +29,10 @@ class AdminController extends Controller
     {
         // ── Lesson Plans: search + sort ──
         $planSearch = $request->input('plan_search', '');
-        $planSort   = $request->input('plan_sort', 'updated_at');
-        $planOrder  = in_array(strtolower($request->input('plan_order', 'desc')), ['asc', 'desc'])
-            ? strtolower($request->input('plan_order', 'desc'))
-            : 'desc';
+        $planSort   = $request->input('plan_sort', 'class_name');
+        $planOrder  = in_array(strtolower($request->input('plan_order', 'asc')), ['asc', 'desc'])
+            ? strtolower($request->input('plan_order', 'asc'))
+            : 'asc';
         $allowedPlanSorts = ['class_name', 'lesson_day', 'author_name', 'semantic_version', 'updated_at'];
 
         $plansQuery = LessonPlan::query()
@@ -58,14 +58,15 @@ class AdminController extends Controller
                 $plansQuery->orderBy('lesson_plans.' . $planSort, $planOrder);
             }
         } else {
-            $plansQuery->orderByDesc('lesson_plans.updated_at');
+            // Invalid sort field — fall back to the same default as the initial page load
+            $plansQuery->orderBy('lesson_plans.class_name', 'asc');
         }
 
         $plans = $plansQuery->paginate(20, ['*'], 'plans_page')->withQueryString();
 
         // ── Users: search + sort ──
         $userSearch = $request->input('user_search', '');
-        $userSort   = $request->input('user_sort', 'created_at');
+        $userSort   = $request->input('user_sort', 'name');
         $userOrder  = in_array(strtolower($request->input('user_order', 'asc')), ['asc', 'desc'])
             ? strtolower($request->input('user_order', 'asc'))
             : 'asc';
@@ -83,7 +84,8 @@ class AdminController extends Controller
         if (in_array($userSort, $allowedUserSorts)) {
             $usersQuery->orderBy($userSort, $userOrder);
         } else {
-            $usersQuery->orderBy('created_at', 'asc');
+            // Invalid sort field — fall back to the same default as the initial page load
+            $usersQuery->orderBy('name', 'asc');
         }
 
         $users = $usersQuery->paginate(20, ['*'], 'users_page')->withQueryString();

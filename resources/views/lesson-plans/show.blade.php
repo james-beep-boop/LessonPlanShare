@@ -61,7 +61,10 @@
                     {{-- Action Buttons --}}
                     <div class="mt-6 pt-4 border-t border-gray-100 space-y-2">
 
-                        {{-- Row 1: Preview · Download File · Print/Save PDF — stacks on mobile, 3-col on sm+ --}}
+                        {{-- Row 1: Preview · Download · Print/PDF — stacks on mobile, 3-col on sm+ --}}
+                        {{-- Print/PDF opens the raw file directly (bypasses Google Docs Viewer cross-origin iframe). --}}
+                        {{-- PDF: browser native viewer → Ctrl+P / ⌘+P prints the document. DOCX/other: downloads. --}}
+                        {{-- window.print() is intentionally NOT used — it would print the app UI, not the document. --}}
                         @if ($lessonPlan->file_path)
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
@@ -72,22 +75,16 @@
                                    class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                     Download
                                 </a>
-                                {{-- Print button — opens browser print dialog (supports print-to-PDF) --}}
-                                <button type="button" onclick="window.print()"
-                                        class="px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                <a href="{{ asset('storage/' . $lessonPlan->file_path) }}"
+                                   target="_blank" rel="noopener"
+                                   title="Opens raw document — Ctrl+P / ⌘+P to print (PDF opens in browser; other formats download)"
+                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                     Print / PDF
-                                </button>
-                            </div>
-                        @else
-                            <div class="grid grid-cols-1 gap-2">
-                                <button type="button" onclick="window.print()"
-                                        class="px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Print / Save PDF
-                                </button>
+                                </a>
                             </div>
                         @endif
 
-                        {{-- Row 2: Create New Version + Delete (author only) — equal-width grid --}}
+                        {{-- Row 2: New Version + Delete (author only) — equal-width 2-col grid --}}
                         @auth
                             @if ($lessonPlan->author_id === auth()->id())
                                 <div class="grid grid-cols-2 gap-2">
@@ -95,15 +92,42 @@
                                        class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                         New Version
                                     </a>
-                                    <form method="POST" action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
-                                          onsubmit="return confirm('Permanently delete this lesson plan? This cannot be undone.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
+
+                                    {{-- Delete: Alpine modal gives exact "Yes, Delete" CTA (native confirm() cannot do this) --}}
+                                    <div x-data="{ confirmOpen: false }">
+                                        <button type="button"
+                                                @click="confirmOpen = true"
                                                 class="w-full text-center px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
-                                            Delete — No Undo
+                                            Delete
                                         </button>
-                                    </form>
+
+                                        <div x-show="confirmOpen" x-cloak
+                                             class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6"
+                                                 @click.away="confirmOpen = false">
+                                                <p class="text-gray-900 font-medium text-center mb-6">
+                                                    Are you sure? This action cannot be undone
+                                                </p>
+                                                <div class="flex gap-3">
+                                                    <button type="button"
+                                                            @click="confirmOpen = false"
+                                                            class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                                                        Cancel
+                                                    </button>
+                                                    <form method="POST"
+                                                          action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
+                                                          class="flex-1">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit"
+                                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
+                                                            Yes, Delete
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             @else
                                 <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
