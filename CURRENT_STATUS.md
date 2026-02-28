@@ -17,7 +17,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Login/logout with Alpine.js modal + standalone fallback pages
 - Email verification (custom session-free `VerifyEmailController`)
 - Password reset flow (forgot-password + reset-password views)
-- Lesson plan upload with canonical naming (`{Class}_Day{N}_{Author}_{Timestamp}UTC.{ext}`)
+- Lesson plan upload with canonical naming (`{Class}_Day{N}_{Author}_{Timestamp}UTC_v{major}-{minor}-{patch}.{ext}`)
 - New version creation: same-author links via `original_id` / `parent_id`; different-author creates standalone plan (Section 2.5)
 - File storage with SHA-256 hashing
 - Voting system (upvote/downvote toggle, self-vote prevention, cached `vote_score`)

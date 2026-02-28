@@ -174,10 +174,10 @@ Version 3:         original_id = 1,    parent_id = 2
 Every uploaded document is renamed to a canonical format, regardless of the original upload filename:
 
 ```
-{ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC.{ext}
+{ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC_v{major}-{minor}-{patch}.{ext}
 ```
 
-Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC.docx`
+Example: `Mathematics_Day5_davidsheqlcom_20260221_143022UTC_v1-2-3.docx`
 
 **Sanitization rules:**
 - Spaces → hyphens
@@ -234,8 +234,6 @@ The auth modal is a single form — there are no separate "Sign In" and "Sign Up
 **Standalone fallback:** If validation fails and redirects to `/login`, a standalone login page renders an identical form in a full-page layout.
 
 ### 3.2 Password Reset Flow
-
-### 3.3 Password Reset Flow
 
 1. User clicks "Forgot your password?" link (available in both the auth modal and the standalone login page).
 2. Navigates to `/forgot-password` — standalone form requesting the user's email address.
@@ -803,6 +801,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 |---|---|---|---|
 | GET | `/` | DashboardController@index | `dashboard` |
 | GET | `/stats` | DashboardController@stats | `stats` |
+| GET | `/guide` | Closure → view('guide') | `guide` |
 
 ### 18.2 Authenticated + Verified Routes
 
@@ -819,6 +818,7 @@ Content sections use bordered cards: `border border-gray-200 rounded-lg p-6`. No
 | DELETE | `/lesson-plans/{lessonPlan}` | LessonPlanController@destroy | `lesson-plans.destroy` |
 | POST | `/lesson-plans/{lessonPlan}/vote` | VoteController@store | `votes.store` |
 | POST | `/lesson-plans/{lessonPlan}/favorite` | FavoriteController@toggle | `favorites.toggle` |
+| GET | `/lesson-plans-next-version` | LessonPlanController@nextVersion | `lesson-plans.next-version` |
 
 ### 18.3 Admin Routes (auth + verified + is_admin)
 

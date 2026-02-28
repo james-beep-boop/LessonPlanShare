@@ -31,17 +31,17 @@ rm -rf /tmp/LPC
 git clone --depth 1 --quiet -c pack.threads=1 https://github.com/james-beep-boop/LessonPlanShare.git /tmp/LPC
 
 # Overlay custom files (repo has files at the root, not in a subfolder).
-# Required directories: errors are printed but the script continues (|| true keeps
-# set -e from aborting on DreamHost filesystem quirks — but we no longer suppress
-# error output so failures are visible in the terminal).
+# REQUIRED directories: no || true — a failure aborts the deploy (set -e is active).
+# If a required copy fails on DreamHost, it's better to stop than to deploy
+# partial code silently.
 echo "  Copying updated files..."
-cp -a /tmp/LPC/app/.       ~/LessonPlanShare/app/       || true
-cp -a /tmp/LPC/database/.  ~/LessonPlanShare/database/  || true
-cp -a /tmp/LPC/resources/. ~/LessonPlanShare/resources/ || true
-cp -a /tmp/LPC/routes/.    ~/LessonPlanShare/routes/    || true
-cp -a /tmp/LPC/public/.    ~/LessonPlanShare/public/    || true
-cp -a /tmp/LPC/storage/.   ~/LessonPlanShare/storage/   || true
-# Optional files — suppress missing-file noise
+cp -a /tmp/LPC/app/.       ~/LessonPlanShare/app/
+cp -a /tmp/LPC/database/.  ~/LessonPlanShare/database/
+cp -a /tmp/LPC/resources/. ~/LessonPlanShare/resources/
+cp -a /tmp/LPC/routes/.    ~/LessonPlanShare/routes/
+cp -a /tmp/LPC/public/.    ~/LessonPlanShare/public/
+cp -a /tmp/LPC/storage/.   ~/LessonPlanShare/storage/
+# Optional files — not in every repo state; suppress missing-file noise
 cp -a /tmp/LPC/tests/. ~/LessonPlanShare/tests/ 2>/dev/null || true
 cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example  2>/dev/null || true
 cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/             2>/dev/null || true
