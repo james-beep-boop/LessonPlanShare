@@ -50,6 +50,11 @@ class DashboardController extends Controller
             $query->latestVersions();
         }
 
+        // Filter: show only the authenticated user's own uploaded plans.
+        if ($request->boolean('my_plans_only') && Auth::check() && Auth::user()->hasVerifiedEmail()) {
+            $query->where('lesson_plans.author_id', Auth::id());
+        }
+
         // Filter: show only the authenticated user's favorited plans.
         if ($request->boolean('favorites_only') && Auth::check() && Auth::user()->hasVerifiedEmail()) {
             $favoritedPlanIds = Favorite::where('user_id', Auth::id())->pluck('lesson_plan_id');

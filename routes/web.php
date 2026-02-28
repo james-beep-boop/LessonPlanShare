@@ -27,18 +27,12 @@ Route::get('/guide', fn () => view('guide'))->name('guide');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // View, preview, download — download throttled to discourage bulk scraping
+    // View, download — download throttled to discourage bulk scraping
     Route::get('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'show'])
         ->name('lesson-plans.show');
-    Route::get('/lesson-plans/{lessonPlan}/preview', [LessonPlanController::class, 'preview'])
-        ->name('lesson-plans.preview');
     Route::get('/lesson-plans/{lessonPlan}/download', [LessonPlanController::class, 'download'])
         ->name('lesson-plans.download')
         ->middleware('throttle:60,1');
-
-    // My Plans
-    Route::get('/my-plans', [LessonPlanController::class, 'myPlans'])
-        ->name('my-plans');
 
     // AJAX: compute next semantic version for a class/day (used by create + edit forms)
     Route::get('/lesson-plans-next-version', [LessonPlanController::class, 'nextVersion'])

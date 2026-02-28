@@ -43,16 +43,14 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Vote buttons: thumbs-up/down (👍👎) everywhere — locked mode, inline AJAX mode, form mode (SVG). Arrow icons removed.
 - Vote AJAX (inline dashboard): error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
 - `favorites_only` filter on dashboard: `Favorite::where('user_id',...)->pluck('lesson_plan_id')` + `whereIn` on `lesson_plans.id`; only active for verified users
+- `my_plans_only` filter on dashboard: `where('lesson_plans.author_id', Auth::id())`; only active for verified users; replaces the old My Plans page
 - Plan detail page (two-column layout, voting, version history sidebar)
-- Print/PDF button is on the **Preview page** (not the detail page); opens raw storage URL in a new tab (`$fileUrl` = `asset('storage/' . $file_path)`); PDFs open in the browser's native viewer (Ctrl+P / ⌘+P prints the document); other formats download. `window.print()` is NOT used.
-- Black `← Back to Dashboard` button (white text, `bg-gray-900 hover:bg-gray-700`) in the top-right header area on: show page, guide page, admin panel
-- Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
-- Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
-- Preview page buttons (flex-row): "↻ Refresh Viewer", "Print / PDF" (raw file URL, new tab), "Download File", "Back to Details", "Home"; hint below filename: "Click 'Refresh Viewer' if the lesson plan does not appear in the viewer."
-- Preview page: gview toolbar clip reverted — iframe is plain again (`height: 75vh`). The gview "open in new tab" icon remains visible but the clip approach caused document-top issues with no clean fix available (cross-origin iframe blocks programmatic scroll).
-- Show page action buttons: 3-row layout — Row 1: "View in Google Docs ↗" + "View in Microsoft Office ↗" (new tab, external); Row 2: "Download" + "Upload New Version" (auth); Row 3: full-width "Delete — Cannot Be Undone!" (author only, Alpine confirm modal). Both external viewers are permanent production buttons.
-- Dashboard: clicking anywhere on a table row navigates to `lesson-plans.show` (same as View/Edit/Vote button); Rating, Favorite, and Actions cells use `event.stopPropagation()` so votes and star-toggle still work independently
-- My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
+- Black `← Back to Dashboard` button in the top-right header area on: show page, guide page, admin panel
+- Show page action buttons: 3-row layout — Row 1: "View in Google Docs ↗" + "View in Microsoft Office ↗" (new tab, external); Row 2: "Download" + "Upload New Version" (auth); Row 3: full-width "Delete — Cannot Be Undone!" (author only, Alpine confirm modal)
+- Dashboard: clicking anywhere on a table row navigates to `lesson-plans.show`; Rating, Favorite, and Actions cells use `event.stopPropagation()`; Actions button labelled "View/Edit" (not "View/Edit/Vote")
+- Dashboard Author column: shows Teacher Name (`users.name`); falls back to "No Teacher Name" (not "Anonymous") when user account is deleted or name is blank
+- **Preview page removed** — route, controller method (`preview()`), and blade file deleted; replaced by external viewer buttons on show page
+- **My Plans page removed** — route, controller method (`myPlans()`), and blade file deleted; replaced by "Show only my plans" checkbox in dashboard filter bar
 - Stats page **removed** — route, view, and `DashboardController::stats()` deleted. Key counters (Lesson Plans, Contributors, Top Rated, Top Contributor) now shown in the dashboard 4-box counter row.
 - Upload success dialog (Alpine.js modal, canonical filename display)
 - Flash messages (success/error/status)
@@ -76,7 +74,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - Backfill migration assigns `1.N.0` to all existing rows grouped by class/day
 - Class name dropdown (upload + edit forms) built by `buildClassNames()`: merges the hard-coded `CLASS_NAMES` seed array with all distinct class names from the DB, de-duplicated and sorted — ensures existing archive classes always appear even if not in the seed list
 - Dashboard "Version" column sorts by three-column numeric `ORDER BY version_major, version_minor, version_patch` (not by string or a single column) so `1.10.0` sorts after `1.9.0`
-- `lesson-plans.show`, `lesson-plans.preview`, `lesson-plans.download` require `auth+verified`
+- `lesson-plans.show`, `lesson-plans.download` require `auth+verified`
 - "Favorite Lesson Plan" counter links to `lesson-plans.show`
 - Upload button (create + edit forms) greyed out until a valid file is chosen
 - After new version upload → redirects to dashboard (not show page)
@@ -92,7 +90,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - Stats page fully removed (route, view, controller method all deleted)
   - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
 - **Dashboard:** 4-box counters (Lesson Plans, Contributors, Top Rated, Top Contributor); Upload New Lesson button below table (verified users only)
-- **Show page (lesson-plans.show):** Row 1 = `grid-cols-2` (Preview + Download only — Print/PDF is now on the preview page); Row 2 = `grid-cols-2` for authors (**Upload New Version** + Delete) or full-width for non-authors (**Upload New Version**); Delete uses Alpine modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel") — native `confirm()` removed; all author name displays fall back to "Anonymous" if user deleted; `AdminController` uses `deletePlanFile()` private method (DRY) for all 4 delete paths
+- **Show page (lesson-plans.show):** 3-row action button layout; author name displays fall back to "No Teacher Name" if user deleted; `AdminController` uses `deletePlanFile()` private method (DRY) for all 4 delete paths
 - **Route `lesson-plans.store-version`:** `POST /lesson-plans/{id}/versions` → `LessonPlanController::storeVersion()`. Replaces old `PUT /lesson-plans/{id}` (`lesson-plans.update`). Validated by `StoreVersionRequest` (always requires file + revision_type; no `isMethod()` branching).
 - **`LessonPlanPolicy`** (`app/Policies/LessonPlanPolicy.php`): auto-discovered. `before()` gives admins blanket pass; `delete()` checks author. Used by `LessonPlanController::destroy()` via `$this->authorize()`.
 - **`AdminController::sendVerification()`**: moved from `DashboardController`; route unchanged (`admin/users/{user}/send-verification`, throttle 6/min).

@@ -176,22 +176,6 @@ class LessonPlanController extends Controller
     }
 
     /**
-     * My Plans: list all plans authored by the current user.
-     *
-     * Shows all versions (not just latest) authored by this user,
-     * sorted most-recent first, paginated at 25 per page.
-     */
-    public function myPlans(Request $request)
-    {
-        $plans = LessonPlan::where('author_id', Auth::id())
-            ->with('author')
-            ->orderBy('updated_at', 'desc')
-            ->paginate(25);
-
-        return view('lesson-plans.my-plans', compact('plans'));
-    }
-
-    /**
      * Show the upload form for a brand-new lesson plan.
      */
     public function create()
@@ -409,21 +393,6 @@ class LessonPlanController extends Controller
     }
 
     /**
-     * Show a document preview page with an embedded viewer.
-     */
-    public function preview(LessonPlan $lessonPlan)
-    {
-        if (!$lessonPlan->file_path) {
-            return redirect()->route('lesson-plans.show', $lessonPlan)
-                ->with('error', 'This plan does not have a file attached.');
-        }
-
-        $lessonPlan->load('author');
-
-        return view('lesson-plans.preview', compact('lessonPlan'));
-    }
-
-    /**
      * Download the file attached to a lesson plan.
      */
     public function download(LessonPlan $lessonPlan)
@@ -470,7 +439,7 @@ class LessonPlanController extends Controller
         // votes has ON DELETE CASCADE — no manual delete needed.
         $lessonPlan->delete();
 
-        return redirect()->route('my-plans')
+        return redirect()->route('dashboard')
             ->with('success', 'Lesson plan deleted.');
     }
 

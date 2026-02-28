@@ -37,7 +37,7 @@
         <div class="border border-gray-200 rounded-lg p-4">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Top Contributor</p>
             @if ($topContributor)
-                <p class="text-sm font-medium text-gray-900 truncate">{{ ($topContributor->author->name ?? null) ?: 'Anonymous' }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate">{{ ($topContributor->author->name ?? null) ?: 'No Teacher Name' }}</p>
                 <p class="text-xs text-gray-500 mt-0.5">{{ $topContributor->upload_count }} {{ Str::plural('plan', $topContributor->upload_count) }}</p>
             @else
                 <p class="text-sm text-gray-400 italic">—</p>
@@ -100,8 +100,15 @@
                 <span class="text-sm text-gray-600">Show only latest</span>
             </label>
 
-            {{-- Favorites filter — only shown to verified users --}}
+            {{-- My plans + favorites filters — only shown to verified users --}}
             @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="my_plans_only" value="1"
+                           {{ request('my_plans_only') ? 'checked' : '' }}
+                           onchange="this.form.submit()"
+                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
+                    <span class="text-sm text-gray-600">Show only my plans</span>
+                </label>
                 <label class="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" name="favorites_only" value="1"
                            {{ request('favorites_only') ? 'checked' : '' }}
@@ -162,7 +169,7 @@
                             onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
-                            <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'No Teacher Name' }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             {{-- stopPropagation prevents the TR onclick from firing when clicking vote buttons --}}
                             <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
@@ -221,13 +228,13 @@
                                 @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                                     <a href="{{ route('lesson-plans.show', $plan) }}"
                                        class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
-                                        View/Edit/Vote
+                                        View/Edit
                                     </a>
                                 @else
                                     {{-- Greyed out for guests and unverified users --}}
                                     <span class="inline-block px-3 py-1 text-xs font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed"
                                           title="Sign in and verify email to view lesson plans">
-                                        View/Edit/Vote
+                                        View/Edit
                                     </span>
                                 @endif
                             </td>
