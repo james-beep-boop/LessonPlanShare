@@ -61,12 +61,10 @@
                     {{-- Action Buttons --}}
                     <div class="mt-6 pt-4 border-t border-gray-100 space-y-2">
 
-                        {{-- Row 1: Preview · Download · Print/PDF — stacks on mobile, 3-col on sm+ --}}
-                        {{-- Print/PDF opens the raw file directly (bypasses Google Docs Viewer cross-origin iframe). --}}
-                        {{-- PDF: browser native viewer → Ctrl+P / ⌘+P prints the document. DOCX/other: downloads. --}}
-                        {{-- window.print() is intentionally NOT used — it would print the app UI, not the document. --}}
+                        {{-- Row 1: Preview · Download — stacks on mobile, 2-col on sm+ --}}
+                        {{-- Print/PDF is on the Preview page (opens raw file URL there). --}}
                         @if ($lessonPlan->file_path)
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <a href="{{ route('lesson-plans.preview', $lessonPlan) }}"
                                    class="text-center px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                                     Preview
@@ -74,12 +72,6 @@
                                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
                                    class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                                     Download
-                                </a>
-                                <a href="{{ asset('storage/' . $lessonPlan->file_path) }}"
-                                   target="_blank" rel="noopener"
-                                   title="Opens raw document — Ctrl+P / ⌘+P to print (PDF opens in browser; other formats download)"
-                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Print / PDF
                                 </a>
                             </div>
                         @endif
@@ -90,7 +82,7 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
                                        class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                        New Version
+                                        Upload New Version
                                     </a>
 
                                     {{-- Delete: Alpine modal gives exact "Yes, Delete" CTA (native confirm() cannot do this) --}}
@@ -132,7 +124,7 @@
                             @else
                                 <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
                                    class="block w-full text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Create New Version
+                                    Upload New Version
                                 </a>
                             @endif
                         @endauth

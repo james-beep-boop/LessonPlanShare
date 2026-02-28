@@ -23,17 +23,26 @@
                 <h1 class="text-lg font-bold text-gray-900">{{ $lessonPlan->class_name }} — Day {{ $lessonPlan->lesson_day }}</h1>
                 <p class="text-xs text-gray-500 mt-0.5">
                     Version {{ $lessonPlan->semantic_version }}
-                    &middot; by {{ $lessonPlan->author->name ?? 'Unknown' }}
+                    &middot; by {{ $lessonPlan->author->name ?? 'Anonymous' }}
                     &middot; {{ $lessonPlan->file_name }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                    Click &ldquo;Refresh Viewer&rdquo; if the lesson plan does not appear in the viewer.
                 </p>
             </div>
 
-            {{-- Four uniform buttons on one row --}}
+            {{-- Five uniform buttons on one row --}}
             <div class="flex flex-wrap items-center gap-2 shrink-0">
                 <button @click="refresh()" type="button"
                         class="px-3 py-1.5 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md border border-gray-300 transition-colors">
                     ↻ Refresh Viewer
                 </button>
+                {{-- Print/PDF: opens raw file URL — PDFs open in browser native viewer (Ctrl+P / ⌘+P to print); other formats download --}}
+                <a href="{{ $fileUrl }}" target="_blank" rel="noopener"
+                   title="Opens raw document — Ctrl+P / ⌘+P to print (PDF opens in browser; other formats download)"
+                   class="px-3 py-1.5 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md border border-gray-300 transition-colors">
+                    Print / PDF
+                </a>
                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
                    class="px-3 py-1.5 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-md border border-gray-300 transition-colors">
                     Download File
