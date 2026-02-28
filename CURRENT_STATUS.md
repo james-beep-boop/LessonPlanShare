@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (Print/PDF opens raw file URL in new tab; Delete uses Alpine confirmation modal with "Yes, Delete" CTA; admin default sort: plans → class_name asc, users → name asc; fallbacks aligned; mobile hamburger nav; paginate(20) on dashboard + admin; show page equal-width button grid; TECHNICAL_DESIGN.md synced)
+**Last updated:** 2026-02-28 (Print/PDF moved to preview page; Upload New Version rename; Anonymous fallback everywhere; admin DRY deletePlanFile(); TECHNICAL_DESIGN.md + CURRENT_STATUS.md synced)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -24,7 +24,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - `recalculateVoteScore()` uses raw `DB::table()` update — does NOT touch `updated_at`
 - VoteController returns JSON for `Accept: application/json` requests (AJAX support)
 - VoteController `Vote::create()` wrapped in `try/catch (QueryException)` for SQLSTATE 23000 — handles concurrent duplicate-insert race condition gracefully (idempotent no-op)
-- Dashboard with counters (unique classes, total plans, favorite plan), search, filter, sort, pagination (10/page)
+- Dashboard with counters (unique classes, total plans, favorite plan), search, filter, sort, pagination (20/page)
 - Dashboard shows all versions by default; filter bar below search has "Show only latest" and "Show only my favorites" (verified users only) checkboxes that auto-submit
 - Dashboard filter bar also shows hint "Sort by clicking a blue column header below"
 - Sort column headers styled as distinct blue button pills (active = blue filled, inactive = blue text with hover)
@@ -44,11 +44,11 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Vote AJAX (inline dashboard): error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
 - `favorites_only` filter on dashboard: `Favorite::where('user_id',...)->pluck('lesson_plan_id')` + `whereIn` on `lesson_plans.id`; only active for verified users
 - Plan detail page (two-column layout, voting, version history sidebar)
-- Print/PDF button on plan detail page opens raw storage URL in a new tab (`asset('storage/' . $file_path)` with `target="_blank"`); PDFs open in the browser's native viewer (Ctrl+P / ⌘+P prints the document, not the app); other formats download. `window.print()` is NOT used (would print app chrome, not the document).
-- Black `← Back to Dashboard` button (white text, `bg-gray-900 hover:bg-gray-700`) in the top-right header area on: show page, guide page, admin panel, stats page
+- Print/PDF button is on the **Preview page** (not the detail page); opens raw storage URL in a new tab (`$fileUrl` = `asset('storage/' . $file_path)`); PDFs open in the browser's native viewer (Ctrl+P / ⌘+P prints the document); other formats download. `window.print()` is NOT used.
+- Black `← Back to Dashboard` button (white text, `bg-gray-900 hover:bg-gray-700`) in the top-right header area on: show page, guide page, admin panel
 - Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
 - Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
-- Preview page buttons: "↻ Refresh Viewer", "Download File", "← Back to Details", "Home"
+- Preview page buttons (flex-row): "↻ Refresh Viewer", "Print / PDF" (raw file URL, new tab), "Download File", "Back to Details", "Home"; hint below filename: "Click 'Refresh Viewer' if the lesson plan does not appear in the viewer."
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
 - Stats page **removed** — route, view, and `DashboardController::stats()` deleted. Key counters (Lesson Plans, Contributors, Top Rated, Top Contributor) now shown in the dashboard 4-box counter row.
 - Upload success dialog (Alpine.js modal, canonical filename display)
@@ -89,7 +89,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - Stats page fully removed (route, view, controller method all deleted)
   - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
 - **Dashboard:** 4-box counters (Lesson Plans, Contributors, Top Rated, Top Contributor); Upload New Lesson button below table (verified users only)
-- **Show page (lesson-plans.show):** Row 1 = `grid-cols-3` (Preview, Download, Print/PDF — Print/PDF opens raw file URL in new tab); Row 2 = `grid-cols-2` for authors (New Version + Delete) or full-width for non-authors (Create New Version); Delete uses Alpine modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel") — native `confirm()` was removed (cannot customise "OK" label)
+- **Show page (lesson-plans.show):** Row 1 = `grid-cols-2` (Preview + Download only — Print/PDF is now on the preview page); Row 2 = `grid-cols-2` for authors (**Upload New Version** + Delete) or full-width for non-authors (**Upload New Version**); Delete uses Alpine modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel") — native `confirm()` removed; all author name displays fall back to "Anonymous" if user deleted; `AdminController` uses `deletePlanFile()` private method (DRY) for all 4 delete paths
 
 ---
 

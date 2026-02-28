@@ -350,11 +350,11 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 - Monospace canonical name below the info line
 - Description text (or "No description provided" in italic)
 - Detail grid (2 columns): Class, Lesson Day, Version, Author, File (name + formatted size), Uploaded date
-- Action buttons:
-  - **Preview File** (gray-900 button) — opens document in embedded viewer; visible if file exists
-  - **Download File** (gray-100 outlined button) — direct file download; visible if file exists
-  - **Create New Version** (gray-100 outlined button) — visible only to authenticated users
-  - **Delete** (red-50 button) — visible only to the plan's author; confirms via browser `confirm()` dialog
+- Action buttons (two rows):
+  - **Row 1** (`grid-cols-2`, visible if file exists): **Preview** (gray-900 primary) — opens document viewer page; **Download** (gray-100 outlined) — direct file download. Print/PDF is on the Preview page, not here.
+  - **Row 2 — author only** (`grid-cols-2`): **Upload New Version** (gray-100 outlined) — opens the new-version form; **Delete** (red-50) — opens an Alpine.js confirmation modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel"). Native `confirm()` is not used (cannot customise the OK label).
+  - **Row 2 — non-author authenticated** (full-width): **Upload New Version** (gray-100 outlined).
+  - Author fallback: if the author account no longer exists, displays "Anonymous".
 
 ### 5.2 Left Column — Community Rating Card
 
@@ -458,7 +458,9 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 - "Preview" label in uppercase gray text above the plan title
 - Plan title: "{Class Name} — Day {N}"
 - Subtext: version number, author, filename
-- Action buttons: **Download File** (gray-900 primary), **View Details** (gray-100 outlined, links to show page), **Back** link
+- Hint text below filename: "Click 'Refresh Viewer' if the lesson plan does not appear in the viewer."
+- Action buttons (flex-wrap row, right-aligned): **↻ Refresh Viewer** (Alpine.js, updates iframe `:src` without page reload), **Print / PDF** (gray-100 outlined, opens raw storage URL in new tab — PDFs open in browser native viewer for Ctrl+P printing; other formats download), **Download File** (gray-100 outlined, force-download via response header), **Back to Details** (gray-100 outlined, links to show page), **Home** (gray-100 outlined, links to dashboard)
+- Author fallback: if the author account no longer exists, displays "Anonymous".
 
 ### 9.2 Document Viewer
 
@@ -1014,7 +1016,7 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 | `components/vote-buttons.blade.php` | 4-mode vote component (readonly / locked / inline AJAX / form) |
 | `dashboard.blade.php` | Main public page with counters, search/filter/sort table, AJAX vote buttons |
 | `admin/index.blade.php` | Admin panel: lesson plans + users tables with delete/bulk-delete |
-| `lesson-plans/show.blade.php` | Plan detail page with voting, version history, Print button |
+| `lesson-plans/show.blade.php` | Plan detail page with voting, version history, Upload New Version + Delete (Alpine modal) |
 | `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer |
 | `lesson-plans/create.blade.php` | Upload form for new plans (submit button gated on valid file) |
 | `lesson-plans/edit.blade.php` | New version form (submit button gated on valid file) |
