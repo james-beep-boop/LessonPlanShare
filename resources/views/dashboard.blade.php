@@ -36,8 +36,8 @@
         {{-- Top Contributor --}}
         <div class="border border-gray-200 rounded-lg p-4">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Top Contributor</p>
-            @if ($topContributor && $topContributor->author)
-                <p class="text-sm font-medium text-gray-900 truncate">{{ $topContributor->author->name }}</p>
+            @if ($topContributor)
+                <p class="text-sm font-medium text-gray-900 truncate">{{ ($topContributor->author->name ?? null) ?: 'Anonymous' }}</p>
                 <p class="text-xs text-gray-500 mt-0.5">{{ $topContributor->upload_count }} {{ Str::plural('plan', $topContributor->upload_count) }}</p>
             @else
                 <p class="text-sm text-gray-400 italic">—</p>
@@ -160,7 +160,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
-                            <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-center">
                                 @php

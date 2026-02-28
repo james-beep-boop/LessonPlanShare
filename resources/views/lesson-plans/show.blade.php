@@ -9,7 +9,7 @@
                 <h1 class="text-2xl font-bold text-gray-900">{{ $lessonPlan->class_name }} — Day {{ $lessonPlan->lesson_day }}</h1>
                 <p class="text-sm text-gray-500 mt-1">
                     Version {{ $lessonPlan->semantic_version }}
-                    &middot; by {{ $lessonPlan->author->name ?? 'Unknown' }}
+                    &middot; by {{ $lessonPlan->author->name ?? 'Anonymous' }}
                     &middot; {{ $lessonPlan->created_at->format('M j, Y g:ia') }} UTC
                 </p>
                 <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ $lessonPlan->name }}</p>
@@ -50,7 +50,7 @@
                         </div>
                         <div>
                             <span class="text-gray-500">Author:</span>
-                            <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->author->name ?? '—' }}</span>
+                            <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->author->name ?? 'Anonymous' }}</span>
                         </div>
                         <div>
                             <span class="text-gray-500">Uploaded:</span>
@@ -199,7 +199,7 @@
                                         </a>
                                     @endif
                                     <p class="text-xs text-gray-500">
-                                        by {{ $version->author->name ?? '—' }}
+                                        by {{ $version->author->name ?? 'Anonymous' }}
                                         &middot; {{ $version->created_at->format('M j, Y') }}
                                         &middot; <span class="{{ $version->vote_score > 0 ? 'text-green-600' : ($version->vote_score < 0 ? 'text-red-600' : '') }}">{{ $version->vote_score > 0 ? '+' : '' }}{{ $version->vote_score }}</span>
                                     </p>
