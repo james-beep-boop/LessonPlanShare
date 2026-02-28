@@ -157,12 +157,15 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($plans as $plan)
-                        <tr class="hover:bg-gray-50">
+                        {{-- Clicking any cell (except Rating, Favorite, Actions) navigates to the plan detail page --}}
+                        <tr class="hover:bg-gray-50 cursor-pointer"
+                            onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
-                            <td class="px-4 py-3 text-center">
+                            {{-- stopPropagation prevents the TR onclick from firing when clicking vote buttons --}}
+                            <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
                                 @php
                                     // Voting is unlocked when: logged in + verified + not the author + has viewed the plan
                                     $canVote = Auth::check()
@@ -188,7 +191,7 @@
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
 
                             {{-- Favorite star: AJAX toggle for verified users; greyed for guests/unverified --}}
-                            <td class="px-4 py-3 text-center">
+                            <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
                                 @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                                     <div x-data="{
                                         fav: {{ in_array($plan->id, $favoritedIds) ? 'true' : 'false' }},
@@ -214,7 +217,7 @@
                                 @endif
                             </td>
 
-                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                            <td class="px-4 py-3 text-center whitespace-nowrap" onclick="event.stopPropagation()">
                                 @if(auth()->check() && auth()->user()->hasVerifiedEmail())
                                     <a href="{{ route('lesson-plans.show', $plan) }}"
                                        class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">

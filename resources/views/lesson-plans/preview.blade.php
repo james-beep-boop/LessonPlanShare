@@ -63,7 +63,12 @@
              The file must be publicly accessible via URL for this to work.
              Clicking "Refresh Viewer" updates ts = Date.now(), forcing a new &t=
              query param that busts Google's cache without a full page reload. --}}
-        <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+        <div class="relative border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+            {{-- Cover the Google Docs Viewer "open in new tab" icon. It lives inside a
+                 cross-origin iframe so it cannot be styled directly. An absolutely-positioned
+                 div over the top-right corner of the toolbar intercepts clicks and hides it
+                 visually. Color (#f1f3f4) matches Google's embedded-viewer toolbar background. --}}
+            <div class="absolute top-0 right-0 z-10 w-10 h-10 bg-[#f1f3f4]" aria-hidden="true"></div>
             <iframe :src="viewerBase + ts"
                     class="w-full bg-white"
                     style="height: 75vh; min-height: 500px;"
