@@ -49,7 +49,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Document preview (Google Docs Viewer iframe, `&t=time()` cache-buster prevents blank-on-revisit)
 - Preview page has "↻ Refresh Viewer" button — Alpine.js updates iframe `:src` with `Date.now()` without full page reload
 - Preview page buttons (flex-row): "↻ Refresh Viewer", "Print / PDF" (raw file URL, new tab), "Download File", "Back to Details", "Home"; hint below filename: "Click 'Refresh Viewer' if the lesson plan does not appear in the viewer."
-- Preview page: Google Docs Viewer "open in new tab" icon hidden with a CSS overlay (`absolute top-0 right-0 z-10 w-10 h-10 bg-[#f1f3f4]`) — cross-origin iframe control, not removable any other way
+- Preview page: Google Docs Viewer "open in new tab" icon eliminated by clipping the gview toolbar — iframe shifted up by 44 px (`margin-top: -44px`), wrapper clips overflow (`height: 75vh; overflow: hidden`). CSS overlays don't intercept touch events over cross-origin iframes on iOS Safari; the clip approach removes the icon from the viewable area entirely.
 - Dashboard: clicking anywhere on a table row navigates to `lesson-plans.show` (same as View/Edit/Vote button); Rating, Favorite, and Actions cells use `event.stopPropagation()` so votes and star-toggle still work independently
 - My Plans page (auth+verified, 25/page, sorted by `updated_at DESC`)
 - Stats page **removed** — route, view, and `DashboardController::stats()` deleted. Key counters (Lesson Plans, Contributors, Top Rated, Top Contributor) now shown in the dashboard 4-box counter row.
