@@ -15,7 +15,7 @@
                        value="{{ old('email') }}" required autofocus
                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                @error('email')
+                @error('email', 'login')
                     <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
@@ -32,7 +32,7 @@
                             class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
                             x-text="show ? 'Hide' : 'Show'"></button>
                 </div>
-                @error('password')
+                @error('password', 'login')
                     <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
@@ -55,7 +55,7 @@
             <span class="text-sm text-gray-500">New user?</span>
             <a href="{{ route('dashboard') }}"
                class="ml-1 text-sm font-medium text-gray-900 hover:text-gray-600 underline">
-                Register via the Sign In / Up button on the main page
+                Use the Sign Up button on the main page
             </a>
         </div>
     </div>

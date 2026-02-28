@@ -148,78 +148,61 @@
     </header>
 
     {{-- ──────────────────────────────────────────────────────────
-         Sign In — or Sign Up New User modal (Alpine.js)
-         Single form: Teacher Name + Teacher Email + Password.
-         Logic handled in AuthenticatedSessionController:
-           - New email → register, send verification, hold at "check email"
-           - Unverified existing → resend verification
-           - Verified existing → log in normally
+         Auth modals: Sign In + Sign Up (two separate Alpine dialogs)
+         Sign In: email + password, errors in 'login' named bag.
+         Sign Up: Teacher Name + email + password, errors in 'register' named bag.
+         Single x-data scope manages both; @click.stop on inner box + @click on
+         the full-screen wrapper closes on backdrop without @click.away cross-firing.
     ────────────────────────────────────────────────────────────── --}}
     @if(!auth()->check() || !auth()->user()->hasVerifiedEmail())
-    <div x-data="{ open: {{ $errors->any() ? 'true' : 'false' }} }"
-         @open-auth-modal.window="open = true"
+    <div x-data="{
+             signIn: {{ $errors->login->any() ? 'true' : 'false' }},
+             signUp: {{ $errors->register->any() ? 'true' : 'false' }}
+         }"
+         @open-auth-modal.window="signIn = true; signUp = false"
+         @open-signup-modal.window="signUp = true; signIn = false"
          x-cloak>
 
-        {{-- Backdrop --}}
-        <div x-show="open" x-transition.opacity
-             class="fixed inset-0 z-40 bg-black bg-opacity-40"
-             @click="open = false"></div>
-
-        {{-- Dialog --}}
-        <div x-show="open" x-transition
-             class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative"
-                 @click.away="open = false">
+        {{-- ── Sign In dialog ── --}}
+        <div x-show="signIn" x-transition
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-40"
+             @click="signIn = false">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative" @click.stop>
 
                 {{-- Close button --}}
-                <button @click="open = false"
+                <button @click="signIn = false"
                         class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
 
-                <h2 class="text-xl font-semibold text-gray-900 mb-1">Sign In</h2>
-                <p class="text-xs text-gray-500 mb-5">— or Sign Up New User</p>
+                <h2 class="text-xl font-semibold text-gray-900 mb-5 text-center">Sign In</h2>
 
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
 
-                    {{-- Teacher Name --}}
-                    <div class="mb-4">
-                        <label for="login-name" class="block text-sm font-medium text-gray-700 mb-1">
-                            Teacher Name <span class="font-normal text-gray-400">(choose anything unique)</span>
-                        </label>
-                        <input type="text" id="login-name" name="name"
-                               value="{{ old('name') }}" required autofocus autocomplete="name"
-                               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                        @error('name')
-                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-
                     {{-- Teacher Email --}}
                     <div class="mb-4">
-                        <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">
-                            Teacher Email <span class="font-normal text-gray-400">(email only)</span>
+                        <label for="signin-email" class="block text-sm font-medium text-gray-700 mb-1">
+                            Teacher Email
                         </label>
-                        <input type="email" id="login-email" name="email"
-                               value="{{ old('email') }}" required autocomplete="email"
+                        <input type="email" id="signin-email" name="email"
+                               value="{{ old('email') }}" required autofocus autocomplete="email"
                                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                                       focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                        @error('email')
+                        @error('email', 'login')
                             <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
                     {{-- Password --}}
                     <div class="mb-6" x-data="{ show: false }">
-                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="signin-password" class="block text-sm font-medium text-gray-700 mb-1">
                             Password
                         </label>
                         <div class="relative">
-                            <input :type="show ? 'text' : 'password'" id="login-password" name="password" required
+                            <input :type="show ? 'text' : 'password'" id="signin-password" name="password" required
                                    autocomplete="current-password"
                                    class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
                                           focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
@@ -227,7 +210,7 @@
                                     class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
                                     x-text="show ? 'Hide' : 'Show'"></button>
                         </div>
-                        @error('password')
+                        @error('password', 'login')
                             <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
@@ -235,7 +218,7 @@
                     <button type="submit"
                             class="w-full bg-gray-900 text-white text-sm font-medium py-2.5 rounded-md
                                    hover:bg-gray-700 transition-colors">
-                        Sign In / Up
+                        Sign In
                     </button>
 
                     <div class="mt-3 text-center">
@@ -246,8 +229,101 @@
                     </div>
                 </form>
 
+                {{-- Switch to Sign Up --}}
+                <div class="mt-4 pt-4 border-t border-gray-100 text-center">
+                    <button type="button" @click="signIn = false; signUp = true"
+                            class="text-sm font-medium text-gray-900 hover:text-gray-600 underline cursor-pointer">
+                        New User? Sign Up
+                    </button>
+                </div>
+
             </div>
         </div>
+
+        {{-- ── Sign Up dialog ── --}}
+        <div x-show="signUp" x-transition
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-40"
+             @click="signUp = false">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative" @click.stop>
+
+                {{-- Close button --}}
+                <button @click="signUp = false"
+                        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+
+                <h2 class="text-xl font-semibold text-gray-900 mb-5 text-center">Sign Up</h2>
+
+                <form method="POST" action="{{ route('register.store') }}">
+                    @csrf
+
+                    {{-- Teacher Name --}}
+                    <div class="mb-4">
+                        <label for="signup-name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Teacher Name <span class="font-normal text-gray-400">(choose anything unique)</span>
+                        </label>
+                        <input type="text" id="signup-name" name="name"
+                               value="{{ old('name') }}" required autocomplete="name"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                        @error('name', 'register')
+                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Teacher Email --}}
+                    <div class="mb-4">
+                        <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-1">
+                            Teacher Email
+                        </label>
+                        <input type="email" id="signup-email" name="email"
+                               value="{{ old('email') }}" required autocomplete="email"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                        @error('email', 'register')
+                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Password --}}
+                    <div class="mb-6" x-data="{ show: false }">
+                        <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                        </label>
+                        <div class="relative">
+                            <input :type="show ? 'text' : 'password'" id="signup-password" name="password" required
+                                   autocomplete="new-password"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
+                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            <button type="button" @click="show = !show"
+                                    class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                                    x-text="show ? 'Hide' : 'Show'"></button>
+                        </div>
+                        @error('password', 'register')
+                            <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-gray-900 text-white text-sm font-medium py-2.5 rounded-md
+                                   hover:bg-gray-700 transition-colors">
+                        Sign Up
+                    </button>
+                </form>
+
+                {{-- Switch to Sign In --}}
+                <div class="mt-4 pt-4 border-t border-gray-100 text-center">
+                    <button type="button" @click="signUp = false; signIn = true"
+                            class="text-sm font-medium text-gray-900 hover:text-gray-600 underline cursor-pointer">
+                        Already have an account? Sign In
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
     </div>
     @endif
 

@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-28 (Laravel best-practices pass: rate limiting on upload/download; CLASS_NAMES private; LessonPlanPolicy; StoreVersionRequest; storeVersion() rename; buildPlanAttributes() DRY; sendVerification() moved to AdminController; votes cascade confirmed. TECHNICAL_DESIGN.md updated to v3.2 with §1.5 Engineering Philosophy, corrected routes, updated file inventory, fixed pagination entry.)
+**Last updated:** 2026-02-28 (Auth split: single merged modal replaced with two separate modals — Sign In (email+password, `login` named error bag) and Sign Up (Teacher Name+email+password, `register` named error bag). POST /register → RegisteredUserController::store() enabled. AuthenticatedSessionController sign-in only (3 cases, all errors in `login` bag). layout.blade.php, auth/login.blade.php updated.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -8,12 +8,19 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 
 ## Fully Implemented (matches spec)
 
-- User registration: Teacher Name (unique display name) + Teacher Email + Password in a single merged modal
-- Single auth modal — no separate Sign In / Sign Up panels; three-case server-side logic:
-  - New email → create account, send verification, redirect to "Check Your Email"
-  - Unverified existing email → password verified first (`Hash::check`), then resend verification email (password gate prevents session hijacking of unverified accounts)
-  - Verified existing email → standard authentication (wrong password = error)
-- Teacher Name uniqueness enforced server-side (new accounts only)
+- **Two separate auth modals** (Sign In + Sign Up) in `layout.blade.php`, sharing one Alpine `x-data` scope (`signIn` / `signUp` booleans):
+  - **Sign In dialog**: Teacher Email + Password only; errors in `login` named bag; "Forgot your password?" link; "New User? Sign Up" button switches to Sign Up dialog
+  - **Sign Up dialog**: Teacher Name (unique) + Teacher Email + Password; errors in `register` named bag; "Already have an account? Sign In" link switches back
+  - `open-auth-modal` window event → opens Sign In; `open-signup-modal` → opens Sign Up
+  - Backdrop click (`@click` on wrapper) closes; `@click.stop` on inner dialog box prevents propagation (avoids `@click.away` cross-modal bug)
+  - Auto-reopen on validation error: `$errors->login->any()` → `signIn: true`; `$errors->register->any()` → `signUp: true`
+- **Sign In server-side (AuthenticatedSessionController)**: three-case logic, all errors in `login` named bag:
+  - Email not found → error directing user to Sign Up
+  - Unverified existing email → `Hash::check` first, then resend verification, login, redirect to `verification.notice`
+  - Verified existing email → `Hash::check` + `Auth::login()` (wrong password = error in `login` bag)
+- **Sign Up server-side (RegisteredUserController)**: `validateWithBag('register', [...])`, checks email uniqueness and Teacher Name uniqueness, creates user, fires `Registered` event (→ verification email), logs in, redirects to `verification.notice`
+- `POST /register` route → `RegisteredUserController::store()` (name: `register.store`); `GET /register` still redirects to dashboard
+- Teacher Name uniqueness enforced server-side for new accounts only
 - Login/logout with Alpine.js modal + standalone fallback pages
 - Email verification (custom session-free `VerifyEmailController`)
 - Password reset flow (forgot-password + reset-password views)
@@ -124,7 +131,7 @@ No major features remain. All spec items are implemented.
 | `app/Http/Middleware/AdminMiddleware.php` | Enforces `is_admin` flag on admin routes |
 | `app/Models/User.php` | Auth user; Teacher Name (unique); `is_admin` flag |
 | `app/Models/LessonPlanView.php` | View tracking pivot (user_id, lesson_plan_id) |
-| `resources/views/components/layout.blade.php` | Master layout: header, merged auth modal, admin link |
+| `resources/views/components/layout.blade.php` | Master layout: header, Sign In + Sign Up modals (two separate Alpine dialogs), admin link |
 | `resources/views/components/vote-buttons.blade.php` | 4-mode vote display (readonly/locked/inline/form); all use 👍👎 thumbs icons |
 | `resources/views/dashboard.blade.php` | 7-column table with inline AJAX vote buttons |
 | `resources/views/admin/index.blade.php` | Admin panel: plans + users tables with delete/bulk-delete |

@@ -13,25 +13,20 @@ use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
 /**
- * Fallback registration controller — NOT used in normal operation.
+ * Handles new user registration via the Sign Up modal (POST /register).
  *
- * All registration is handled by AuthenticatedSessionController::store()
- * via the merged auth modal (three-case logic: new email / unverified / verified).
- * That flow requires Teacher Name + email + password and enforces name uniqueness.
+ * Requires Teacher Name + Teacher Email + Password.
+ * Teacher Name uniqueness is enforced; email uniqueness is enforced.
+ * All validation errors are sent to the 'register' named error bag so the
+ * Sign Up modal re-opens automatically on redirect back.
  *
- * The routes/auth.php file redirects both GET /register and POST /register
- * to the dashboard, so neither create() nor store() below is ever reached
- * in the normal user flow. They are retained only as a documented dead-code
- * stub so Breeze's route names remain resolvable.
- *
- * If a standalone register page is ever reintroduced, store() must be updated
- * to accept and validate the 'teacher_name' field (matching the modal flow in
- * AuthenticatedSessionController).
+ * GET /register is separately redirected to the dashboard (see routes/auth.php)
+ * so there is no standalone registration page — only the modal.
  */
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view (not reached — GET /register redirects to dashboard).
+     * Display the registration view — not used; GET /register redirects to dashboard.
      */
     public function create(): View
     {
@@ -39,28 +34,49 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle a registration request (not reached — POST /register redirects to dashboard).
+     * Handle the Sign Up form submission.
      *
-     * NOTE: This store() uses the old "email as name" pattern and does NOT
-     * collect Teacher Name. It must NOT be made reachable without first being
-     * updated to match the AuthenticatedSessionController three-case flow.
+     * Validates Teacher Name + email + password, enforces uniqueness on both,
+     * creates the user, sends the verification email, and logs them in.
+     * Errors are returned in the 'register' bag so the Sign Up modal re-opens.
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        $name  = trim($request->input('name', ''));
+        $email = strtolower(trim($request->input('email', '')));
+
+        // Validate field formats first — errors go to the 'register' named bag
+        // so the Sign Up modal re-opens automatically on redirect.
+        $request->validateWithBag('register', [
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', Rules\Password::defaults()],
         ]);
+
+        // Check email uniqueness (return error in 'register' bag)
+        if (User::where('email', $email)->exists()) {
+            return back()
+                ->withErrors(['email' => 'An account with that email already exists. Please sign in instead.'], 'register')
+                ->withInput(['name' => $name, 'email' => $email]);
+        }
+
+        // Check Teacher Name uniqueness (return error in 'register' bag)
+        if (User::where('name', $name)->exists()) {
+            return back()
+                ->withErrors(['name' => 'That Teacher Name is already taken. Please choose another.'], 'register')
+                ->withInput(['name' => $name, 'email' => $email]);
+        }
 
         $user = User::create([
-            'name'     => $request->email,   // stub only — real flow uses teacher_name
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
+            'name'     => $name,
+            'email'    => $email,
+            'password' => Hash::make($request->input('password')),
         ]);
 
-        event(new Registered($user));
+        event(new Registered($user));   // triggers the verification email
 
         Auth::login($user);
+        $request->session()->regenerate();
 
         return redirect(route('verification.notice', absolute: false));
     }

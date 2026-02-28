@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,64 +19,33 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * Handle an incoming authentication request.
+     * Handle an incoming sign-in request.
      *
-     * Three cases:
-     *   1. Email not in DB → validate Teacher Name uniqueness, create account,
-     *      send verification email, redirect to "Check Your Email".
-     *      User is NOT logged in until they click the verification link.
-     *   2. Email exists, NOT yet verified → resend verification email.
-     *   3. Email exists, verified → standard authentication (wrong password = error).
+     * Two cases (registration is now handled by RegisteredUserController via POST /register):
+     *   1. Email not in DB → return error in 'login' bag directing user to Sign Up.
+     *   2. Email exists, NOT yet verified → verify password, then resend verification.
+     *   3. Email exists, verified → authenticate. Wrong password = error in 'login' bag.
      *
-     * Teacher Name is only used (and validated) in Case 1.
-     * For Cases 2 and 3, the name field is present in the form but ignored.
+     * All errors go to the 'login' named bag so the Sign In modal re-opens on redirect.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
         $email = $request->input('email');
         $user  = User::where('email', $email)->first();
 
-        // Case 1: brand-new email — register with Teacher Name.
+        // Case 1: email not found — direct user to Sign Up instead.
         if (! $user) {
-            $name = trim($request->input('name', ''));
-
-            if ($name === '') {
-                return back()
-                    ->withErrors(['name' => 'Teacher Name is required for new accounts.'])
-                    ->withInput();
-            }
-
-            if (User::where('name', $name)->exists()) {
-                return back()
-                    ->withErrors(['name' => 'That Teacher Name is already taken. Please choose another.'])
-                    ->withInput();
-            }
-
-            $user = User::create([
-                'name'     => $name,
-                'email'    => $email,
-                'password' => Hash::make($request->input('password')),
-            ]);
-
-            event(new Registered($user));   // sends the verification email
-
-            // Log in so the verify-email page can show their email address and
-            // offer the Resend button. Unverified users appear as guests in the UI
-            // (no username shown, no nav links) because layout.blade.php checks
-            // hasVerifiedEmail() on every protected element.
-            Auth::login($user);
-            $request->session()->regenerate();
-
-            return redirect(route('verification.notice', absolute: false));
+            return back()
+                ->withErrors(['email' => 'No account found with that email. Please use Sign Up to create one.'], 'login')
+                ->withInput(['email' => $email]);
         }
 
         // Case 2: email exists but not yet verified — verify password first, then resend.
-        // Password check is required to prevent anyone who knows an email address from
-        // hijacking an unverified session and spamming the verification resend endpoint.
+        // Password check prevents anyone who knows an email address from spamming resend.
         if (! $user->hasVerifiedEmail()) {
             if (! Hash::check($request->input('password'), $user->password)) {
                 return back()
-                    ->withErrors(['email' => 'These credentials do not match our records.'])
+                    ->withErrors(['email' => 'These credentials do not match our records.'], 'login')
                     ->withInput(['email' => $email]);
             }
 
@@ -89,8 +57,14 @@ class AuthenticatedSessionController extends Controller
             return redirect(route('verification.notice', absolute: false));
         }
 
-        // Case 3: verified account — standard authentication. Wrong password = error.
-        $request->authenticate();
+        // Case 3: verified account — authenticate. Wrong password returns error in 'login' bag.
+        if (! Hash::check($request->input('password'), $user->password)) {
+            return back()
+                ->withErrors(['email' => 'These credentials do not match our records.'], 'login')
+                ->withInput(['email' => $email]);
+        }
+
+        Auth::login($user);
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));
