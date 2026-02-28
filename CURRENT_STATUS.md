@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-27 (UI/UX restructuring: Upload button moved to below dashboard table, 4-box counters on dashboard, Stats removed from nav, admin panel counters/search/sort, show page equal-width button grid)
+**Last updated:** 2026-02-27 (Mobile hamburger nav menu added; paginate(20) on dashboard + admin; Upload button below table; 4-box dashboard counters; Stats removed; admin counters/search/sort; show page equal-width button grid; TECHNICAL_DESIGN.md synced)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
