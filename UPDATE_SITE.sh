@@ -39,7 +39,7 @@ cp -a /tmp/LPC/app/.       ~/LessonPlanShare/app/
 cp -a /tmp/LPC/database/.  ~/LessonPlanShare/database/
 cp -a /tmp/LPC/resources/. ~/LessonPlanShare/resources/
 cp -a /tmp/LPC/routes/.    ~/LessonPlanShare/routes/
-cp -a /tmp/LPC/public/.    ~/LessonPlanShare/public/
+cp -a /tmp/LPC/public/.    ~/LessonPlanShare/public/ 2>/dev/null || true
 cp -a /tmp/LPC/storage/.   ~/LessonPlanShare/storage/
 # Optional files — not in every repo state; suppress missing-file noise
 cp -a /tmp/LPC/tests/. ~/LessonPlanShare/tests/ 2>/dev/null || true
