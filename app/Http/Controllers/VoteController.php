@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
  * - Each user gets exactly one vote per lesson plan version.
  * - Voting the same direction again REMOVES the vote (toggle off).
  * - Voting the opposite direction SWITCHES the vote.
- * - Authors cannot vote on their own plans.
+ * - All authenticated users can vote, including the plan's own author.
  * - The cached vote_score on the lesson plan is recalculated after each action.
  *
  * Only authenticated + verified users can vote (enforced by route middleware).
@@ -33,13 +33,6 @@ class VoteController extends Controller
         $data = $request->validate([
             'value' => 'required|integer|in:-1,1',
         ]);
-
-        // Guard: prevent authors from voting on their own plans
-        if ($lessonPlan->author_id === Auth::id()) {
-            return $request->expectsJson()
-                ? response()->json(['message' => 'You cannot vote on your own lesson plan.'], 403)
-                : back()->with('error', 'You cannot vote on your own lesson plan.');
-        }
 
         // Guard: must have viewed the plan before voting (UI also enforces this;
         // this server-side check prevents API-level bypasses)

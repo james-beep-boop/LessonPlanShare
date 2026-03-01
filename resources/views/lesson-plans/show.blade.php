@@ -67,29 +67,32 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <a href="https://docs.google.com/gview?url={{ urlencode($viewerUrl) }}"
                                    target="_blank" rel="noopener"
-                                   class="text-center px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                                    View in Google Docs ↗
+                                   class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                                    <span>View in Google Docs ↗</span>
+                                    <span class="text-xs font-normal opacity-75">(best for mobile)</span>
                                 </a>
                                 <a href="https://view.officeapps.live.com/op/view.aspx?src={{ urlencode($viewerUrl) }}"
                                    target="_blank" rel="noopener"
-                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    View in Microsoft Office ↗
+                                   class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    <span>View in Microsoft Office ↗</span>
+                                    <span class="text-xs font-normal opacity-75">(best for desktop)</span>
                                 </a>
                             </div>
                         @endif
 
-                        {{-- Row 2: Download · Upload New Version (auth users only) --}}
+                        {{-- Row 2: Download · Upload Your Revision (auth users only) --}}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             @if ($lessonPlan->file_path)
                                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Download
+                                   class="flex items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300 text-center">
+                                    Download This Document
                                 </a>
                             @endif
                             @auth
                                 <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
-                                   class="text-center px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                                    Upload New Version
+                                   class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                                    <span>Upload Your Revision of</span>
+                                    <span>This Document</span>
                                 </a>
                             @endauth
                         </div>
@@ -101,8 +104,9 @@
                                 <div x-data="{ confirmOpen: false }">
                                     <button type="button"
                                             @click="confirmOpen = true"
-                                            class="w-full text-center px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
-                                        Delete — Cannot Be Undone!
+                                            class="w-full flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors border border-red-200">
+                                        <span>Delete Your Version</span>
+                                        <span class="text-xs font-normal">This Cannot Be Undone!</span>
                                     </button>
 
                                     <div x-show="confirmOpen" x-cloak
@@ -153,18 +157,12 @@
                         </span>
                     </div>
 
-                    {{-- Vote Buttons (if logged in and not the author) --}}
+                    {{-- Vote Buttons — all authenticated users can vote, including the plan's own author --}}
                     @auth
-                        @if ($lessonPlan->author_id !== auth()->id())
-                            <div class="border-t border-gray-100 pt-4">
-                                <p class="text-sm font-medium text-gray-700 mb-2">Cast your vote:</p>
-                                <x-vote-buttons :plan-id="$lessonPlan->id" :score="$lessonPlan->vote_score" :user-vote="$userVote" />
-                            </div>
-                        @else
-                            <p class="text-xs text-gray-400 italic border-t border-gray-100 pt-4">
-                                You cannot vote on your own lesson plan.
-                            </p>
-                        @endif
+                        <div class="border-t border-gray-100 pt-4">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Cast your vote:</p>
+                            <x-vote-buttons :plan-id="$lessonPlan->id" :score="$lessonPlan->vote_score" :user-vote="$userVote" />
+                        </div>
                     @else
                         <p class="text-sm text-gray-500 border-t border-gray-100 pt-4">
                             <button x-data @click="$dispatch('open-auth-modal', { mode: 'login' })"

@@ -125,25 +125,29 @@
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    @php
+                        // Build column definitions once; used by both thead and tbody.
+                        // Author/Contributor, View, and Favorites columns are hidden for guests
+                        // as a sign-in incentive; verified users see the full table.
+                        $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
+                        $cols = [
+                            'class_name' => ['label' => 'Class',   'align' => 'left'],
+                            'lesson_day' => ['label' => 'Day',     'align' => 'center'],
+                        ];
+                        if ($isVerifiedUser) {
+                            $cols['author_name'] = ['label' => 'Contributor', 'align' => 'left'];
+                        }
+                        $cols = array_merge($cols, [
+                            'semantic_version' => ['label' => 'Version', 'align' => 'center'],
+                            'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
+                            'vote_score'       => ['label' => 'Rating',  'align' => 'center'],
+                        ]);
+                    @endphp
                     <tr>
-                        @php
-                            // align: controls th text-align and the flex justification of the sort link.
-                            // Author column is hidden for guests — they see max 6 rows + no author
-                            // as a sign-in incentive; verified users see the full table.
-                            $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
-                            $cols = [
-                                'class_name' => ['label' => 'Class',  'align' => 'left'],
-                                'lesson_day' => ['label' => 'Day #',  'align' => 'center'],
-                            ];
-                            if ($isVerifiedUser) {
-                                $cols['author_name'] = ['label' => 'Author', 'align' => 'left'];
-                            }
-                            $cols = array_merge($cols, [
-                                'semantic_version' => ['label' => 'Version', 'align' => 'center'],
-                                'vote_score'       => ['label' => 'Rating',  'align' => 'center'],
-                                'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
-                            ]);
-                        @endphp
+                        {{-- "View" is the first column; hidden for guests --}}
+                        @if($isVerifiedUser)
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">View</th>
+                        @endif
                         @foreach ($cols as $field => $col)
                             @php
                                 $isActive  = ($sortField === $field);
@@ -165,50 +169,47 @@
                                 </a>
                             </th>
                         @endforeach
-                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Favorite">★</th>
-                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                        {{-- Favorites column hidden for guests --}}
+                        @if($isVerifiedUser)
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Favorite">★</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($plans as $plan)
-                        {{-- Clicking any cell (except Rating, Favorite, Actions) navigates to the plan detail page --}}
+                        {{-- Clicking any data cell navigates to the plan detail page --}}
                         <tr class="hover:bg-gray-50 cursor-pointer"
                             onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
+
+                            {{-- "View" button — first column, verified users only --}}
+                            @if($isVerifiedUser)
+                                <td class="px-4 py-3 text-center whitespace-nowrap" onclick="event.stopPropagation()">
+                                    <a href="{{ route('lesson-plans.show', $plan) }}"
+                                       class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
+                                        View
+                                    </a>
+                                </td>
+                            @endif
+
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             @if($isVerifiedUser)
-                            <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'No Teacher Name' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'No Teacher Name' }}</td>
                             @endif
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
-                            {{-- stopPropagation prevents the TR onclick from firing when clicking vote buttons --}}
-                            <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
-                                @php
-                                    // Voting is unlocked when: logged in + verified + not the author + has viewed the plan
-                                    $canVote = Auth::check()
-                                        && Auth::user()->hasVerifiedEmail()
-                                        && $plan->author_id !== Auth::id()
-                                        && in_array($plan->id, $viewedIds);
-                                    $planUserVote = $userVotes[$plan->id] ?? null;
-                                @endphp
-                                @auth
-                                    @if($canVote)
-                                        {{-- Active AJAX vote buttons --}}
-                                        <x-vote-buttons :plan-id="$plan->id" :score="$plan->vote_score"
-                                                        :user-vote="$planUserVote" :inline="true" />
-                                    @else
-                                        {{-- Greyed locked buttons (not viewed yet, or is author) --}}
-                                        <x-vote-buttons :score="$plan->vote_score" :locked="true" />
-                                    @endif
-                                @else
-                                    {{-- Guest: display only --}}
-                                    <x-vote-buttons :score="$plan->vote_score" :readonly="true" />
-                                @endauth
-                            </td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
 
-                            {{-- Favorite star: AJAX toggle for verified users; greyed for guests/unverified --}}
-                            <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
-                                @if(auth()->check() && auth()->user()->hasVerifiedEmail())
+                            {{-- Rating: display-only score (+/-) — voting happens exclusively on the detail page --}}
+                            <td class="px-4 py-3 text-center">
+                                @php $score = $plan->vote_score; @endphp
+                                <span class="font-medium text-xs tabular-nums {{ $score > 0 ? 'text-green-600' : ($score < 0 ? 'text-red-600' : 'text-gray-400') }}">
+                                    {{ $score > 0 ? '+' . $score : $score }}
+                                </span>
+                            </td>
+
+                            {{-- Favorites: AJAX toggle for verified users; hidden for guests --}}
+                            @if($isVerifiedUser)
+                                <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
                                     <div x-data="{
                                         fav: {{ in_array($plan->id, $favoritedIds) ? 'true' : 'false' }},
                                         toggle() {
@@ -228,29 +229,13 @@
                                                 :class="fav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'"
                                                 class="text-lg leading-none transition-colors">★</button>
                                     </div>
-                                @else
-                                    <span class="text-lg leading-none text-gray-200" title="Sign in to favorite">★</span>
-                                @endif
-                            </td>
-
-                            <td class="px-4 py-3 text-center whitespace-nowrap" onclick="event.stopPropagation()">
-                                @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                                    <a href="{{ route('lesson-plans.show', $plan) }}"
-                                       class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
-                                        View/Edit
-                                    </a>
-                                @else
-                                    {{-- Greyed out for guests and unverified users --}}
-                                    <span class="inline-block px-3 py-1 text-xs font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed"
-                                          title="Sign in and verify email to view lesson plans">
-                                        View/Edit
-                                    </span>
-                                @endif
-                            </td>
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ count($cols) + 2 }}" class="px-4 py-8 text-center text-gray-500">
+                            {{-- +2 for View + Favorites columns (verified only); guests have neither --}}
+                            <td colspan="{{ count($cols) + ($isVerifiedUser ? 2 : 0) }}" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>
