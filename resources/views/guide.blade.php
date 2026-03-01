@@ -168,18 +168,6 @@
                     <p class="text-gray-600">To see all your plans quickly, click your <strong>Teacher Name</strong> at the top of the page — or tick <strong>Show only my plans</strong> in the filter bar on the dashboard.</p>
                 </section>
 
-                {{-- 9. For Administrators --}}
-                <section>
-                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">9. For Administrators</h2>
-                    <p class="mb-2">If you are an administrator, you will see an <strong>Admin</strong> link at the top. Administrators can:</p>
-                    <ul class="list-disc pl-5 space-y-1 mb-2">
-                        <li>Delete any lesson plan</li>
-                        <li>Delete or verify any user account</li>
-                        <li>Grant administrator access to other teachers</li>
-                    </ul>
-                    <p class="text-gray-600">Please use these tools carefully to keep the library clean and safe for everyone.</p>
-                </section>
-
                 {{-- Need Help? --}}
                 <section class="bg-gray-50 border border-gray-200 rounded-lg px-6 py-5">
                     <h2 class="text-base font-semibold text-gray-900 mb-2">Need Help?</h2>

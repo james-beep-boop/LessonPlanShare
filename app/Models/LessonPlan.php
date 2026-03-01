@@ -231,22 +231,35 @@ class LessonPlan extends Model
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * Show only the latest version of each plan family on the dashboard.
+     * Show only the highest-versioned plan for each (class_name, lesson_day) pair.
      *
-     * Groups plans by their root ID (COALESCE handles the root plan
-     * where original_id is NULL) and picks the highest id in each group.
-     * This avoids showing every version as a separate row.
+     * "Latest" means the plan with the greatest semantic version across ALL
+     * version families for that class+day combination. For example, if versions
+     * 1.0.0, 1.0.1, and 1.0.2 all exist for "Mathematics Day 5", only 1.0.2
+     * is returned — regardless of which version family they belong to.
      *
-     * Used by DashboardController::index() for the main plan listing.
+     * Uses a NOT EXISTS anti-join: a plan is included only when no other plan
+     * for the same class+day has a higher version_minor, a higher version_patch
+     * at the same version_minor, or a higher id at the exact same version
+     * (tie-breaking rule for the unique-constraint-protected edge case).
+     *
+     * The fully-qualified table name is required because the dashboard query
+     * also has a LEFT JOIN on users.
+     *
+     * Used by DashboardController::index() when latest_only=1.
      */
     public function scopeLatestVersions($query)
     {
-        // Use the fully-qualified table name so this scope stays safe
-        // when the query has a JOIN (e.g. the dashboard's users JOIN).
-        return $query->whereIn('lesson_plans.id', function ($sub) {
-            $sub->selectRaw('MAX(id)')
-                ->from('lesson_plans')
-                ->groupByRaw('COALESCE(original_id, id)');
+        return $query->whereNotExists(function ($sub) {
+            $sub->selectRaw('1')
+                ->from('lesson_plans as lp2')
+                ->whereColumn('lp2.class_name', 'lesson_plans.class_name')
+                ->whereColumn('lp2.lesson_day',  'lesson_plans.lesson_day')
+                ->whereRaw(
+                    '(lp2.version_minor > lesson_plans.version_minor
+                      OR (lp2.version_minor = lesson_plans.version_minor AND lp2.version_patch > lesson_plans.version_patch)
+                      OR (lp2.version_minor = lesson_plans.version_minor AND lp2.version_patch = lesson_plans.version_patch AND lp2.id > lesson_plans.id))'
+                );
         });
     }
 
