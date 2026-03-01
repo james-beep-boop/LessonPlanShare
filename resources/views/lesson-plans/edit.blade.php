@@ -9,19 +9,6 @@
     <div class="max-w-2xl mx-auto">
         <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload New Version</h1>
 
-        {{-- Download the current version so the user has something to revise --}}
-        @if ($lessonPlan->file_path)
-            <div class="bg-gray-50 border border-gray-200 rounded-md p-4 mb-6">
-                <p class="text-sm text-gray-700 mb-2">
-                    <strong>Step 1:</strong> Download the current version, make your improvements, then upload the revised file below.
-                </p>
-                <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                   class="inline-block px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                    Download Version {{ $lessonPlan->semantic_version }} ({{ $lessonPlan->file_name ?? $lessonPlan->name }})
-                </a>
-            </div>
-        @endif
-
         {{--
             Top-level Alpine component manages:
               confirmed       — whether the user has ticked the "this is the file I'm revising" checkbox
@@ -87,109 +74,115 @@
                 {{-- Each field is pre-filled from the original document and locked.    --}}
                 {{-- The user must tick the checkbox next to a field to edit it.        --}}
                 <div class="border-t border-gray-100 pt-5 space-y-5">
-                    <p class="text-sm font-semibold text-gray-700">Confirm the following about your revision:</p>
+                    <p class="text-sm font-semibold text-gray-700">Confirm (or change) the following about your revision:</p>
 
                     {{-- Class Name --}}
+                    {{-- Checkbox + label + control all on one row via flex-wrap.        --}}
+                    {{-- On small screens the control wraps to the next line naturally.  --}}
                     <div>
-                        <label class="flex items-center gap-2.5 cursor-pointer mb-2">
-                            <input type="checkbox" x-model="classUnlocked"
-                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
-                            <span class="text-sm font-medium text-gray-700">Class Name</span>
-                            <span class="text-xs text-gray-400 italic">(check to change)</span>
-                        </label>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                                <input type="checkbox" x-model="classUnlocked"
+                                       class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                                <span class="text-sm font-medium text-gray-700">Class Name</span>
+                                <span class="text-xs text-gray-400 italic">(check to change)</span>
+                            </label>
 
-                        {{-- Locked: display-only --}}
-                        <div x-show="!classUnlocked" class="ml-6">
-                            <p class="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700">
+                            {{-- Locked: read-only pill on same row --}}
+                            <p x-show="!classUnlocked"
+                               class="flex-1 bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm text-gray-700 min-w-0">
                                 {{ $lessonPlan->class_name }}
                             </p>
-                        </div>
 
-                        {{-- Unlocked: editable dropdown --}}
-                        <div x-show="classUnlocked" x-cloak class="ml-6 space-y-2">
-                            <select x-model="classSelected"
-                                    @change="classIsOther = (classSelected === '__other__'); if (!classIsOther) classCustom = ''; $dispatch('lesson-meta-changed')"
-                                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                           focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                                <option value="">— Select a class —</option>
-                                @foreach ($classNames as $cn)
-                                    <option value="{{ $cn }}">{{ $cn }}</option>
-                                @endforeach
-                                <option value="__other__">Other (enter new class name)</option>
-                            </select>
-                            <div x-show="classIsOther" x-cloak>
-                                <input type="text" x-model="classCustom"
-                                       placeholder="Enter new class name" maxlength="100"
-                                       @input="$dispatch('lesson-meta-changed')"
-                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            {{-- Unlocked: editable dropdown on same row; "Other" text input stacks below --}}
+                            <div x-show="classUnlocked" x-cloak class="flex-1 min-w-[10rem] space-y-2">
+                                <select x-model="classSelected"
+                                        @change="classIsOther = (classSelected === '__other__'); if (!classIsOther) classCustom = ''; $dispatch('lesson-meta-changed')"
+                                        class="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm
+                                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                    <option value="">— Select a class —</option>
+                                    @foreach ($classNames as $cn)
+                                        <option value="{{ $cn }}">{{ $cn }}</option>
+                                    @endforeach
+                                    <option value="__other__">Other (enter new class name)</option>
+                                </select>
+                                <div x-show="classIsOther" x-cloak>
+                                    <input type="text" x-model="classCustom"
+                                           placeholder="Enter new class name" maxlength="100"
+                                           @input="$dispatch('lesson-meta-changed')"
+                                           class="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm
+                                                  focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                </div>
                             </div>
                         </div>
-
-                        {{-- Single hidden input: always the value that gets submitted --}}
                         <input type="hidden" name="class_name" :value="computedClassName">
-                        @error('class_name') <p class="text-red-600 text-xs mt-1 ml-6">{{ $message }}</p> @enderror
+                        @error('class_name') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Lesson Number --}}
                     <div>
-                        <label class="flex items-center gap-2.5 cursor-pointer mb-2">
-                            <input type="checkbox" x-model="dayUnlocked"
-                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
-                            <span class="text-sm font-medium text-gray-700">Lesson Number</span>
-                            <span class="text-xs text-gray-400 italic">(check to change)</span>
-                        </label>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                                <input type="checkbox" x-model="dayUnlocked"
+                                       class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                                <span class="text-sm font-medium text-gray-700">Lesson Number</span>
+                                <span class="text-xs text-gray-400 italic">(check to change)</span>
+                            </label>
 
-                        {{-- Locked: display-only --}}
-                        <div x-show="!dayUnlocked" class="ml-6">
-                            <p class="inline-block bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700">
+                            {{-- Locked: read-only pill on same row --}}
+                            <p x-show="!dayUnlocked"
+                               class="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm text-gray-700">
                                 {{ $lessonPlan->lesson_day }}
                             </p>
-                        </div>
 
-                        {{-- Unlocked: editable select --}}
-                        <div x-show="dayUnlocked" x-cloak class="ml-6">
-                            <select x-model="lessonDay"
-                                    @change="$dispatch('lesson-meta-changed')"
-                                    class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
-                                           focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                                @foreach ($lessonNumbers as $num)
-                                    <option value="{{ $num }}" {{ (string) $num === (string) old('lesson_day', $lessonPlan->lesson_day) ? 'selected' : '' }}>
-                                        {{ $num }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            {{-- Unlocked: select on same row --}}
+                            <div x-show="dayUnlocked" x-cloak>
+                                <select x-model="lessonDay"
+                                        @change="$dispatch('lesson-meta-changed')"
+                                        class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm
+                                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                    @foreach ($lessonNumbers as $num)
+                                        <option value="{{ $num }}" {{ (string) $num === (string) old('lesson_day', $lessonPlan->lesson_day) ? 'selected' : '' }}>
+                                            {{ $num }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
-
-                        {{-- Hidden input: always submits current lessonDay value --}}
                         <input type="hidden" name="lesson_day" :value="lessonDay">
-                        @error('lesson_day') <p class="text-red-600 text-xs mt-1 ml-6">{{ $message }}</p> @enderror
+                        @error('lesson_day') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Description --}}
+                    {{-- Label row is inline; textarea expands below when unlocked.        --}}
+                    {{-- A hidden input submits the value when locked (textarea disabled). --}}
                     <div>
-                        <label class="flex items-center gap-2.5 cursor-pointer mb-2">
-                            <input type="checkbox" x-model="descUnlocked"
-                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
-                            <span class="text-sm font-medium text-gray-700">Description</span>
-                            <span class="text-xs text-gray-400 italic">(check to change)</span>
-                        </label>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                                <input type="checkbox" x-model="descUnlocked"
+                                       class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                                <span class="text-sm font-medium text-gray-700">Description</span>
+                                <span class="text-xs text-gray-400 italic">(check to change)</span>
+                            </label>
 
-                        {{-- Textarea: always rendered; :readonly locks it visually and functionally --}}
-                        <div class="ml-6">
-                            <textarea name="description" id="description" rows="4"
-                                      x-model="description"
-                                      :readonly="!descUnlocked"
-                                      :class="!descUnlocked
-                                          ? 'bg-gray-50 text-gray-500 cursor-default border-gray-200 resize-none select-none'
-                                          : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent'"
-                                      placeholder="Describe what you changed or improved..."
-                                      class="w-full rounded-md px-3 py-2 text-sm transition-colors"></textarea>
+                            {{-- Locked: single-line truncated preview on same row --}}
+                            <p x-show="!descUnlocked"
+                               x-text="description || '(No description)'"
+                               class="flex-1 bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm text-gray-500 truncate min-w-0"></p>
                         </div>
-                        @error('description') <p class="text-red-600 text-xs mt-1 ml-6">{{ $message }}</p> @enderror
+
+                        {{-- Hidden input submits when locked; textarea takes over when unlocked --}}
+                        <input type="hidden" name="description" :value="description" :disabled="descUnlocked">
+                        <textarea name="description" id="description" rows="4"
+                                  x-model="description"
+                                  x-show="descUnlocked" x-cloak
+                                  :disabled="!descUnlocked"
+                                  placeholder="Describe what you changed or improved..."
+                                  class="mt-2 w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                         focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"></textarea>
+                        @error('description') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                {{-- ────────────────────────────────────────────────────────────────── --}}
 
                 {{-- Revision Type + Version Preview --}}
                 {{-- Nested x-data so the version preview has its own loading/refresh state. --}}
