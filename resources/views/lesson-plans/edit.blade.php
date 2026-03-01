@@ -1,186 +1,297 @@
 <x-layout>
-    <x-slot:title>Upload New Version — {{ $lessonPlan->class_name }} — ARES Education</x-slot>
+    <x-slot:title>Upload Revision — {{ $lessonPlan->class_name }} — ARES Education</x-slot>
+
+    @php
+        $currentClass = old('class_name', $lessonPlan->class_name);
+        $isKnownClass = in_array($currentClass, $classNames);
+    @endphp
 
     <div class="max-w-2xl mx-auto">
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Upload New Version</h1>
-        <p class="text-sm text-gray-600 mb-6">
-            You are uploading a new version based on
-            <strong>{{ $lessonPlan->class_name }} Day {{ $lessonPlan->lesson_day }}</strong> (Version {{ $lessonPlan->semantic_version }})
-            by {{ $lessonPlan->author->name ?? 'Anonymous' }}.
-        </p>
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload New Version</h1>
 
-        {{-- Download the current version first --}}
+        {{-- Download the current version so the user has something to revise --}}
         @if ($lessonPlan->file_path)
             <div class="bg-gray-50 border border-gray-200 rounded-md p-4 mb-6">
-                <p class="text-sm text-gray-700">
+                <p class="text-sm text-gray-700 mb-2">
                     <strong>Step 1:</strong> Download the current version, make your improvements, then upload the revised file below.
                 </p>
                 <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                   class="inline-block mt-2 px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                    Download Version {{ $lessonPlan->semantic_version }} ({{ $lessonPlan->file_name }})
+                   class="inline-block px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                    Download Version {{ $lessonPlan->semantic_version }} ({{ $lessonPlan->file_name ?? $lessonPlan->name }})
                 </a>
             </div>
         @endif
 
-        <form method="POST" action="{{ route('lesson-plans.store-version', $lessonPlan) }}" enctype="multipart/form-data"
-              class="border border-gray-200 rounded-lg p-6 space-y-5">
-            @csrf
+        {{--
+            Top-level Alpine component manages:
+              confirmed       — whether the user has ticked the "this is the file I'm revising" checkbox
+              classUnlocked   — whether Class Name is editable
+              dayUnlocked     — whether Lesson Number is editable
+              descUnlocked    — whether Description is editable
+              classSelected   — current value of the class dropdown
+              classCustom     — free-text class name when "Other" is selected
+              classIsOther    — true when dropdown is on "Other (enter new class name)"
+              lessonDay       — current lesson day value (string; matches option values)
+              description     — current description text (bound via x-model on textarea)
+              computedClassName — getter: resolves the correct class_name to submit
+        --}}
+        <div x-data="{
+                confirmed: @js($errors->any()),
 
-            {{-- Class Name (dropdown with "Other" option for new classes) --}}
-            @php
-                $currentClass = old('class_name', $lessonPlan->class_name);
-                $isKnownClass = in_array($currentClass, $classNames);
-            @endphp
-            <div x-data="{
-                    selected: @js($isKnownClass ? $currentClass : '__other__'),
-                    custom: @js($isKnownClass ? '' : $currentClass),
-                    isOther: {{ !$isKnownClass && $currentClass ? 'true' : 'false' }}
-                 }">
-                <label for="edit_class_name_select" class="block text-sm font-medium text-gray-700 mb-1">Class Name *</label>
-                <select id="edit_class_name_select"
-                        x-model="selected"
-                        @change="isOther = (selected === '__other__'); if (!isOther) custom = ''; $dispatch('lesson-meta-changed')"
-                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                    <option value="">— Select a class —</option>
-                    @foreach ($classNames as $cn)
-                        <option value="{{ $cn }}">{{ $cn }}</option>
-                    @endforeach
-                    <option value="__other__">Other (enter new class name)</option>
-                </select>
+                classUnlocked: false,
+                classSelected: @js($isKnownClass ? $currentClass : '__other__'),
+                classCustom:   @js(!$isKnownClass ? $currentClass : ''),
+                classIsOther:  @js(!$isKnownClass),
 
-                <div x-show="isOther" x-cloak class="mt-2">
-                    <input type="text" x-model="custom"
-                           placeholder="Enter new class name"
-                           maxlength="100"
-                           @change="$dispatch('lesson-meta-changed')"
-                           class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                </div>
+                dayUnlocked: false,
+                lessonDay:   '{{ old('lesson_day', $lessonPlan->lesson_day) }}',
 
-                <input type="hidden" name="class_name"
-                       :value="isOther ? custom : selected">
+                descUnlocked: false,
+                description:  @js(old('description', $lessonPlan->description ?? '')),
 
-                @error('class_name') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            </div>
+                get computedClassName() {
+                    if (this.classSelected === '__other__') return this.classCustom;
+                    return this.classSelected;
+                }
+             }">
 
-            {{-- Lesson Number (dropdown 1–20) --}}
-            <div>
-                <label for="lesson_day" class="block text-sm font-medium text-gray-700 mb-1">Lesson Number *</label>
-                <select name="lesson_day" id="lesson_day" required
-                        @change="$dispatch('lesson-meta-changed')"
-                        class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                    <option value="">—</option>
-                    @foreach ($lessonNumbers as $num)
-                        <option value="{{ $num }}" {{ (int) old('lesson_day', $lessonPlan->lesson_day) === $num ? 'selected' : '' }}>{{ $num }}</option>
-                    @endforeach
-                </select>
-                @error('lesson_day') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            </div>
-
-            {{-- Author (locked to logged-in user) --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Author</label>
-                <p class="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-sm text-gray-700">
-                    {{ auth()->user()->name }}
-                </p>
-                <p class="text-xs text-gray-500 mt-1">Plans are always uploaded under your account.</p>
-            </div>
-
-            {{-- Description --}}
-            <div>
-                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" id="description" rows="4"
-                          placeholder="Describe what you changed or improved..."
-                          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
-                                 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">{{ old('description', $lessonPlan->description) }}</textarea>
-                @error('description') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            </div>
-
-            {{-- Revision Type + Version Preview --}}
-            {{-- This x-data scope reads class_name/lesson_day from the DOM and fetches the
-                 computed next version via AJAX. It initialises with server-precomputed values
-                 to avoid a round-trip delay on page load. @lesson-meta-changed events are
-                 dispatched by the class/day selects above when their values change. --}}
-            <div x-data="versionPreview(
-                    '{{ addslashes($nextMajorVersion) }}',
-                    '{{ addslashes($nextMinorVersion) }}'
-                 )"
-                 x-init="setFromPrecomputed()"
-                 @lesson-meta-changed.window="refresh()">
-
-                <label class="block text-sm font-medium text-gray-700 mb-2">Revision Type *</label>
-                <div class="space-y-2">
-                    <label class="flex items-start gap-2.5 cursor-pointer">
-                        <input type="radio" name="revision_type" value="major"
-                               x-model="revisionType"
-                               @change="setFromPrecomputed()"
-                               {{ old('revision_type', 'major') === 'major' ? 'checked' : '' }}
-                               class="mt-0.5 border-gray-300 text-gray-900 focus:ring-gray-400">
-                        <div>
-                            <span class="text-sm font-medium text-gray-700">Major revision</span>
-                            <span class="text-xs text-gray-400 ml-1">— new approach or topic (bumps middle number, resets last)</span>
-                        </div>
-                    </label>
-                    <label class="flex items-start gap-2.5 cursor-pointer">
-                        <input type="radio" name="revision_type" value="minor"
-                               x-model="revisionType"
-                               @change="setFromPrecomputed()"
-                               {{ old('revision_type') === 'minor' ? 'checked' : '' }}
-                               class="mt-0.5 border-gray-300 text-gray-900 focus:ring-gray-400">
-                        <div>
-                            <span class="text-sm font-medium text-gray-700">Minor revision</span>
-                            <span class="text-xs text-gray-400 ml-1">— small fix or improvement (bumps last number only)</span>
-                        </div>
-                    </label>
-                </div>
-                @error('revision_type') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-
-                <p class="mt-2.5 text-xs text-gray-500">
-                    This version will be assigned:
-                    <span class="font-mono font-semibold text-gray-800 ml-1"
-                          x-text="loading ? '…' : version"></span>
+            {{-- Step 2: Confirm the source document --}}
+            {{-- The rest of the page is hidden until this checkbox is ticked. --}}
+            <div class="border border-gray-200 rounded-lg p-5 mb-4">
+                <p class="text-sm font-medium text-gray-700 mb-3">The lesson plan revision that you are about to upload:</p>
+                <label class="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" x-model="confirmed"
+                           class="mt-0.5 h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                    <span class="text-sm text-gray-900 font-mono break-all">{{ $lessonPlan->file_name ?? $lessonPlan->name }}</span>
+                </label>
+                <p x-show="!confirmed" class="text-xs text-gray-400 mt-2 ml-7">
+                    Check the box above to continue.
                 </p>
             </div>
 
-            {{-- File Upload + Submit (wrapped together so the button can react to fileSelected state) --}}
-            <div x-data="fileValidator()">
-                <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Revised Lesson Plan File *</label>
-                <input type="file" name="file" id="file" required
-                       accept=".doc,.docx,.txt,.rtf,.odt"
-                       @change="validate($event)"
-                       class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
-                              file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
-                <p class="text-xs text-gray-500 mt-1">Upload your revised version. Max 1 MB.</p>
-                <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
-                @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            {{-- The form — hidden until the confirmation checkbox above is ticked --}}
+            <form method="POST" action="{{ route('lesson-plans.store-version', $lessonPlan) }}"
+                  enctype="multipart/form-data"
+                  x-show="confirmed" x-cloak
+                  class="border border-gray-200 rounded-lg p-6 space-y-5">
+                @csrf
 
-                {{-- Submit: greyed out until a valid file is chosen --}}
-                <div class="flex items-center space-x-3 pt-4">
-                    <button type="submit"
-                            :disabled="!fileSelected"
-                            :class="fileSelected ? 'bg-gray-900 hover:bg-gray-700 cursor-pointer' : 'bg-gray-400 cursor-not-allowed'"
-                            class="px-5 py-2 text-white text-sm font-medium rounded-md transition-colors">
-                        Upload New Version
-                    </button>
-                    <a href="{{ route('lesson-plans.show', $lessonPlan) }}" class="text-sm text-gray-500 hover:text-gray-900">Cancel</a>
+                {{-- Contributor (always read-only — locked to the logged-in user) --}}
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Contributor</p>
+                    <p class="text-sm font-medium text-gray-900">{{ auth()->user()->name }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Revisions are always uploaded under your account name.</p>
                 </div>
-            </div>
-        </form>
+
+                {{-- Checkbox-locked fields ────────────────────────────────────────── --}}
+                {{-- Each field is pre-filled from the original document and locked.    --}}
+                {{-- The user must tick the checkbox next to a field to edit it.        --}}
+                <div class="border-t border-gray-100 pt-5 space-y-5">
+                    <p class="text-sm font-semibold text-gray-700">Confirm the following about your revision:</p>
+
+                    {{-- Class Name --}}
+                    <div>
+                        <label class="flex items-center gap-2.5 cursor-pointer mb-2">
+                            <input type="checkbox" x-model="classUnlocked"
+                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                            <span class="text-sm font-medium text-gray-700">Class Name</span>
+                            <span class="text-xs text-gray-400 italic">(check to change)</span>
+                        </label>
+
+                        {{-- Locked: display-only --}}
+                        <div x-show="!classUnlocked" class="ml-6">
+                            <p class="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700">
+                                {{ $lessonPlan->class_name }}
+                            </p>
+                        </div>
+
+                        {{-- Unlocked: editable dropdown --}}
+                        <div x-show="classUnlocked" x-cloak class="ml-6 space-y-2">
+                            <select x-model="classSelected"
+                                    @change="classIsOther = (classSelected === '__other__'); if (!classIsOther) classCustom = ''; $dispatch('lesson-meta-changed')"
+                                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                           focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                <option value="">— Select a class —</option>
+                                @foreach ($classNames as $cn)
+                                    <option value="{{ $cn }}">{{ $cn }}</option>
+                                @endforeach
+                                <option value="__other__">Other (enter new class name)</option>
+                            </select>
+                            <div x-show="classIsOther" x-cloak>
+                                <input type="text" x-model="classCustom"
+                                       placeholder="Enter new class name" maxlength="100"
+                                       @input="$dispatch('lesson-meta-changed')"
+                                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        {{-- Single hidden input: always the value that gets submitted --}}
+                        <input type="hidden" name="class_name" :value="computedClassName">
+                        @error('class_name') <p class="text-red-600 text-xs mt-1 ml-6">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Lesson Number --}}
+                    <div>
+                        <label class="flex items-center gap-2.5 cursor-pointer mb-2">
+                            <input type="checkbox" x-model="dayUnlocked"
+                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                            <span class="text-sm font-medium text-gray-700">Lesson Number</span>
+                            <span class="text-xs text-gray-400 italic">(check to change)</span>
+                        </label>
+
+                        {{-- Locked: display-only --}}
+                        <div x-show="!dayUnlocked" class="ml-6">
+                            <p class="inline-block bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700">
+                                {{ $lessonPlan->lesson_day }}
+                            </p>
+                        </div>
+
+                        {{-- Unlocked: editable select --}}
+                        <div x-show="dayUnlocked" x-cloak class="ml-6">
+                            <select x-model="lessonDay"
+                                    @change="$dispatch('lesson-meta-changed')"
+                                    class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
+                                           focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                @foreach ($lessonNumbers as $num)
+                                    <option value="{{ $num }}" {{ (string) $num === (string) old('lesson_day', $lessonPlan->lesson_day) ? 'selected' : '' }}>
+                                        {{ $num }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Hidden input: always submits current lessonDay value --}}
+                        <input type="hidden" name="lesson_day" :value="lessonDay">
+                        @error('lesson_day') <p class="text-red-600 text-xs mt-1 ml-6">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Description --}}
+                    <div>
+                        <label class="flex items-center gap-2.5 cursor-pointer mb-2">
+                            <input type="checkbox" x-model="descUnlocked"
+                                   class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                            <span class="text-sm font-medium text-gray-700">Description</span>
+                            <span class="text-xs text-gray-400 italic">(check to change)</span>
+                        </label>
+
+                        {{-- Textarea: always rendered; :readonly locks it visually and functionally --}}
+                        <div class="ml-6">
+                            <textarea name="description" id="description" rows="4"
+                                      x-model="description"
+                                      :readonly="!descUnlocked"
+                                      :class="!descUnlocked
+                                          ? 'bg-gray-50 text-gray-500 cursor-default border-gray-200 resize-none select-none'
+                                          : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent'"
+                                      placeholder="Describe what you changed or improved..."
+                                      class="w-full rounded-md px-3 py-2 text-sm transition-colors"></textarea>
+                        </div>
+                        @error('description') <p class="text-red-600 text-xs mt-1 ml-6">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                {{-- ────────────────────────────────────────────────────────────────── --}}
+
+                {{-- Revision Type + Version Preview --}}
+                {{-- Nested x-data so the version preview has its own loading/refresh state. --}}
+                {{-- It listens for 'lesson-meta-changed' events dispatched by class/day changes. --}}
+                {{-- It reads class_name and lesson_day from the hidden inputs via querySelector.  --}}
+                <div x-data="versionPreview(
+                         '{{ addslashes($nextMajorVersion) }}',
+                         '{{ addslashes($nextMinorVersion) }}'
+                     )"
+                     x-init="setFromPrecomputed()"
+                     @lesson-meta-changed.window="refresh()">
+
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Revision Type *</label>
+                    <div class="space-y-2">
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input type="radio" name="revision_type" value="major"
+                                   x-model="revisionType"
+                                   @change="setFromPrecomputed()"
+                                   {{ old('revision_type', 'major') === 'major' ? 'checked' : '' }}
+                                   class="mt-0.5 border-gray-300 text-gray-900 focus:ring-gray-400">
+                            <div>
+                                <span class="text-sm font-medium text-gray-700">Major revision</span>
+                                <span class="text-xs text-gray-400 ml-1">— new approach or topic (bumps middle number, resets last)</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input type="radio" name="revision_type" value="minor"
+                                   x-model="revisionType"
+                                   @change="setFromPrecomputed()"
+                                   {{ old('revision_type') === 'minor' ? 'checked' : '' }}
+                                   class="mt-0.5 border-gray-300 text-gray-900 focus:ring-gray-400">
+                            <div>
+                                <span class="text-sm font-medium text-gray-700">Minor revision</span>
+                                <span class="text-xs text-gray-400 ml-1">— small fix or improvement (bumps last number only)</span>
+                            </div>
+                        </label>
+                    </div>
+                    @error('revision_type') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+
+                    <p class="mt-2.5 text-xs text-gray-500">
+                        This version will be assigned:
+                        <span class="font-mono font-semibold text-gray-800 ml-1"
+                              x-text="loading ? '…' : version"></span>
+                    </p>
+                </div>
+
+                {{-- File Upload --}}
+                {{-- Native file input is visually hidden; a styled <label> acts as the trigger. --}}
+                {{-- This lets us control the button text ("Choose Your Lesson Plan Revision").  --}}
+                <div x-data="fileValidator()">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label for="file"
+                               class="inline-flex items-center px-4 py-2 bg-gray-100 border border-gray-300
+                                      text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200
+                                      cursor-pointer transition-colors select-none">
+                            Choose Your Lesson Plan Revision
+                        </label>
+                        <input type="file" name="file" id="file" required
+                               accept=".doc,.docx,.txt,.rtf,.odt"
+                               @change="validate($event)"
+                               class="sr-only">
+                        {{-- Shows the selected filename after a valid file is chosen --}}
+                        <span x-show="fileName" x-text="fileName" x-cloak
+                              class="text-sm text-gray-600 font-mono truncate max-w-xs"></span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1.5">Max 1 MB. Accepted: .doc, .docx, .txt, .rtf, .odt</p>
+                    <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
+                    @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+
+                    {{-- Submit button: greyed and disabled until a valid file has been chosen --}}
+                    <div class="flex items-center space-x-3 pt-4">
+                        <button type="submit"
+                                :disabled="!fileSelected"
+                                :class="fileSelected ? 'bg-gray-900 hover:bg-gray-700 cursor-pointer' : 'bg-gray-400 cursor-not-allowed'"
+                                class="px-5 py-2 text-white text-sm font-medium rounded-md transition-colors">
+                            Upload New Version
+                        </button>
+                        <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
+                           class="text-sm text-gray-500 hover:text-gray-900">Cancel</a>
+                    </div>
+                </div>
+
+            </form>
+        </div>{{-- /x-data outer wrapper --}}
     </div>
 
-    {{-- Client-side file validation (size + type check before upload) --}}
     <script>
+        /**
+         * Client-side file validation (size + type check before upload).
+         * Also tracks the selected filename for display next to the button.
+         */
         function fileValidator() {
             const maxSize = 1 * 1024 * 1024; // 1 MB
-            const allowed = ['doc','docx','txt','rtf','odt']; // must match StoreLessonPlanRequest
+            const allowed = ['doc','docx','txt','rtf','odt']; // must match StoreVersionRequest
             return {
                 error: '',
                 fileSelected: false,
+                fileName: '',
                 validate(event) {
-                    this.fileSelected = false; // reset on every change
+                    this.fileSelected = false;
                     this.error = '';
+                    this.fileName = '';
                     const file = event.target.files[0];
                     if (!file) return;
                     const ext = file.name.split('.').pop().toLowerCase();
@@ -195,7 +306,8 @@
                         event.target.value = '';
                         return;
                     }
-                    this.fileSelected = true; // only set after all validations pass
+                    this.fileSelected = true;
+                    this.fileName = file.name;
                 }
             };
         }
@@ -204,11 +316,13 @@
          * Alpine.js component for version preview.
          *
          * Initialised with server-precomputed major/minor versions to avoid a
-         * round-trip on page load. When the user changes class/day or revision_type,
-         * it fetches the updated version from the nextVersion AJAX endpoint.
+         * round-trip on page load. When class_name or lesson_day change (via the
+         * 'lesson-meta-changed' window event), it re-fetches from the nextVersion
+         * AJAX endpoint.
          *
-         * The 'lesson-meta-changed' window event is dispatched by the class_name
-         * and lesson_day selects above whenever their value changes.
+         * Reads class_name and lesson_day from the hidden inputs in the form via
+         * querySelector — these inputs are always present in the DOM and always
+         * hold the currently-effective values (whether locked or unlocked).
          */
         function versionPreview(precomputedMajor, precomputedMinor) {
             return {
@@ -220,8 +334,8 @@
                 parentClassName: @js($lessonPlan->class_name),
                 parentLessonDay: {{ $lessonPlan->lesson_day }},
 
-                // Use precomputed values when class/day match the parent plan;
-                // otherwise fetch from the server (user has changed them).
+                // Use server-precomputed values when class/day match the parent plan;
+                // fetch from server when the user has unlocked and changed them.
                 setFromPrecomputed() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = parseInt(document.querySelector('[name="lesson_day"]')?.value || '0');
@@ -241,20 +355,20 @@
                     this.loading = true;
                     try {
                         const params = new URLSearchParams({
-                            class_name: className,
-                            lesson_day: lessonDay,
+                            class_name:    className,
+                            lesson_day:    lessonDay,
                             revision_type: this.revisionType
                         });
                         const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {
                             headers: {
-                                'Accept': 'application/json',
+                                'Accept':       'application/json',
                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
                             }
                         });
                         const d = await r.json();
                         this.version = d.version;
                     } catch (e) {
-                        // On error fall back to precomputed for the current revision type
+                        // On network error, fall back to precomputed for the current revision type
                         this.version = this.revisionType === 'minor'
                             ? this.precomputedMinor
                             : this.precomputedMajor;
