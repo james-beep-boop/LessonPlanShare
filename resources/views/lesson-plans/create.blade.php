@@ -1,7 +1,11 @@
 <x-layout>
     <x-slot:title>Upload New Lesson Plan — ARES Education</x-slot>
 
-    <div class="max-w-2xl mx-auto">
+    {{-- Outer wrapper listens for class/day changes and shows duplicate warning --}}
+    <div class="max-w-2xl mx-auto"
+         x-data="duplicateChecker()"
+         @lesson-meta-changed.window="checkDuplicate()">
+
         <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload a New Lesson Plan</h1>
 
         <form method="POST" action="{{ route('lesson-plans.store') }}" enctype="multipart/form-data"
@@ -115,7 +119,57 @@
                 </div>
             </div>
         </form>
-    </div>
+
+        {{-- ── Duplicate class+day warning dialog ── --}}
+        {{-- Shown when the selected class+day already has existing lesson plans. --}}
+        <div x-show="showWarning" x-transition
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-40"
+             @click="chooseD()">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6" @click.stop>
+
+                <h3 class="text-base font-semibold text-amber-700 mb-2">
+                    ⚠️ A lesson plan already exists for this Class and Day
+                </h3>
+                <p class="text-sm text-gray-600 mb-5">How would you like to proceed?</p>
+
+                <div class="space-y-2.5">
+
+                    {{-- Option a: change class name --}}
+                    <button @click="chooseA()"
+                            class="w-full text-left px-4 py-3 text-sm rounded-md border border-gray-300 hover:bg-gray-50 transition-colors">
+                        <span class="font-medium">a) Choose a different Class Name</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Go back and select or type a different class.</p>
+                    </button>
+
+                    {{-- Option b: use next available day (only shown when next day ≤ 20) --}}
+                    <button @click="chooseB()" x-show="nextDay !== null && nextDay <= 20"
+                            class="w-full text-left px-4 py-3 text-sm rounded-md border border-gray-300 hover:bg-gray-50 transition-colors">
+                        <span class="font-medium">b) Use the next available day
+                            (Day <span x-text="nextDay" class="font-mono"></span>)
+                        </span>
+                        <p class="text-xs text-gray-500 mt-0.5">Automatically sets the Lesson Number to the next unused day for this class.</p>
+                    </button>
+
+                    {{-- Option c: archive (rename) existing plans --}}
+                    <button @click="chooseC()" :disabled="retireLoading"
+                            class="w-full text-left px-4 py-3 text-sm rounded-md border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors disabled:opacity-50">
+                        <span class="font-medium">c) Archive existing plan(s) for this Class/Day</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Renames existing files with a deletion timestamp so your new upload becomes the current plan.</p>
+                        <p x-show="retireLoading" class="text-xs text-amber-700 mt-1 font-medium">Archiving… please wait.</p>
+                    </button>
+
+                    {{-- Option d: cancel --}}
+                    <button @click="chooseD()"
+                            class="w-full text-left px-4 py-3 text-sm rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                        <span class="font-medium">d) Cancel — go back</span>
+                        <p class="text-xs text-gray-500 mt-0.5">Resets the Class and Lesson Day fields.</p>
+                    </button>
+
+                </div>
+            </div>
+        </div>
+
+    </div>{{-- /outer wrapper --}}
 
     {{-- Client-side scripts: file validation + version preview --}}
     <script>
@@ -152,6 +206,120 @@
                     } finally {
                         this.loading = false;
                     }
+                }
+            };
+        }
+
+        /**
+         * Checks whether the selected class+day already has existing lesson plans.
+         * If so, shows a warning dialog with four options:
+         *   a) Choose a different class name
+         *   b) Use the next available lesson day
+         *   c) Archive (rename) existing plans with a deletion timestamp
+         *   d) Cancel / reset
+         *
+         * Uses the nextVersion endpoint: if version === '1.0.0' there are no
+         * existing plans for this class/day; anything else means a duplicate.
+         */
+        function duplicateChecker() {
+            return {
+                showWarning:       false,
+                nextDay:           null,
+                retireLoading:     false,
+                // Suppress re-warning for a class+day that was just archived this session
+                justArchivedClass: null,
+                justArchivedDay:   null,
+
+                async checkDuplicate() {
+                    const className = document.querySelector('[name="class_name"]')?.value || '';
+                    const lessonDay = document.querySelector('[name="lesson_day"]')?.value  || '';
+                    if (!className || !lessonDay) return;
+
+                    // Don't re-warn if the user just archived this exact combo
+                    if (className === this.justArchivedClass &&
+                        lessonDay  === String(this.justArchivedDay)) return;
+
+                    try {
+                        const params = new URLSearchParams({
+                            class_name: className, lesson_day: lessonDay, revision_type: 'major'
+                        });
+                        const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        if (!r.ok) return;
+                        const d = await r.json();
+                        if (d.version !== '1.0.0') {
+                            await this.fetchNextDay(className);
+                            this.showWarning = true;
+                        }
+                    } catch (e) {}
+                },
+
+                async fetchNextDay(className) {
+                    try {
+                        const r = await fetch(
+                            '{{ route('lesson-plans.next-day') }}?class_name=' + encodeURIComponent(className),
+                            { headers: { 'Accept': 'application/json' } }
+                        );
+                        if (!r.ok) return;
+                        const d = await r.json();
+                        this.nextDay = d.next_day;
+                    } catch (e) {}
+                },
+
+                // a) Change class — dismiss dialog and focus the class dropdown
+                chooseA() {
+                    this.showWarning = false;
+                    this.$nextTick(() => document.getElementById('class_name_select')?.focus());
+                },
+
+                // b) Set lesson day to next available
+                chooseB() {
+                    if (!this.nextDay) return;
+                    const select = document.querySelector('[name="lesson_day"]');
+                    if (select) {
+                        select.value = String(this.nextDay);
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    this.showWarning = false;
+                },
+
+                // c) Archive existing plans (rename files with deletion timestamp)
+                async chooseC() {
+                    const className = document.querySelector('[name="class_name"]')?.value || '';
+                    const lessonDay = document.querySelector('[name="lesson_day"]')?.value  || '';
+                    if (!className || !lessonDay) { this.showWarning = false; return; }
+                    this.retireLoading = true;
+                    try {
+                        const r = await fetch('{{ route('lesson-plans.retire') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept':        'application/json',
+                                'X-CSRF-TOKEN':  document.querySelector('meta[name=csrf-token]').content
+                            },
+                            body: JSON.stringify({ class_name: className, lesson_day: parseInt(lessonDay) })
+                        });
+                        if (r.ok) {
+                            // Remember this combo so we don't re-warn on the same session
+                            this.justArchivedClass = className;
+                            this.justArchivedDay   = lessonDay;
+                            this.showWarning = false;
+                        }
+                    } catch (e) {}
+                    this.retireLoading = false;
+                },
+
+                // d) Cancel — reset class and day selects
+                chooseD() {
+                    const classSelect = document.getElementById('class_name_select');
+                    if (classSelect) {
+                        classSelect.value = '';
+                        classSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    const daySelect = document.querySelector('[name="lesson_day"]');
+                    if (daySelect) daySelect.value = '';
+                    this.showWarning = false;
                 }
             };
         }

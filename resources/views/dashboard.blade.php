@@ -127,15 +127,22 @@
                 <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
                         @php
-                            // align: controls th text-align and the flex justification of the sort link
+                            // align: controls th text-align and the flex justification of the sort link.
+                            // Author column is hidden for guests — they see max 6 rows + no author
+                            // as a sign-in incentive; verified users see the full table.
+                            $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
                             $cols = [
-                                'class_name'     => ['label' => 'Class',   'align' => 'left'],
-                                'lesson_day'     => ['label' => 'Day #',   'align' => 'center'],
-                                'author_name'    => ['label' => 'Author',  'align' => 'left'],
-                                'semantic_version' => ['label' => 'Version', 'align' => 'center'],
-                                'vote_score'     => ['label' => 'Rating',  'align' => 'center'],
-                                'updated_at'     => ['label' => 'Updated', 'align' => 'left'],
+                                'class_name' => ['label' => 'Class',  'align' => 'left'],
+                                'lesson_day' => ['label' => 'Day #',  'align' => 'center'],
                             ];
+                            if ($isVerifiedUser) {
+                                $cols['author_name'] = ['label' => 'Author', 'align' => 'left'];
+                            }
+                            $cols = array_merge($cols, [
+                                'semantic_version' => ['label' => 'Version', 'align' => 'center'],
+                                'vote_score'       => ['label' => 'Rating',  'align' => 'center'],
+                                'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
+                            ]);
                         @endphp
                         @foreach ($cols as $field => $col)
                             @php
@@ -169,7 +176,9 @@
                             onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
+                            @if($isVerifiedUser)
                             <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'No Teacher Name' }}</td>
+                            @endif
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             {{-- stopPropagation prevents the TR onclick from firing when clicking vote buttons --}}
                             <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
@@ -241,7 +250,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="{{ count($cols) + 2 }}" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>

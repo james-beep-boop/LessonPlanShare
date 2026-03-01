@@ -38,6 +38,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/lesson-plans-next-version', [LessonPlanController::class, 'nextVersion'])
         ->name('lesson-plans.next-version');
 
+    // AJAX: find the next unused lesson day for a class (used by create form duplicate checker)
+    Route::get('/lesson-plans-next-day', [LessonPlanController::class, 'nextAvailableDay'])
+        ->name('lesson-plans.next-day');
+
+    // AJAX: archive (rename) existing plans for a class/day before uploading a replacement
+    Route::post('/lesson-plans-retire', [LessonPlanController::class, 'retireForClassDay'])
+        ->name('lesson-plans.retire');
+
     // Create new plan — throttled to limit upload spam
     Route::get('/lesson-plans-create', [LessonPlanController::class, 'create'])
         ->name('lesson-plans.create');

@@ -42,15 +42,26 @@
 
             <div class="space-y-8 text-gray-700 text-sm leading-relaxed">
 
-                {{-- 1. Signing In --}}
+                {{-- 1. Signing In / Signing Up --}}
                 <section>
-                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">1. Signing In</h2>
-                    <p class="mb-3">You need an account to view, download, vote, or upload. Here is how:</p>
+                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">1. Signing In / Signing Up</h2>
+                    <p class="mb-3">You need an account to view, download, vote, or upload. There are two separate dialogs — one for existing accounts and one for new ones.</p>
+
+                    <p class="font-medium text-gray-800 mb-2">Signing in (existing account):</p>
                     <ol class="list-decimal pl-5 space-y-1.5 mb-4">
-                        <li>At <strong>www.sheql.com</strong> click <strong>Sign In</strong> (top-right corner)</li>
-                        <li>Type your <strong>Teacher Name</strong> (the name other teachers will see), your <strong>email address</strong>, and a <strong>password</strong></li>
+                        <li>At <strong>www.sheql.com</strong>, click <strong>Sign In</strong> (top-right corner)</li>
+                        <li>Type your <strong>Teacher Email</strong> and <strong>Password</strong></li>
                         <li>Click <strong>Sign In</strong></li>
                     </ol>
+
+                    <p class="font-medium text-gray-800 mb-2">Creating a new account:</p>
+                    <ol class="list-decimal pl-5 space-y-1.5 mb-4">
+                        <li>At <strong>www.sheql.com</strong>, click <strong>Sign In</strong> (top-right corner)</li>
+                        <li>Click <strong>New User? Sign Up</strong> at the bottom of the dialog</li>
+                        <li>Type a <strong>Teacher Name</strong> (the name other teachers will see), your <strong>email address</strong>, and a <strong>password</strong></li>
+                        <li>Click <strong>Sign Up</strong></li>
+                    </ol>
+
                     <div class="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 mb-4">
                         <p class="font-semibold text-amber-800 mb-1">Important</p>
                         <p class="text-amber-700">A confirmation email will be sent to you. <strong>You must click the link inside that email</strong> before you can use the site.</p>
@@ -58,11 +69,11 @@
                     <p class="font-medium text-gray-800 mb-2">Common problems and easy fixes:</p>
                     <ul class="list-disc pl-5 space-y-1">
                         <li><strong>No email arrived?</strong> Check your spam or junk folder.</li>
-                        <li><strong>Still no email?</strong> Try signing in again — the system will send a fresh link.</li>
-                        <li><strong>Forgot your password?</strong> Click "Forgot your password?" on the sign-in form.</li>
+                        <li><strong>Still no email?</strong> Try signing in again — the system will resend a fresh verification link.</li>
+                        <li><strong>Forgot your password?</strong> Click "Forgot your password?" on the Sign In dialog.</li>
                         <li><strong>Still stuck?</strong> Contact the site administrator for help.</li>
                     </ul>
-                    <p class="mt-3 text-gray-600">Once your email is verified, just click <strong>Sign In</strong> each time you visit.</p>
+                    <p class="mt-3 text-gray-600">Once your email is verified, click <strong>Sign In</strong> and enter your email and password each time you visit.</p>
                 </section>
 
                 {{-- 2. Finding Lesson Plans --}}
@@ -70,22 +81,24 @@
                     <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">2. Finding Lesson Plans</h2>
                     <p class="mb-3">After signing in you land on the <strong>Dashboard</strong> — your main screen. Quick ways to find what you need:</p>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
-                         <li>Click any column heading (Class, Day&nbsp;#, Author, Rating, Updated) to sort the list</li>
+                        <li>Click any column heading (Class, Day&nbsp;#, Author, Rating, Updated) to sort the list</li>
                         <li>Type in the <strong>Search</strong> box (class name, topic, or teacher name)</li>
                         <li>Choose a <strong>Class</strong> from the dropdown filter</li>
                         <li>Tick <strong>Show only latest</strong> (in the filter bar below the search box) — hides older versions so you see only the most recent plan for each class/day</li>
+                        <li>Click your <strong>Teacher Name</strong> at the top of the page to instantly filter the list to only your own uploaded plans</li>
                     </ul>
-                    <p>Click the <strong>View/Edit/Vote</strong> button on any row to open that lesson plan.</p>
+                    <p>Click the <strong>View/Edit</strong> button on any row to open that lesson plan.</p>
                 </section>
 
-                {{-- 3. Viewing and Previewing --}}
+                {{-- 3. Viewing a Lesson Plan --}}
                 <section>
-                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">3. Viewing and Previewing a Lesson Plan</h2>
+                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">3. Viewing a Lesson Plan</h2>
                     <p class="mb-2">On the lesson plan detail page you can:</p>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
-                        <li>Read the description and see the full version history</li>
-                        <li>Click <strong>Preview</strong> to read the document right inside the website — no download needed</li>
-                        <li>Click <strong>Print / Save PDF</strong> to print the plan or save it as a PDF</li>
+                        <li>Read the description and see the full version history in the sidebar</li>
+                        <li>Click <strong>View in Google Docs</strong> to open the document in Google's online viewer — no download or Google account needed</li>
+                        <li>Click <strong>View in Microsoft Office</strong> to open the document in Microsoft's online viewer — no download or Microsoft account needed</li>
+                        <li>Click <strong>Download</strong> to save the file to your device so you can edit it in Word, LibreOffice, or Google Docs</li>
                     </ul>
                     <div class="bg-blue-50 border border-blue-200 rounded-md px-4 py-3 text-blue-800">
                         <strong>Tip:</strong> You must open the detail page at least once before your vote buttons become active on the dashboard.
@@ -126,12 +139,16 @@
                     <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">7. Uploading Your Own Lesson Plans</h2>
                     <p class="mb-3">Sharing your best plans helps every teacher. To upload:</p>
                     <ol class="list-decimal pl-5 space-y-1.5 mb-4">
-                        <li>Click <strong>Upload New Lesson</strong> at the top of any page</li>
+                        <li>Click <strong>Upload New Lesson</strong> at the bottom of the dashboard</li>
                         <li>Choose the <strong>Class</strong> and <strong>Lesson Day</strong> number</li>
                         <li>Add a short <strong>description</strong> — optional, but very helpful to others</li>
                         <li>Choose your file (DOC, DOCX, TXT, RTF, or ODT only — maximum 1&nbsp;MB)</li>
                         <li>Click <strong>Upload Lesson Plan</strong></li>
                     </ol>
+                    <div class="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 mb-4">
+                        <p class="font-semibold text-amber-800 mb-1">If a plan already exists for that Class and Day</p>
+                        <p class="text-amber-700 text-sm">A warning dialog will appear with four options: choose a different class name, use the next available lesson day number (shown automatically), archive the existing plan(s) with a deletion timestamp, or cancel.</p>
+                    </div>
                     <p class="mb-3">The system saves your file with a clean standard name and sends you a confirmation email.</p>
                     <p class="font-medium text-gray-800 mb-1">How version numbers work:</p>
                     <ul class="list-disc pl-5 space-y-1 text-gray-600">
@@ -148,7 +165,7 @@
                     <div class="bg-red-50 border border-red-200 rounded-md px-4 py-3 text-red-800 mb-3">
                         <strong>Warning:</strong> Deleted plans are gone permanently and cannot be recovered.
                     </div>
-                    <p class="text-gray-600">To see all your plans, type your teacher name in the <strong>Search</strong> box on the dashboard.</p>
+                    <p class="text-gray-600">To see all your plans quickly, click your <strong>Teacher Name</strong> at the top of the page — or tick <strong>Show only my plans</strong> in the filter bar on the dashboard.</p>
                 </section>
 
                 {{-- 9. For Administrators --}}
@@ -211,12 +228,20 @@
 
                 {{-- 1. Kuingia --}}
                 <section>
-                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">1. Kuingia (Signing In)</h2>
-                    <p class="mb-3">Unahitaji akaunti ili kutazama, kupakua, kupiga kura, au kupakia maandalio. Hivi ndivyo unavyofanya:</p>
+                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">1. Kuingia / Kusajiliwa (Signing In / Signing Up)</h2>
+                    <p class="mb-3">Unahitaji akaunti ili kutazama, kupakua, kupiga kura, au kupakia maandalio. Kuna mazungumzo mawili tofauti — moja kwa akaunti zilizopo na moja kwa akaunti mpya.</p>
+                    <p class="font-medium text-gray-800 mb-2">Kuingia (akaunti iliyopo):</p>
                     <ol class="list-decimal pl-5 space-y-1.5 mb-4">
-                        <li>Kwenye <strong>www.sheql.com</strong> bonyeza <strong>Sign In</strong> (kona ya juu kulia)</li>
-                        <li>Andika <strong>Jina la Mwalimu</strong> (jina ambalo walimu wengine wataliona), <strong>barua pepe</strong> yako, na <strong>nywila (password)</strong></li>
+                        <li>Kwenye <strong>www.sheql.com</strong>, bonyeza <strong>Sign In</strong> (kona ya juu kulia)</li>
+                        <li>Andika <strong>Barua Pepe ya Mwalimu</strong> na <strong>Nywila (Password)</strong></li>
                         <li>Bonyeza <strong>Sign In</strong></li>
+                    </ol>
+                    <p class="font-medium text-gray-800 mb-2">Kuunda akaunti mpya:</p>
+                    <ol class="list-decimal pl-5 space-y-1.5 mb-4">
+                        <li>Kwenye <strong>www.sheql.com</strong>, bonyeza <strong>Sign In</strong> (kona ya juu kulia)</li>
+                        <li>Bonyeza <strong>New User? Sign Up</strong> chini ya mazungumzo</li>
+                        <li>Andika <strong>Jina la Mwalimu</strong> (jina ambalo walimu wengine wataliona), <strong>barua pepe</strong> yako, na <strong>nywila</strong></li>
+                        <li>Bonyeza <strong>Sign Up</strong></li>
                     </ol>
                     <div class="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 mb-4">
                         <p class="font-semibold text-amber-800 mb-1">Muhimu</p>
@@ -242,17 +267,18 @@
                         <li>Chagua <strong>Darasa (Class)</strong> kutoka kwenye kichujio cha kushuka (dropdown)</li>
                         <li>Weka alama kwenye <strong>Show only latest</strong> (kwenye upau wa kichujio chini ya kisanduku cha utafutaji) — huficha matoleo ya zamani ili uone tu andalio la hivi karibuni la kila darasa/siku</li>
                     </ul>
-                    <p>Bonyeza kitufe cha <strong>View/Edit/Vote</strong> kwenye safu yoyote ili kufungua andalio hilo la somo.</p>
+                    <p>Bonyeza kitufe cha <strong>View/Edit</strong> kwenye safu yoyote ili kufungua andalio hilo la somo.</p>
                 </section>
 
                 {{-- 3. Kutazama na Kuhakiki --}}
                 <section>
-                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">3. Kutazama na Kuhakiki Andalio la Somo</h2>
+                    <h2 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-1 mb-3">3. Kutazama Andalio la Somo</h2>
                     <p class="mb-2">Kwenye ukurasa wa maelezo ya andalio la somo unaweza:</p>
                     <ul class="list-disc pl-5 space-y-1 mb-3">
                         <li>Soma maelezo na uone historia kamili ya matoleo</li>
-                        <li>Bonyeza <strong>Preview</strong> ili kusoma hati hiyo ndani ya tovuti — hakuna haja ya kupakua</li>
-                        <li>Bonyeza <strong>Print / Save PDF</strong> ili kuchapa andalio au kulihifadhi kama PDF</li>
+                        <li>Bonyeza <strong>View in Google Docs</strong> ili kufungua hati katika kionyeshi cha mtandaoni cha Google — hakuna haja ya kupakua au akaunti ya Google</li>
+                        <li>Bonyeza <strong>View in Microsoft Office</strong> ili kufungua hati katika kionyeshi cha mtandaoni cha Microsoft — hakuna haja ya kupakua au akaunti ya Microsoft</li>
+                        <li>Bonyeza <strong>Download</strong> ili kuhifadhi faili kwenye kifaa chako</li>
                     </ul>
                     <div class="bg-blue-50 border border-blue-200 rounded-md px-4 py-3 text-blue-800">
                         <strong>Kidokezo:</strong> Lazima ufungue ukurasa wa maelezo angalau mara moja kabla ya vitufe vyako vya kupiga kura kuanza kufanya kazi kwenye dashibodi.

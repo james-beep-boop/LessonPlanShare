@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-28 (Auth split: single merged modal replaced with two separate modals — Sign In (email+password, `login` named error bag) and Sign Up (Teacher Name+email+password, `register` named error bag). POST /register → RegisteredUserController::store() enabled. AuthenticatedSessionController sign-in only (3 cases, all errors in `login` bag). layout.blade.php, auth/login.blade.php updated.)
+**Last updated:** 2026-02-28 (Multiple UX improvements: guest dashboard limited to 6 rows + Author column hidden; ARES Education branding styled as border button; Teacher Name in header is a link to "my plans" filtered dashboard; upload form shows duplicate class+day warning dialog with 4 options (change class, next available day, archive existing, cancel); Guide page updated for new two-dialog auth, Google Docs + Microsoft Office viewers, duplicate warning, username click, View/Edit button rename.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 

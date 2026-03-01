@@ -176,6 +176,96 @@ class LessonPlanController extends Controller
     }
 
     /**
+     * AJAX endpoint: return the lowest unused lesson day number for a class.
+     *
+     * Scans all existing lesson_day values for the given class_name and returns
+     * the first positive integer not already taken. Used by the create form
+     * duplicate-warning dialog (option b: "use next available day").
+     *
+     * Query parameters:
+     * - class_name: Subject name
+     */
+    public function nextAvailableDay(Request $request): JsonResponse
+    {
+        $className = $request->input('class_name', '');
+        if (!$className) {
+            return response()->json(['next_day' => 1]);
+        }
+
+        $existingDays = DB::table('lesson_plans')
+            ->where('class_name', $className)
+            ->distinct()
+            ->orderBy('lesson_day')
+            ->pluck('lesson_day')
+            ->toArray();
+
+        $nextDay = 1;
+        while (in_array($nextDay, $existingDays, true)) {
+            $nextDay++;
+        }
+
+        return response()->json(['next_day' => $nextDay]);
+    }
+
+    /**
+     * Archive (rename) all lesson plan files for a given class/day.
+     *
+     * Called by the duplicate-warning dialog (option c) when a teacher wants
+     * to mark existing plans as superseded before uploading a replacement.
+     * Appends "_deleted_YYYYMMDD_HHMMSSz" to each file's name on disk and
+     * in the database. DB records are kept; only filenames are changed.
+     *
+     * Any verified teacher can archive plans for any class/day. Failures are
+     * logged per-plan but don't abort the whole operation.
+     */
+    public function retireForClassDay(Request $request): JsonResponse
+    {
+        $request->validate([
+            'class_name' => ['required', 'string', 'max:255'],
+            'lesson_day' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $className = $request->input('class_name');
+        $lessonDay = (int) $request->input('lesson_day');
+
+        $plans = LessonPlan::where('class_name', $className)
+            ->where('lesson_day', $lessonDay)
+            ->get();
+
+        if ($plans->isEmpty()) {
+            return response()->json(['success' => true, 'count' => 0]);
+        }
+
+        // e.g. "_deleted_20260228_153045Z"
+        $suffix = '_deleted_' . now()->utc()->format('Ymd_His') . 'Z';
+        $count  = 0;
+
+        foreach ($plans as $plan) {
+            try {
+                if ($plan->file_path && Storage::disk('public')->exists($plan->file_path)) {
+                    $ext     = pathinfo($plan->file_name ?? '', PATHINFO_EXTENSION);
+                    $base    = pathinfo($plan->file_name ?? '', PATHINFO_FILENAME);
+                    $newName = $base . $suffix . ($ext ? '.' . $ext : '');
+                    $newPath = 'lessons/' . $newName;
+                    Storage::disk('public')->move($plan->file_path, $newPath);
+                    DB::table('lesson_plans')->where('id', $plan->id)->update([
+                        'file_name' => $newName,
+                        'file_path' => $newPath,
+                        'name'      => $plan->name . $suffix,
+                    ]);
+                }
+                $count++;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning(
+                    "retireForClassDay: plan {$plan->id} – {$e->getMessage()}"
+                );
+            }
+        }
+
+        return response()->json(['success' => true, 'count' => $count]);
+    }
+
+    /**
      * Show the upload form for a brand-new lesson plan.
      */
     public function create()

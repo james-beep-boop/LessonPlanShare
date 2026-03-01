@@ -20,7 +20,8 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div class="flex items-start justify-between">
                 {{-- Left: Logo + Branding --}}
-                <a href="{{ route('dashboard') }}" class="inline-block">
+                <a href="{{ route('dashboard') }}"
+                   class="inline-block border border-gray-300 rounded-lg px-4 py-3 hover:border-gray-400 transition-colors">
                     <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
                         ARES Education
                     </h1>
@@ -54,7 +55,10 @@
                     {{-- ── Desktop nav — hidden on mobile, horizontal row on md+ ── --}}
                     <div class="hidden md:flex items-center gap-5">
                         @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                            <span class="text-lg text-gray-600">{{ auth()->user()->name }}</span>
+                            {{-- Clicking teacher name filters dashboard to show only their plans --}}
+                            <a href="{{ route('dashboard', ['my_plans_only' => 1]) }}"
+                               class="text-lg text-gray-600 hover:text-gray-900 underline underline-offset-2"
+                               title="Click to see only your plans">{{ auth()->user()->name }}</a>
                         @endif
 
                         @if(auth()->check() && auth()->user()->is_admin)
@@ -97,11 +101,13 @@
                          class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200
                                 rounded-lg shadow-lg py-2 z-20 md:hidden">
 
-                        {{-- Teacher name header (verified users only) --}}
+                        {{-- Teacher name header — tapping navigates to "my plans" filtered dashboard --}}
                         @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                            <div class="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100 mb-1">
+                            <a href="{{ route('dashboard', ['my_plans_only' => 1]) }}"
+                               class="block px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100 mb-1 hover:text-gray-600"
+                               @click="menuOpen = false">
                                 {{ auth()->user()->name }}
-                            </div>
+                            </a>
                         @endif
 
                         @if(auth()->check() && auth()->user()->is_admin)

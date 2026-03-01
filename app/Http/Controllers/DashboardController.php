@@ -111,9 +111,9 @@ class DashboardController extends Controller
             $query->orderBy('lesson_plans.updated_at', 'desc');
         }
 
-        // Paginate at 20 per page. withQueryString() threads search/sort/filter params
-        // through pagination links so they survive page navigation.
-        $plans = $query->paginate(20)->withQueryString();
+        // Guests see only 6 rows as a sign-in incentive. Verified users get 20 per page.
+        $perPage = (Auth::check() && Auth::user()->hasVerifiedEmail()) ? 20 : 6;
+        $plans = $query->paginate($perPage)->withQueryString();
 
         // For logged-in users: load their existing votes, viewed plan IDs, and favorites.
         // Used to show interactive vote buttons and pre-populate favorite checkboxes.
