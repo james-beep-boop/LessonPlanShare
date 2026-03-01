@@ -64,9 +64,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/lesson-plans/{lessonPlan}', [LessonPlanController::class, 'destroy'])
         ->name('lesson-plans.destroy');
 
-    // Voting (upvote / downvote)
+    // AJAX: track viewer engagement (Google Docs / MS Office opens) — gates voting
+    Route::post('/lesson-plans/{lessonPlan}/engage', [LessonPlanController::class, 'trackEngagement'])
+        ->name('lesson-plans.track-engagement');
+
+    // Voting (upvote / downvote / reset)
     Route::post('/lesson-plans/{lessonPlan}/vote', [VoteController::class, 'store'])
         ->name('votes.store');
+    Route::delete('/lesson-plans/{lessonPlan}/vote', [VoteController::class, 'destroy'])
+        ->name('votes.destroy');
 
     // Favorites (toggle on/off)
     Route::post('/lesson-plans/{lessonPlan}/favorite', [FavoriteController::class, 'toggle'])

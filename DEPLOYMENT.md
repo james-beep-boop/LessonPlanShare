@@ -489,7 +489,8 @@ LessonPlanShare/
 │   ├── 2026_02_26_163707_create_lesson_plan_views_table.php
 │   ├── 2026_02_26_210000_add_is_admin_to_users_table.php
 │   ├── 2026_02_26_230000_create_favorites_table.php
-│   └── 2026_02_27_000000_add_semantic_version_to_lesson_plans.php
+│   ├── 2026_02_27_000000_add_semantic_version_to_lesson_plans.php
+│   └── 2026_03_01_000001_create_lesson_plan_engagements_table.php
 │
 ├── database/factories/
 │   └── LessonPlanFactory.php
@@ -499,7 +500,8 @@ LessonPlanShare/
 │   ├── LessonPlan.php
 │   ├── Vote.php
 │   ├── Favorite.php
-│   └── LessonPlanView.php
+│   ├── LessonPlanView.php
+│   └── LessonPlanEngagement.php
 │
 ├── app/Http/Controllers/
 │   ├── Auth/AuthenticatedSessionController.php         (custom login — three-case + Teacher Name)

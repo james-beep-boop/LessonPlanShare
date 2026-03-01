@@ -3,20 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
-use App\Models\LessonPlanView;
+use App\Models\LessonPlanEngagement;
 use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Handles upvote/downvote actions on lesson plan versions.
+ * Handles upvote/downvote/reset actions on lesson plan versions.
  *
  * Voting behavior:
- * - Each user gets exactly one vote per lesson plan version.
+ * - Each user gets exactly one active vote per lesson plan version.
  * - Voting the same direction again REMOVES the vote (toggle off).
  * - Voting the opposite direction SWITCHES the vote.
  * - All authenticated users can vote, including the plan's own author.
  * - The cached vote_score on the lesson plan is recalculated after each action.
+ *
+ * Engagement gate:
+ * - Users must have engaged with the plan before voting (downloaded it,
+ *   or viewed it in Google Docs / MS Office). Authors are exempt.
+ * - Enforced server-side to prevent API-level bypasses.
  *
  * Only authenticated + verified users can vote (enforced by route middleware).
  */
@@ -34,14 +39,17 @@ class VoteController extends Controller
             'value' => 'required|integer|in:-1,1',
         ]);
 
-        // Guard: must have viewed the plan before voting (UI also enforces this;
-        // this server-side check prevents API-level bypasses)
-        if (! LessonPlanView::where('lesson_plan_id', $lessonPlan->id)
+        // Guard: must have engaged with the plan before voting.
+        // Authors are exempt; everyone else needs a download or viewer engagement.
+        $canVote = $lessonPlan->author_id === Auth::id()
+            || LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
                 ->where('user_id', Auth::id())
-                ->exists()) {
+                ->exists();
+
+        if (! $canVote) {
             return $request->expectsJson()
-                ? response()->json(['message' => 'View the plan before voting.'], 403)
-                : back()->with('error', 'Please view the plan before voting.');
+                ? response()->json(['message' => 'Download or view the plan in an external viewer before voting.'], 403)
+                : back()->with('error', 'Please download or open the plan in an external viewer before voting.');
         }
 
         // Check if the user has already voted on this version
@@ -82,8 +90,6 @@ class VoteController extends Controller
         $lessonPlan->recalculateVoteScore();
         $lessonPlan->refresh();
 
-        // For AJAX requests (inline dashboard vote buttons), return JSON.
-        // For standard form submissions (show page), redirect back as usual.
         if ($request->expectsJson()) {
             $newVote = Vote::where('lesson_plan_id', $lessonPlan->id)
                 ->where('user_id', Auth::id())
@@ -95,5 +101,33 @@ class VoteController extends Controller
         }
 
         return back()->with('success', 'Vote recorded.');
+    }
+
+    /**
+     * Remove (reset) the authenticated user's vote on a lesson plan version.
+     *
+     * Used by the "Reset Vote" button on the plan detail page.
+     * Always returns JSON (only called via AJAX).
+     */
+    public function destroy(Request $request, LessonPlan $lessonPlan)
+    {
+        $vote = Vote::where('lesson_plan_id', $lessonPlan->id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if ($vote) {
+            $vote->delete();
+            $lessonPlan->recalculateVoteScore();
+            $lessonPlan->refresh();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'score'    => $lessonPlan->vote_score,
+                'userVote' => null,
+            ]);
+        }
+
+        return back()->with('success', 'Vote removed.');
     }
 }

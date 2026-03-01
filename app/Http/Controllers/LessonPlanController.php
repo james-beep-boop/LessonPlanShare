@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\LessonPlanUploaded;
 use App\Models\LessonPlan;
+use App\Models\LessonPlanEngagement;
 use App\Models\LessonPlanView;
 use App\Models\User;
 use App\Http\Requests\StoreLessonPlanRequest;
@@ -346,20 +347,28 @@ class LessonPlanController extends Controller
             ->with('author')
             ->get();
 
-        $userVote = null;
+        $userVote   = null;
+        $hasEngaged = false;
         if (Auth::check()) {
             $userVote = $lessonPlan->votes()
                 ->where('user_id', Auth::id())
                 ->first();
 
-            // Record that this user has viewed the plan (gates dashboard voting)
+            // Record page view (informational metric; kept for historical data)
             LessonPlanView::firstOrCreate([
                 'user_id'        => Auth::id(),
                 'lesson_plan_id' => $lessonPlan->id,
             ]);
+
+            // Engagement check: author can always vote; others need to have
+            // downloaded the plan or opened it in an external viewer first.
+            $hasEngaged = $lessonPlan->author_id === Auth::id()
+                || LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
+                    ->where('user_id', Auth::id())
+                    ->exists();
         }
 
-        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote'));
+        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged'));
     }
 
     /**
@@ -484,6 +493,9 @@ class LessonPlanController extends Controller
 
     /**
      * Download the file attached to a lesson plan.
+     *
+     * Records a download engagement record for the authenticated user,
+     * which unlocks voting on this plan version.
      */
     public function download(LessonPlan $lessonPlan)
     {
@@ -491,10 +503,41 @@ class LessonPlanController extends Controller
             return back()->with('error', 'File not found.');
         }
 
+        // Track download as an engagement event (unlocks voting for this user)
+        if (Auth::check()) {
+            LessonPlanEngagement::firstOrCreate([
+                'user_id'        => Auth::id(),
+                'lesson_plan_id' => $lessonPlan->id,
+                'type'           => LessonPlanEngagement::DOWNLOAD,
+            ]);
+        }
+
         return Storage::disk('public')->download(
             $lessonPlan->file_path,
             $lessonPlan->file_name ?? basename($lessonPlan->file_path)
         );
+    }
+
+    /**
+     * AJAX: Record that the user opened this plan in an external viewer.
+     *
+     * Called client-side when the user clicks "View in Google Docs" or
+     * "View in Microsoft Office". The engagement record unlocks voting
+     * on this plan version for the authenticated user.
+     */
+    public function trackEngagement(Request $request, LessonPlan $lessonPlan): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => 'required|in:google_docs,ms_office',
+        ]);
+
+        LessonPlanEngagement::firstOrCreate([
+            'user_id'        => Auth::id(),
+            'lesson_plan_id' => $lessonPlan->id,
+            'type'           => $data['type'],
+        ]);
+
+        return response()->json(['ok' => true]);
     }
 
     /**

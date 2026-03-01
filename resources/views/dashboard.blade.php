@@ -89,7 +89,7 @@
         <input type="hidden" name="order"      value="{{ request('order') }}">
 
         <div class="flex flex-wrap items-center gap-5 px-1 text-sm text-gray-500">
-            <span class="text-xs text-gray-400 italic">Sort by clicking a blue column header below</span>
+            <span class="text-xs text-gray-400 italic">Click blue column heading to sort</span>
 
             {{-- Latest version filter --}}
             <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -97,24 +97,24 @@
                        {{ request('latest_only') ? 'checked' : '' }}
                        onchange="this.form.submit()"
                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                <span class="text-sm text-gray-600">Show only latest</span>
+                <span class="text-sm text-gray-600">Show Latest</span>
             </label>
 
-            {{-- My plans + favorites filters — only shown to verified users --}}
+            {{-- Favorites + My Plans filters — only shown to verified users; order: Faves, Mine --}}
             @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                <label class="flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" name="my_plans_only" value="1"
-                           {{ request('my_plans_only') ? 'checked' : '' }}
-                           onchange="this.form.submit()"
-                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                    <span class="text-sm text-gray-600">Show only my plans</span>
-                </label>
                 <label class="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" name="favorites_only" value="1"
                            {{ request('favorites_only') ? 'checked' : '' }}
                            onchange="this.form.submit()"
                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                    <span class="text-sm text-gray-600">Show only my favorites</span>
+                    <span class="text-sm text-gray-600">Show Faves</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="my_plans_only" value="1"
+                           {{ request('my_plans_only') ? 'checked' : '' }}
+                           onchange="this.form.submit()"
+                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
+                    <span class="text-sm text-gray-600">Show Mine</span>
                 </label>
             @endif
         </div>
@@ -127,27 +127,28 @@
                 <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     @php
                         // Build column definitions once; used by both thead and tbody.
-                        // Author/Contributor, View, and Favorites columns are hidden for guests
-                        // as a sign-in incentive; verified users see the full table.
+                        // Contributor column is hidden for guests as a sign-in incentive.
+                        // Favorites (★) column is also hidden for guests.
+                        // View column is always present (first column) for all users —
+                        // guests are prompted to sign in when they click it.
                         $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
+
+                        // Column order: Class, Day, Version, Updated, [Contributor if verified], Rating
                         $cols = [
-                            'class_name' => ['label' => 'Class',   'align' => 'left'],
-                            'lesson_day' => ['label' => 'Day',     'align' => 'center'],
+                            'class_name'       => ['label' => 'Class',   'align' => 'left'],
+                            'lesson_day'       => ['label' => 'Day',     'align' => 'center'],
+                            'semantic_version' => ['label' => 'Version', 'align' => 'center'],
+                            'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
                         ];
                         if ($isVerifiedUser) {
                             $cols['author_name'] = ['label' => 'Contributor', 'align' => 'left'];
                         }
-                        $cols = array_merge($cols, [
-                            'semantic_version' => ['label' => 'Version', 'align' => 'center'],
-                            'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
-                            'vote_score'       => ['label' => 'Rating',  'align' => 'center'],
-                        ]);
+                        $cols['vote_score'] = ['label' => 'Rating', 'align' => 'center'];
                     @endphp
                     <tr>
-                        {{-- "View" is the first column; hidden for guests --}}
-                        @if($isVerifiedUser)
-                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">View</th>
-                        @endif
+                        {{-- "View" is always the first column for all users --}}
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">View</th>
+
                         @foreach ($cols as $field => $col)
                             @php
                                 $isActive  = ($sortField === $field);
@@ -169,6 +170,7 @@
                                 </a>
                             </th>
                         @endforeach
+
                         {{-- Favorites column hidden for guests --}}
                         @if($isVerifiedUser)
                             <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Favorite">★</th>
@@ -181,23 +183,32 @@
                         <tr class="hover:bg-gray-50 cursor-pointer"
                             onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
 
-                            {{-- "View" button — first column, verified users only --}}
-                            @if($isVerifiedUser)
-                                <td class="px-4 py-3 text-center whitespace-nowrap" onclick="event.stopPropagation()">
+                            {{-- "View" button — first column, always visible --}}
+                            <td class="px-4 py-3 text-center whitespace-nowrap" onclick="event.stopPropagation()">
+                                @if($isVerifiedUser)
+                                    {{-- Verified users: direct link to the plan detail page --}}
                                     <a href="{{ route('lesson-plans.show', $plan) }}"
                                        class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
                                         View
                                     </a>
-                                </td>
-                            @endif
+                                @else
+                                    {{-- Guests: open Sign In dialog instead of navigating --}}
+                                    <button type="button"
+                                            x-data
+                                            @click="$dispatch('open-auth-modal', { mode: 'login' })"
+                                            class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer">
+                                        View
+                                    </button>
+                                @endif
+                            </td>
 
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
+                            <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             @if($isVerifiedUser)
                                 <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'No Teacher Name' }}</td>
                             @endif
-                            <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
-                            <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
 
                             {{-- Rating: display-only score (+/-) — voting happens exclusively on the detail page --}}
                             <td class="px-4 py-3 text-center">
@@ -234,8 +245,8 @@
                         </tr>
                     @empty
                         <tr>
-                            {{-- +2 for View + Favorites columns (verified only); guests have neither --}}
-                            <td colspan="{{ count($cols) + ($isVerifiedUser ? 2 : 0) }}" class="px-4 py-8 text-center text-gray-500">
+                            {{-- +1 for View (always present); +1 for ★ (verified only) --}}
+                            <td colspan="{{ count($cols) + 1 + ($isVerifiedUser ? 1 : 0) }}" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>
