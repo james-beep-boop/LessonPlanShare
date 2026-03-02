@@ -9,7 +9,7 @@
                 <h1 class="text-2xl font-bold text-gray-900">{{ $lessonPlan->class_name }} — Day {{ $lessonPlan->lesson_day }}</h1>
                 <p class="text-sm text-gray-500 mt-1">
                     Version {{ $lessonPlan->semantic_version }}
-                    &middot; by {{ $lessonPlan->author->name ?? 'No Teacher Name' }}
+                    &middot; by {{ $lessonPlan->author->name ?? 'Anonymous' }}
                     &middot; {{ $lessonPlan->created_at->format('M j, Y g:ia') }} UTC
                 </p>
                 <p class="text-xs text-gray-400 mt-0.5 font-mono">{{ $lessonPlan->name }}</p>
@@ -45,7 +45,7 @@
                 </div>
                 <div>
                     <span class="text-gray-500">Contributor:</span>
-                    <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->author->name ?? 'No Teacher Name' }}</span>
+                    <span class="text-gray-900 font-medium ml-1">{{ $lessonPlan->author->name ?? 'Anonymous' }}</span>
                 </div>
                 <div>
                     <span class="text-gray-500">Uploaded:</span>
@@ -67,7 +67,7 @@
                 {{-- Row 1: External viewers — open document in a new tab + track engagement --}}
                 @if ($lessonPlan->file_path)
                     @php $viewerUrl = asset('storage/' . $lessonPlan->file_path); @endphp
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <a href="https://docs.google.com/gview?url={{ urlencode($viewerUrl) }}"
                            target="_blank" rel="noopener"
                            @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
@@ -97,6 +97,21 @@
                            class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                             <span>View in Microsoft Office ↗</span>
                             <span class="text-xs font-normal opacity-75">(best for desktop)</span>
+                        </a>
+                        <a href="https://writer.zoho.com/remotedoc.aspx?FilePath={{ urlencode($viewerUrl) }}&Lang=en"
+                           target="_blank" rel="noopener"
+                           @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
+                               method: 'POST',
+                               headers: {
+                                   'Content-Type': 'application/json',
+                                   'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                   'Accept': 'application/json'
+                               },
+                               body: JSON.stringify({ type: 'google_docs' })
+                           }).catch(() => {})"
+                           class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
+                            <span>View in Zoho Writer ↗</span>
+                            <span class="text-xs font-normal opacity-75">(alternative viewer)</span>
                         </a>
                     </div>
                 @endif
@@ -281,7 +296,7 @@
                                 </a>
                             @endif
                             <p class="text-xs text-gray-500">
-                                by {{ $version->author->name ?? 'No Teacher Name' }}
+                                by {{ $version->author->name ?? 'Anonymous' }}
                                 &middot; {{ $version->created_at->format('M j, Y') }}
                                 &middot; <span class="{{ $version->vote_score > 0 ? 'text-green-600' : ($version->vote_score < 0 ? 'text-red-600' : '') }}">{{ $version->vote_score > 0 ? '+' : '' }}{{ $version->vote_score }}</span>
                             </p>

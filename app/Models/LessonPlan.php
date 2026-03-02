@@ -34,6 +34,10 @@ class LessonPlan extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'is_official' => 'boolean',
+    ];
+
     /**
      * Mass-assignable attributes.
      *
@@ -57,6 +61,7 @@ class LessonPlan extends Model
         'file_size',       // File size in bytes
         'file_hash',       // SHA-256 hash for duplicate content detection
         'vote_score',      // Cached sum of all vote values (+1/-1)
+        'is_official',     // True for exactly one version per (class_name, lesson_day)
     ];
 
     // ══════════════════════════════════════════════════════════════

@@ -96,6 +96,8 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
         ->name('admin.lesson-plans.destroy');
     Route::post('/lesson-plans/bulk-delete', [AdminController::class, 'bulkDestroyPlans'])
         ->name('admin.lesson-plans.bulk-delete');
+    Route::post('/lesson-plans/{lessonPlan}/set-official', [AdminController::class, 'setOfficial'])
+        ->name('admin.lesson-plans.set-official');
 
     // User management
     Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])

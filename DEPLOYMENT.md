@@ -489,7 +489,8 @@ LessonPlanShare/
 │   ├── 2026_02_26_210000_add_is_admin_to_users_table.php
 │   ├── 2026_02_26_230000_create_favorites_table.php
 │   ├── 2026_02_27_000000_add_semantic_version_to_lesson_plans.php
-│   └── 2026_03_01_000001_create_lesson_plan_engagements_table.php
+│   ├── 2026_03_01_000001_create_lesson_plan_engagements_table.php
+│   └── 2026_03_01_000002_add_is_official_to_lesson_plans_table.php
 │
 ├── database/factories/
 │   └── LessonPlanFactory.php

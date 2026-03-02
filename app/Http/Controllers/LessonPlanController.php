@@ -315,9 +315,10 @@ class LessonPlanController extends Controller
         $upload = $this->persistUploadedFile($request->file('file'), $canonicalName);
 
         try {
-            $plan = LessonPlan::create(
-                $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch)
-            );
+            $attrs = $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch);
+            // First upload for any class/day is always v1.0.0 and becomes the Official version.
+            $attrs['is_official'] = true;
+            $plan = LessonPlan::create($attrs);
         } catch (\Illuminate\Database\QueryException $e) {
             Storage::disk('public')->delete($upload['filePath']);
             if ($e->getCode() === '23000') {

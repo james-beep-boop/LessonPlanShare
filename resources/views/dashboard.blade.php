@@ -91,6 +91,15 @@
         <div class="flex flex-wrap items-center gap-5 px-1 text-sm text-gray-500">
             <span class="text-xs text-gray-400 italic">Click blue column heading to sort</span>
 
+            {{-- Official filter — public, available to all users --}}
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="official_only" value="1"
+                       {{ request('official_only') ? 'checked' : '' }}
+                       onchange="this.form.submit()"
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
+                <span class="text-sm text-gray-600">Show Official</span>
+            </label>
+
             {{-- Latest version filter --}}
             <label class="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" name="latest_only" value="1"
@@ -133,8 +142,9 @@
                         // guests are prompted to sign in when they click it.
                         $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
 
-                        // Column order: Class, Lesson, Description, Version, Updated, [Contributor if verified], Rating
+                        // Column order: Official, Class, Lesson, Description, Version, Updated, [Contributor if verified], Rating
                         $cols = [
+                            'is_official'      => ['label' => 'Official',    'align' => 'center'],
                             'class_name'       => ['label' => 'Class',       'align' => 'left'],
                             'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
                             'description'      => ['label' => 'Description', 'align' => 'left', 'sortable' => false],
@@ -208,6 +218,10 @@
                                 @endif
                             </td>
 
+                            {{-- Official checkmark: large black ✓ for official plans, blank otherwise --}}
+                            <td class="px-4 py-3 text-center text-xl font-bold text-gray-900">
+                                {{ $plan->is_official ? '✓' : '' }}
+                            </td>
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs truncate max-w-[140px]">
@@ -221,7 +235,7 @@
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             @if($isVerifiedUser)
-                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'No Teacher Name' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'Anonymous' }}</td>
                             @endif
 
                             {{-- Rating: display-only score (+/-) — voting happens exclusively on the detail page --}}

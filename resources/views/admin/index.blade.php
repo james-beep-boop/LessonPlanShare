@@ -85,6 +85,7 @@
                                 @php
                                     // Sortable plan column headers
                                     $planCols = [
+                                        'is_official'      => ['label' => 'Official',    'align' => 'center'],
                                         'class_name'       => ['label' => 'Class',       'align' => 'left'],
                                         'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
                                         'description'      => ['label' => 'Description', 'align' => 'left', 'sortable' => false],
@@ -140,6 +141,22 @@
                                             </button>
                                         </form>
                                     </td>
+                                    {{-- Official: ✓ for official plans; "Set Official" button for others --}}
+                                    <td class="px-3 py-2 text-center">
+                                        @if ($plan->is_official)
+                                            <span class="text-xl font-bold text-gray-900">✓</span>
+                                        @else
+                                            <form method="POST"
+                                                  action="{{ route('admin.lesson-plans.set-official', $plan) }}"
+                                                  onsubmit="return confirm('Make this the Official version for {{ addslashes($plan->class_name) }} Lesson {{ $plan->lesson_day }}?')">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 transition-colors">
+                                                    Set Official
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2 text-gray-700">{{ $plan->class_name }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
@@ -150,14 +167,14 @@
                                         @endphp
                                         {{ $excerpt ?: '—' }}
                                     </td>
-                                    <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs font-mono truncate max-w-[160px]">{{ $plan->file_name }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="11" class="px-4 py-6 text-center text-gray-400">
                                         No lesson plans{{ $planSearch ? ' matching "' . e($planSearch) . '"' : '' }}.
                                     </td>
                                 </tr>
@@ -377,6 +394,60 @@
                     {{ $users->links() }}
                 </div>
             @endif
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════
+             OFFICIAL LESSON PLANS TABLE
+        ══════════════════════════════════════════════════════════ --}}
+        <div class="mt-12">
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Official Lesson Plans ({{ $officialPlans->count() }})</h2>
+            <p class="text-xs text-gray-500 mb-3">One Official plan per Class + Lesson number. Use "Set Official" in the table above to change the designation.</p>
+
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Official</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lesson</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Author</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Ver.</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Updated</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse ($officialPlans as $plan)
+                                <tr class="hover:bg-blue-50">
+                                    <td class="px-3 py-2 text-center text-xl font-bold text-gray-900">✓</td>
+                                    <td class="px-3 py-2 text-gray-700">{{ $plan->class_name }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
+                                        @php
+                                            $excerpt = $plan->description
+                                                ? mb_substr($plan->description, 0, 24)
+                                                : mb_substr($plan->file_name ?? '', 0, 24);
+                                        @endphp
+                                        {{ $excerpt ?: '—' }}
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs font-mono truncate max-w-[160px]">{{ $plan->file_name }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="px-4 py-6 text-center text-gray-400">
+                                        No Official lesson plans have been designated yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
     </div>

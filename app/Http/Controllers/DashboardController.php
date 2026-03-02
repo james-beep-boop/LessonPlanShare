@@ -48,6 +48,11 @@ class DashboardController extends Controller
             $query->latestVersions();
         }
 
+        // Filter: show only officially designated plans.
+        if ($request->boolean('official_only')) {
+            $query->where('lesson_plans.is_official', true);
+        }
+
         // Filter: show only the authenticated user's own uploaded plans.
         if ($request->boolean('my_plans_only') && Auth::check() && Auth::user()->hasVerifiedEmail()) {
             $query->where('lesson_plans.author_id', Auth::id());
@@ -89,7 +94,7 @@ class DashboardController extends Controller
         // author_name sorts by users.name via the LEFT JOIN.
         // All other columns are prefixed with lesson_plans. to avoid JOIN ambiguity.
         $allowedSorts = [
-            'class_name', 'lesson_day', 'author_name',
+            'is_official', 'class_name', 'lesson_day', 'author_name',
             'semantic_version', 'vote_score', 'updated_at',
         ];
 

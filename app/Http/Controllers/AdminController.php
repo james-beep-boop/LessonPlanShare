@@ -34,7 +34,7 @@ class AdminController extends Controller
         $planOrder  = in_array(strtolower($request->input('plan_order', 'asc')), ['asc', 'desc'])
             ? strtolower($request->input('plan_order', 'asc'))
             : 'asc';
-        $allowedPlanSorts = ['class_name', 'lesson_day', 'author_name', 'semantic_version', 'updated_at'];
+        $allowedPlanSorts = ['is_official', 'class_name', 'lesson_day', 'author_name', 'semantic_version', 'updated_at'];
 
         $plansQuery = LessonPlan::query()
             ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
@@ -91,13 +91,22 @@ class AdminController extends Controller
 
         $users = $usersQuery->paginate(20, ['*'], 'users_page')->withQueryString();
 
+        // ── Official plans table (sorted by class_name, lesson_day) ──
+        $officialPlans = LessonPlan::query()
+            ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
+            ->select('lesson_plans.*', 'users.name as author_name')
+            ->where('lesson_plans.is_official', true)
+            ->orderBy('lesson_plans.class_name', 'asc')
+            ->orderBy('lesson_plans.lesson_day', 'asc')
+            ->get();
+
         // ── Summary counters ──
         $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
         $totalPlanCount   = LessonPlan::count();
         $contributorCount = LessonPlan::distinct('author_id')->count('author_id');
 
         return view('admin.index', compact(
-            'plans', 'users',
+            'plans', 'users', 'officialPlans',
             'uniqueClassCount', 'totalPlanCount', 'contributorCount',
             'planSearch', 'planSort', 'planOrder',
             'userSearch', 'userSort', 'userOrder'
@@ -225,6 +234,29 @@ class AdminController extends Controller
         }
 
         return response()->json(['sent' => true]);
+    }
+
+    /**
+     * Set a lesson plan as the Official version for its (class_name, lesson_day).
+     *
+     * Clears is_official on all other plans in the same class/day, then marks
+     * the target plan. This is an admin-only action.
+     */
+    public function setOfficial(LessonPlan $lessonPlan): RedirectResponse
+    {
+        // Clear existing official designation for this class/day combination.
+        DB::table('lesson_plans')
+            ->where('class_name', $lessonPlan->class_name)
+            ->where('lesson_day', $lessonPlan->lesson_day)
+            ->update(['is_official' => false]);
+
+        // Mark the chosen plan as official.
+        DB::table('lesson_plans')
+            ->where('id', $lessonPlan->id)
+            ->update(['is_official' => true]);
+
+        return back()->with('success',
+            "Version {$lessonPlan->semantic_version} of {$lessonPlan->class_name} Lesson {$lessonPlan->lesson_day} is now the Official version.");
     }
 
     /** Delete the stored file for a lesson plan, if one exists. */
