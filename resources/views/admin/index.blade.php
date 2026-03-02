@@ -85,13 +85,13 @@
                                 @php
                                     // Sortable plan column headers
                                     $planCols = [
-                                        'is_official'      => ['label' => 'Official',    'align' => 'center'],
+                                        'is_official'      => ['label' => 'Main',        'align' => 'center'],
                                         'class_name'       => ['label' => 'Class',       'align' => 'left'],
                                         'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
                                         'description'      => ['label' => 'Description', 'align' => 'left'],
                                         'author_name'      => ['label' => 'Author',      'align' => 'left'],
                                         'semantic_version' => ['label' => 'Ver.',        'align' => 'center'],
-                                        'updated_at'       => ['label' => 'Updated',     'align' => 'left'],
+                                        'updated_at'       => ['label' => 'Update',      'align' => 'left'],
                                     ];
                                 @endphp
                                 @foreach ($planCols as $field => $col)

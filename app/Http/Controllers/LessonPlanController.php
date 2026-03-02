@@ -545,6 +545,8 @@ class LessonPlanController extends Controller
      * Delete a lesson plan (only the author can delete their own).
      *
      * Guards against deleting plans with descendants (must delete leaf-first).
+     * Any unexpected exception is caught, logged with a full stack trace, and
+     * returned to the user as a readable error message instead of a blank 500.
      */
     public function destroy(LessonPlan $lessonPlan)
     {
@@ -566,12 +568,25 @@ class LessonPlanController extends Controller
                 . 'Please delete those newer versions first.');
         }
 
-        if ($lessonPlan->file_path && Storage::disk('public')->exists($lessonPlan->file_path)) {
-            Storage::disk('public')->delete($lessonPlan->file_path);
-        }
+        try {
+            if ($lessonPlan->file_path && Storage::disk('public')->exists($lessonPlan->file_path)) {
+                Storage::disk('public')->delete($lessonPlan->file_path);
+            }
 
-        // votes has ON DELETE CASCADE — no manual delete needed.
-        $lessonPlan->delete();
+            // votes, favorites, lesson_plan_views, lesson_plan_engagements all CASCADE on delete.
+            $lessonPlan->delete();
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error(
+                "destroy() failed for plan {$lessonPlan->id} "
+                . "(v{$lessonPlan->semantic_version} {$lessonPlan->class_name} "
+                . "Lesson {$lessonPlan->lesson_day}): "
+                . $e->getMessage() . "\n" . $e->getTraceAsString()
+            );
+            return back()->with('error',
+                'Could not delete this lesson plan — an unexpected error occurred. '
+                . 'Details have been logged. Please contact the site administrator.');
+        }
 
         return redirect()->route('dashboard')
             ->with('success', 'Lesson plan deleted.');

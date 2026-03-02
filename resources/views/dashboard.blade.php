@@ -146,14 +146,14 @@
                         // guests are prompted to sign in when they click it.
                         $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
 
-                        // Column order: Official, Class, Lesson, Description, Version, Updated, [Contributor if verified], Rating
+                        // Column order: Main, Class, Lesson, Description, Version, Update, [Contributor if verified], Rating
                         $cols = [
-                            'is_official'      => ['label' => 'Official',    'align' => 'center'],
+                            'is_official'      => ['label' => 'Main',        'align' => 'center'],
                             'class_name'       => ['label' => 'Class',       'align' => 'left'],
                             'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
                             'description'      => ['label' => 'Description', 'align' => 'left'],
                             'semantic_version' => ['label' => 'Version',     'align' => 'center'],
-                            'updated_at'       => ['label' => 'Updated',     'align' => 'left'],
+                            'updated_at'       => ['label' => 'Update',      'align' => 'left'],
                         ];
                         if ($isVerifiedUser) {
                             $cols['author_name'] = ['label' => 'Contributor', 'align' => 'left'];
@@ -241,7 +241,7 @@
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             @if($isVerifiedUser)
-                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ?: 'Anonymous' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ? mb_substr($plan->author_name, 0, 24) : 'Anonymous' }}</td>
                             @endif
 
                             {{-- Rating: display-only score (+/-) — voting happens exclusively on the detail page --}}
