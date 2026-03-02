@@ -94,7 +94,7 @@ class DashboardController extends Controller
         // author_name sorts by users.name via the LEFT JOIN.
         // All other columns are prefixed with lesson_plans. to avoid JOIN ambiguity.
         $allowedSorts = [
-            'is_official', 'class_name', 'lesson_day', 'author_name',
+            'is_official', 'class_name', 'lesson_day', 'description', 'author_name',
             'semantic_version', 'vote_score', 'updated_at',
         ];
 

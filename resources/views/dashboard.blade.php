@@ -53,7 +53,7 @@
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="block text-xs font-medium text-gray-500 mb-1">Search</label>
                 <input type="text" name="search" id="search" value="{{ request('search') }}"
-                       placeholder="Class name, document name, or author..."
+                       placeholder="Class name, description, or contributor..."
                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
             </div>
@@ -88,44 +88,48 @@
         <input type="hidden" name="sort"       value="{{ request('sort') }}">
         <input type="hidden" name="order"      value="{{ request('order') }}">
 
-        <div class="flex flex-wrap items-center gap-5 px-1 text-sm text-gray-500">
-            <span class="text-xs text-gray-400 italic">Click blue column heading to sort</span>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-1">
+            {{-- Static "Show Only" prefix label --}}
+            <span class="text-sm font-medium text-gray-700 shrink-0">Show Only</span>
 
             {{-- Official filter — public, available to all users --}}
-            <label class="flex items-center gap-2 cursor-pointer select-none">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none">
                 <input type="checkbox" name="official_only" value="1"
                        {{ request('official_only') ? 'checked' : '' }}
                        onchange="this.form.submit()"
                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                <span class="text-sm text-gray-600">Show Official</span>
+                <span class="text-sm text-gray-600">Official</span>
             </label>
 
             {{-- Latest version filter --}}
-            <label class="flex items-center gap-2 cursor-pointer select-none">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none">
                 <input type="checkbox" name="latest_only" value="1"
                        {{ request('latest_only') ? 'checked' : '' }}
                        onchange="this.form.submit()"
                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                <span class="text-sm text-gray-600">Show Latest</span>
+                <span class="text-sm text-gray-600">Latest</span>
             </label>
 
-            {{-- Favorites + My Plans filters — only shown to verified users; order: Faves, Mine --}}
+            {{-- Favorites + My Contributions — only shown to verified users --}}
             @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                <label class="flex items-center gap-2 cursor-pointer select-none">
+                <label class="flex items-center gap-1.5 cursor-pointer select-none">
                     <input type="checkbox" name="favorites_only" value="1"
                            {{ request('favorites_only') ? 'checked' : '' }}
                            onchange="this.form.submit()"
                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                    <span class="text-sm text-gray-600">Show Faves</span>
+                    <span class="text-sm text-gray-600">My Faves</span>
                 </label>
-                <label class="flex items-center gap-2 cursor-pointer select-none">
+                <label class="flex items-center gap-1.5 cursor-pointer select-none">
                     <input type="checkbox" name="my_plans_only" value="1"
                            {{ request('my_plans_only') ? 'checked' : '' }}
                            onchange="this.form.submit()"
                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
-                    <span class="text-sm text-gray-600">Show Mine</span>
+                    <span class="text-sm text-gray-600">My Contributions</span>
                 </label>
             @endif
+
+            {{-- Sort hint — at the end of the filter row --}}
+            <span class="text-xs text-gray-400 italic ml-auto">Sort by clicking blue column header</span>
         </div>
     </form>
 
@@ -147,7 +151,7 @@
                             'is_official'      => ['label' => 'Official',    'align' => 'center'],
                             'class_name'       => ['label' => 'Class',       'align' => 'left'],
                             'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
-                            'description'      => ['label' => 'Description', 'align' => 'left', 'sortable' => false],
+                            'description'      => ['label' => 'Description', 'align' => 'left'],
                             'semantic_version' => ['label' => 'Version',     'align' => 'center'],
                             'updated_at'       => ['label' => 'Updated',     'align' => 'left'],
                         ];
@@ -189,7 +193,7 @@
 
                         {{-- Favorites column hidden for guests --}}
                         @if($isVerifiedUser)
-                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Favorite">★</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">My Faves</th>
                         @endif
                     </tr>
                 </thead>

@@ -43,7 +43,7 @@
                 <input type="hidden" name="user_sort"   value="{{ $userSort }}">
                 <input type="hidden" name="user_order"  value="{{ $userOrder }}">
                 <input type="text" name="plan_search" value="{{ $planSearch }}"
-                       placeholder="Search class, name, or author…"
+                       placeholder="Class name, description, or contributor…"
                        class="flex-1 min-w-[200px] border border-gray-300 rounded-md px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                 <button type="submit"
@@ -88,7 +88,7 @@
                                         'is_official'      => ['label' => 'Official',    'align' => 'center'],
                                         'class_name'       => ['label' => 'Class',       'align' => 'left'],
                                         'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
-                                        'description'      => ['label' => 'Description', 'align' => 'left', 'sortable' => false],
+                                        'description'      => ['label' => 'Description', 'align' => 'left'],
                                         'author_name'      => ['label' => 'Author',      'align' => 'left'],
                                         'semantic_version' => ['label' => 'Ver.',        'align' => 'center'],
                                         'updated_at'       => ['label' => 'Updated',     'align' => 'left'],

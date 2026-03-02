@@ -34,7 +34,7 @@ class AdminController extends Controller
         $planOrder  = in_array(strtolower($request->input('plan_order', 'asc')), ['asc', 'desc'])
             ? strtolower($request->input('plan_order', 'asc'))
             : 'asc';
-        $allowedPlanSorts = ['is_official', 'class_name', 'lesson_day', 'author_name', 'semantic_version', 'updated_at'];
+        $allowedPlanSorts = ['is_official', 'class_name', 'lesson_day', 'description', 'author_name', 'semantic_version', 'updated_at'];
 
         $plansQuery = LessonPlan::query()
             ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
@@ -43,6 +43,7 @@ class AdminController extends Controller
         if ($planSearch) {
             $plansQuery->where(function ($q) use ($planSearch) {
                 $q->where('lesson_plans.class_name', 'like', "%{$planSearch}%")
+                  ->orWhere('lesson_plans.description', 'like', "%{$planSearch}%")
                   ->orWhere('lesson_plans.name', 'like', "%{$planSearch}%")
                   ->orWhere('users.name', 'like', "%{$planSearch}%");
             });
