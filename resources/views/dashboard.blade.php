@@ -133,12 +133,13 @@
                         // guests are prompted to sign in when they click it.
                         $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
 
-                        // Column order: Class, Day, Version, Updated, [Contributor if verified], Rating
+                        // Column order: Class, Lesson, Description, Version, Updated, [Contributor if verified], Rating
                         $cols = [
-                            'class_name'       => ['label' => 'Class',   'align' => 'left'],
-                            'lesson_day'       => ['label' => 'Day',     'align' => 'center'],
-                            'semantic_version' => ['label' => 'Version', 'align' => 'center'],
-                            'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
+                            'class_name'       => ['label' => 'Class',       'align' => 'left'],
+                            'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
+                            'description'      => ['label' => 'Description', 'align' => 'left', 'sortable' => false],
+                            'semantic_version' => ['label' => 'Version',     'align' => 'center'],
+                            'updated_at'       => ['label' => 'Updated',     'align' => 'left'],
                         ];
                         if ($isVerifiedUser) {
                             $cols['author_name'] = ['label' => 'Contributor', 'align' => 'left'];
@@ -156,19 +157,24 @@
                                 $thAlign   = $col['align'] === 'center' ? 'text-center' : 'text-left';
                                 $linkAlign = $col['align'] === 'center' ? 'justify-center w-full' : '';
                             @endphp
-                            <th class="px-4 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
-                                {{-- Each sort header styled as a distinct blue button pill --}}
-                                <a href="{{ route('dashboard', array_merge(request()->query(), ['sort' => $field, 'order' => $nextOrder])) }}"
-                                   class="inline-flex items-center {{ $linkAlign }} px-2 py-1 rounded font-semibold transition-colors
-                                          {{ $isActive
-                                              ? 'bg-blue-600 text-white'
-                                              : 'text-blue-600 hover:bg-blue-50' }}">
-                                    {{ $col['label'] }}
-                                    @if ($isActive)
-                                        <span class="ml-1">{!! $sortOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
-                                    @endif
-                                </a>
-                            </th>
+                            @if (!($col['sortable'] ?? true))
+                                {{-- Non-sortable column (e.g. Description excerpt) --}}
+                                <th class="px-4 py-3 {{ $thAlign }} text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ $col['label'] }}</th>
+                            @else
+                                <th class="px-4 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
+                                    {{-- Each sort header styled as a distinct blue button pill --}}
+                                    <a href="{{ route('dashboard', array_merge(request()->query(), ['sort' => $field, 'order' => $nextOrder])) }}"
+                                       class="inline-flex items-center {{ $linkAlign }} px-2 py-1 rounded font-semibold transition-colors
+                                              {{ $isActive
+                                                  ? 'bg-blue-600 text-white'
+                                                  : 'text-blue-600 hover:bg-blue-50' }}">
+                                        {{ $col['label'] }}
+                                        @if ($isActive)
+                                            <span class="ml-1">{!! $sortOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
+                                        @endif
+                                    </a>
+                                </th>
+                            @endif
                         @endforeach
 
                         {{-- Favorites column hidden for guests --}}
@@ -204,6 +210,14 @@
 
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
+                            <td class="px-4 py-3 text-gray-500 text-xs truncate max-w-[140px]">
+                                @php
+                                    $excerpt = $plan->description
+                                        ? mb_substr($plan->description, 0, 24)
+                                        : mb_substr($plan->file_name ?? '', 0, 24);
+                                @endphp
+                                {{ $excerpt ?: '—' }}
+                            </td>
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             @if($isVerifiedUser)

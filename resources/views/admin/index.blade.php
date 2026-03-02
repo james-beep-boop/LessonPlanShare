@@ -85,11 +85,12 @@
                                 @php
                                     // Sortable plan column headers
                                     $planCols = [
-                                        'class_name'       => ['label' => 'Class',   'align' => 'left'],
-                                        'lesson_day'       => ['label' => 'Day #',   'align' => 'center'],
-                                        'author_name'      => ['label' => 'Author',  'align' => 'left'],
-                                        'semantic_version' => ['label' => 'Ver.',    'align' => 'center'],
-                                        'updated_at'       => ['label' => 'Updated', 'align' => 'left'],
+                                        'class_name'       => ['label' => 'Class',       'align' => 'left'],
+                                        'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
+                                        'description'      => ['label' => 'Description', 'align' => 'left', 'sortable' => false],
+                                        'author_name'      => ['label' => 'Author',      'align' => 'left'],
+                                        'semantic_version' => ['label' => 'Ver.',        'align' => 'center'],
+                                        'updated_at'       => ['label' => 'Updated',     'align' => 'left'],
                                     ];
                                 @endphp
                                 @foreach ($planCols as $field => $col)
@@ -99,16 +100,20 @@
                                         $thAlign   = $col['align'] === 'center' ? 'text-center' : 'text-left';
                                         $linkAlign = $col['align'] === 'center' ? 'justify-center w-full' : '';
                                     @endphp
-                                    <th class="px-3 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
-                                        <a href="{{ route('admin.index', array_merge(request()->query(), ['plan_sort' => $field, 'plan_order' => $nextOrder, 'plans_page' => 1])) }}"
-                                           class="inline-flex items-center {{ $linkAlign }} px-2 py-0.5 rounded font-semibold transition-colors
-                                                  {{ $isActive ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50' }}">
-                                            {{ $col['label'] }}
-                                            @if ($isActive)
-                                                <span class="ml-1">{!! $planOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
-                                            @endif
-                                        </a>
-                                    </th>
+                                    @if (!($col['sortable'] ?? true))
+                                        <th class="px-3 py-3 {{ $thAlign }} text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ $col['label'] }}</th>
+                                    @else
+                                        <th class="px-3 py-3 {{ $thAlign }} text-xs uppercase tracking-wider">
+                                            <a href="{{ route('admin.index', array_merge(request()->query(), ['plan_sort' => $field, 'plan_order' => $nextOrder, 'plans_page' => 1])) }}"
+                                               class="inline-flex items-center {{ $linkAlign }} px-2 py-0.5 rounded font-semibold transition-colors
+                                                      {{ $isActive ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50' }}">
+                                                {{ $col['label'] }}
+                                                @if ($isActive)
+                                                    <span class="ml-1">{!! $planOrder === 'asc' ? '&#9650;' : '&#9660;' !!}</span>
+                                                @endif
+                                            </a>
+                                        </th>
+                                    @endif
                                 @endforeach
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
                             </tr>
@@ -137,6 +142,14 @@
                                     </td>
                                     <td class="px-3 py-2 text-gray-700">{{ $plan->class_name }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
+                                        @php
+                                            $excerpt = $plan->description
+                                                ? mb_substr($plan->description, 0, 24)
+                                                : mb_substr($plan->file_name ?? '', 0, 24);
+                                        @endphp
+                                        {{ $excerpt ?: '—' }}
+                                    </td>
                                     <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? '—' }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
@@ -144,7 +157,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="10" class="px-4 py-6 text-center text-gray-400">
                                         No lesson plans{{ $planSearch ? ' matching "' . e($planSearch) . '"' : '' }}.
                                     </td>
                                 </tr>
