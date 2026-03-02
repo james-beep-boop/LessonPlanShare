@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Favorite;
 use App\Models\LessonPlan;
-use App\Models\LessonPlanView;
-use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -115,21 +113,10 @@ class DashboardController extends Controller
         $perPage = (Auth::check() && Auth::user()->hasVerifiedEmail()) ? 20 : 6;
         $plans = $query->paginate($perPage)->withQueryString();
 
-        // For logged-in users: load their existing votes, viewed plan IDs, and favorites.
-        // Used to show interactive vote buttons and pre-populate favorite checkboxes.
-        $userVotes    = [];
-        $viewedIds    = [];
+        // For logged-in users: load favorited plan IDs to pre-populate favorite stars.
         $favoritedIds = [];
         if (Auth::check()) {
             $planIds      = $plans->pluck('id');
-            $userVotes    = Vote::whereIn('lesson_plan_id', $planIds)
-                ->where('user_id', Auth::id())
-                ->pluck('value', 'lesson_plan_id')
-                ->toArray();
-            $viewedIds    = LessonPlanView::whereIn('lesson_plan_id', $planIds)
-                ->where('user_id', Auth::id())
-                ->pluck('lesson_plan_id')
-                ->toArray();
             $favoritedIds = Favorite::whereIn('lesson_plan_id', $planIds)
                 ->where('user_id', Auth::id())
                 ->pluck('lesson_plan_id')
@@ -169,7 +156,7 @@ class DashboardController extends Controller
             ->view('dashboard', compact(
                 'plans', 'classNames', 'sortField', 'sortOrder',
                 'totalPlanCount', 'contributorCount', 'topRatedPlan', 'topContributor',
-                'userVotes', 'viewedIds', 'favoritedIds'
+                'favoritedIds'
             ))
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
             ->header('Pragma', 'no-cache');

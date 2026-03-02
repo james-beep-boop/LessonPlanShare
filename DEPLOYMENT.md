@@ -111,7 +111,6 @@ database/factories/LessonPlanFactory.php                →  (NEW)
 resources/views/admin/index.blade.php                   →  (NEW)
 
 resources/views/components/layout.blade.php             →  (NEW)
-resources/views/components/vote-buttons.blade.php       →  (NEW)
 resources/views/dashboard.blade.php                     →  (REPLACE Breeze's)
 resources/views/auth/login.blade.php                    →  (REPLACE or NEW)
 resources/views/auth/register.blade.php                 →  (REPLACE or NEW)
@@ -540,8 +539,7 @@ LessonPlanShare/
 │   ├── admin/
 │   │   └── index.blade.php                             (admin panel: plans + users tables)
 │   ├── components/
-│   │   ├── layout.blade.php                            (master layout with auth modal)
-│   │   └── vote-buttons.blade.php
+│   │   └── layout.blade.php                            (master layout with auth modal)
 │   ├── dashboard.blade.php                             (main page with 4-box counters)
 │   ├── emails/
 │   │   ├── lesson-plan-uploaded.blade.php

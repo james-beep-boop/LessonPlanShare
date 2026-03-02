@@ -39,16 +39,17 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - Dashboard/Stats responses include `Cache-Control: no-store` headers to prevent proxy/browser caching of stale counts
 - Favorite Lesson Plan title truncated to 20 chars with ellipsis; full filename in tooltip
 - Dashboard Author column: shows Teacher Name (LEFT JOIN on users, sortable)
-- Dashboard Rating column: "Vote 👍 👎 +N" for guests; locked 👍👎 (greyed) for unviewed plans; AJAX 👍👎 for viewed plans
+- Dashboard Rating column: display-only net score (+N/−N); voting is exclusively on the show page (engagement-gated)
 - Dashboard column alignments: Class left, Day# center, Author left, Version center, Rating center, Updated left
 - Dashboard Actions: "View/Edit/Vote" button (greyed out for guests **and unverified users**); no Download button on dashboard
-- View tracking: visiting `lesson-plans.show` records a view in `lesson_plan_views` table; gates AJAX voting
+- Engagement tracking: clicking "View in Google Docs", "View in Microsoft Office", or "Download" records an entry in `lesson_plan_engagements` table; gates voting on the show page
 - Favorites: AJAX star toggle on dashboard; yellow when favorited, grey when not; greyed out for guests **and unverified users**; `favorites` table with unique `[user_id, lesson_plan_id]` index; `FavoriteController::toggle()` returns JSON
 - Guide page (`/guide`): public, linked in header for all users; covers login, version numbering, view/download, upload, delete, voting, and admin rules
 - Footer: "Kenya Lesson Plan Repository version {VERSION} © YEAR ARES Education — Lesson Plans are licensed under CC BY-SA 4.0" + inline SVG CC/BY/SA badge icons (no external CDN)
 - Footer version from `storage/app/version.txt` (written by `UPDATE_SITE.sh` using `git describe --tags --abbrev=0` to prefer clean tag, falls back to full describe/hash/dev)
-- Vote buttons: thumbs-up/down (👍👎) everywhere — locked mode, inline AJAX mode, form mode (SVG). Arrow icons removed.
-- Vote AJAX (inline dashboard): error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
+- Vote buttons: 3-button layout on show page (Upvote / Downvote / Reset Vote) — inline Alpine AJAX, no page reload
+- Voting is engagement-gated: user must view or download the document (tracked via `lesson_plan_engagements` table) before they can vote
+- Vote AJAX: error-safe — `if (!r.ok) return null; .catch(() => {})` prevents unhandled promise rejections on expired sessions or server errors
 - `favorites_only` filter on dashboard: `Favorite::where('user_id',...)->pluck('lesson_plan_id')` + `whereIn` on `lesson_plans.id`; only active for verified users
 - `my_plans_only` filter on dashboard: `where('lesson_plans.author_id', Auth::id())`; only active for verified users; replaces the old My Plans page
 - Plan detail page (two-column layout, voting, version history sidebar)
@@ -122,7 +123,7 @@ No major features remain. All spec items are implemented.
 | File | What it does |
 |---|---|
 | `routes/web.php` | All app routes — public / auth+verified / admin grouping |
-| `app/Http/Controllers/DashboardController.php` | Dashboard (LEFT JOIN users, loads userVotes + viewedIds) |
+| `app/Http/Controllers/DashboardController.php` | Dashboard (LEFT JOIN users, loads favoritedIds) |
 | `app/Http/Controllers/LessonPlanController.php` | CRUD + preview + download + view recording |
 | `app/Http/Controllers/VoteController.php` | Vote toggle; returns JSON for AJAX requests |
 | `app/Http/Controllers/AdminController.php` | Admin delete (plans + users), bulk-delete, toggleAdmin, sendVerification |
@@ -130,10 +131,9 @@ No major features remain. All spec items are implemented.
 | `app/Policies/LessonPlanPolicy.php` | `delete`: author only; `before`: admin bypass |
 | `app/Http/Middleware/AdminMiddleware.php` | Enforces `is_admin` flag on admin routes |
 | `app/Models/User.php` | Auth user; Teacher Name (unique); `is_admin` flag |
-| `app/Models/LessonPlanView.php` | View tracking pivot (user_id, lesson_plan_id) |
+| `app/Models/LessonPlanView.php` | Page-view tracking pivot (user_id, lesson_plan_id); retained for informational data |
 | `resources/views/components/layout.blade.php` | Master layout: header, Sign In + Sign Up modals (two separate Alpine dialogs), admin link |
-| `resources/views/components/vote-buttons.blade.php` | 4-mode vote display (readonly/locked/inline/form); all use 👍👎 thumbs icons |
-| `resources/views/dashboard.blade.php` | 7-column table with inline AJAX vote buttons |
+| `resources/views/dashboard.blade.php` | Table with display-only rating scores; voting is exclusively on show page |
 | `resources/views/admin/index.blade.php` | Admin panel: plans + users tables with delete/bulk-delete |
 | `database/migrations/` | 7 migrations (views, is_admin, favorites, semantic_version) |
 | `database/factories/LessonPlanFactory.php` | Factory for feature tests |
