@@ -92,10 +92,11 @@ class DashboardController extends Controller
 
         // Whitelist of allowed sort columns — must match visible dashboard columns.
         // author_name sorts by users.name via the LEFT JOIN.
+        // is_favorited sorts by a transient LEFT JOIN on favorites (auth users only).
         // All other columns are prefixed with lesson_plans. to avoid JOIN ambiguity.
         $allowedSorts = [
             'is_official', 'class_name', 'lesson_day', 'description', 'author_name',
-            'semantic_version', 'vote_score', 'updated_at',
+            'semantic_version', 'vote_score', 'updated_at', 'is_favorited',
         ];
 
         if (in_array($sortField, $allowedSorts)) {
@@ -106,6 +107,18 @@ class DashboardController extends Controller
                 $query->orderBy('lesson_plans.version_major', $sortOrder)
                       ->orderBy('lesson_plans.version_minor', $sortOrder)
                       ->orderBy('lesson_plans.version_patch', $sortOrder);
+            } elseif ($sortField === 'is_favorited') {
+                // Favorites are user-specific; add a transient LEFT JOIN for ordering only.
+                // ISNULL(fav_sort.id): 0 = favorited, 1 = not favorited.
+                // 'asc' → ORDER BY ISNULL ASC → 0s first → favorited plans on top.
+                if (Auth::check()) {
+                    $query->leftJoin('favorites as fav_sort', function ($join) {
+                        $join->on('fav_sort.lesson_plan_id', '=', 'lesson_plans.id')
+                             ->where('fav_sort.user_id', '=', Auth::id());
+                    })->orderByRaw('ISNULL(fav_sort.id) ' . ($sortOrder === 'asc' ? 'ASC' : 'DESC'));
+                } else {
+                    $query->orderBy('lesson_plans.updated_at', 'desc');
+                }
             } else {
                 $query->orderBy('lesson_plans.' . $sortField, $sortOrder);
             }

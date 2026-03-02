@@ -159,6 +159,9 @@
                             $cols['author_name'] = ['label' => 'Contributor', 'align' => 'left'];
                         }
                         $cols['vote_score'] = ['label' => 'Rating', 'align' => 'center'];
+                        if ($isVerifiedUser) {
+                            $cols['is_favorited'] = ['label' => 'My Fave', 'align' => 'center'];
+                        }
                     @endphp
                     <tr>
                         {{-- "SORT →" label signals the blue column headers are clickable sort links --}}
@@ -193,10 +196,6 @@
                             @endif
                         @endforeach
 
-                        {{-- Favorites column hidden for guests --}}
-                        @if($isVerifiedUser)
-                            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">My Faves</th>
-                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -241,7 +240,7 @@
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
                             @if($isVerifiedUser)
-                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ? mb_substr($plan->author_name, 0, 24) : 'Anonymous' }}</td>
+                                <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ? mb_substr($plan->author_name, 0, 16) : 'Anonymous' }}</td>
                             @endif
 
                             {{-- Rating: display-only score (+/-) — voting happens exclusively on the detail page --}}
@@ -279,8 +278,8 @@
                         </tr>
                     @empty
                         <tr>
-                            {{-- +1 for View (always present); +1 for ★ (verified only) --}}
-                            <td colspan="{{ count($cols) + 1 + ($isVerifiedUser ? 1 : 0) }}" class="px-4 py-8 text-center text-gray-500">
+                            {{-- +1 for View (always present); My Fave is included in $cols for verified users --}}
+                            <td colspan="{{ count($cols) + 1 }}" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>

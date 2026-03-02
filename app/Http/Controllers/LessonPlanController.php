@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -43,6 +44,8 @@ use Illuminate\Validation\ValidationException;
  */
 class LessonPlanController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Allowed class names for the upload dropdown (seed list).
      *
