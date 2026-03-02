@@ -551,24 +551,27 @@ class LessonPlanController extends Controller
     public function destroy(LessonPlan $lessonPlan)
     {
         // LessonPlanPolicy::delete() — allows author; LessonPlanPolicy::before() gives admins a pass.
+        // authorize() is kept outside try/catch: AuthorizationException renders as 403 (not 500).
         $this->authorize('delete', $lessonPlan);
 
-        if ($lessonPlan->is_original) {
-            $hasDescendants = LessonPlan::where('original_id', $lessonPlan->id)->exists();
-            if ($hasDescendants) {
-                return back()->with('error',
-                    'This is the original version and other versions are based on it. '
-                    . 'Please delete the newer versions first.');
-            }
-        }
-
-        if (!$lessonPlan->is_original && $lessonPlan->children()->exists()) {
-            return back()->with('error',
-                'Other versions were created from this one. '
-                . 'Please delete those newer versions first.');
-        }
-
         try {
+            // Guard: root plans cannot be deleted while they still have descendants.
+            if ($lessonPlan->is_original) {
+                $hasDescendants = LessonPlan::where('original_id', $lessonPlan->id)->exists();
+                if ($hasDescendants) {
+                    return back()->with('error',
+                        'This is the original version and other versions are based on it. '
+                        . 'Please delete the newer versions first.');
+                }
+            }
+
+            // Guard: non-root plans cannot be deleted while they still have children.
+            if (!$lessonPlan->is_original && $lessonPlan->children()->exists()) {
+                return back()->with('error',
+                    'Other versions were created from this one. '
+                    . 'Please delete those newer versions first.');
+            }
+
             if ($lessonPlan->file_path && Storage::disk('public')->exists($lessonPlan->file_path)) {
                 Storage::disk('public')->delete($lessonPlan->file_path);
             }
@@ -581,11 +584,12 @@ class LessonPlanController extends Controller
                 "destroy() failed for plan {$lessonPlan->id} "
                 . "(v{$lessonPlan->semantic_version} {$lessonPlan->class_name} "
                 . "Lesson {$lessonPlan->lesson_day}): "
-                . $e->getMessage() . "\n" . $e->getTraceAsString()
+                . get_class($e) . ': ' . $e->getMessage()
+                . "\n" . $e->getTraceAsString()
             );
             return back()->with('error',
-                'Could not delete this lesson plan — an unexpected error occurred. '
-                . 'Details have been logged. Please contact the site administrator.');
+                'Could not delete this lesson plan: ' . $e->getMessage()
+                . ' — Details have been logged.');
         }
 
         return redirect()->route('dashboard')
