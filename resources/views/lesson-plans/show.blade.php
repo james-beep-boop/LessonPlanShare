@@ -98,7 +98,7 @@
                             <span>View in Microsoft Office ↗</span>
                             <span class="text-xs font-normal opacity-75">(best for desktop)</span>
                         </a>
-                        <a href="https://writer.zoho.com/remotedoc.aspx?FilePath={{ urlencode($viewerUrl) }}&Lang=en"
+                        <a href="https://writer.zoho.com/writer/open?url={{ urlencode($viewerUrl) }}"
                            target="_blank" rel="noopener"
                            @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
                                method: 'POST',
@@ -107,11 +107,11 @@
                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                                    'Accept': 'application/json'
                                },
-                               body: JSON.stringify({ type: 'google_docs' })
+                               body: JSON.stringify({ type: 'ms_office' })
                            }).catch(() => {})"
                            class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                             <span>View in Zoho Writer ↗</span>
-                            <span class="text-xs font-normal opacity-75">(alternative viewer)</span>
+                            <span class="text-xs font-normal opacity-75">(sign in to Zoho first)</span>
                         </a>
                     </div>
                 @endif

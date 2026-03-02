@@ -37,7 +37,7 @@
         <div class="border border-gray-200 rounded-lg p-4">
             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Top Contributor</p>
             @if ($topContributor)
-                <p class="text-sm font-medium text-gray-900 truncate">{{ ($topContributor->author->name ?? null) ?: 'No Teacher Name' }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate">{{ ($topContributor->author->name ?? null) ?: 'Anonymous' }}</p>
                 <p class="text-xs text-gray-500 mt-0.5">{{ $topContributor->upload_count }} {{ Str::plural('plan', $topContributor->upload_count) }}</p>
             @else
                 <p class="text-sm text-gray-400 italic">—</p>
@@ -136,7 +136,7 @@
     {{-- Results Table --}}
     <div class="border border-gray-200 rounded-lg overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full min-w-max text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     @php
                         // Build column definitions once; used by both thead and tbody.
@@ -161,8 +161,10 @@
                         $cols['vote_score'] = ['label' => 'Rating', 'align' => 'center'];
                     @endphp
                     <tr>
-                        {{-- "View" is always the first column for all users --}}
-                        <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">View</th>
+                        {{-- "SORT →" label signals the blue column headers are clickable sort links --}}
+                        <th class="px-4 py-3 text-center text-xs uppercase tracking-wider">
+                            <span class="inline-flex items-center px-2 py-1 rounded font-bold text-blue-600">SORT&nbsp;&#8594;</span>
+                        </th>
 
                         @foreach ($cols as $field => $col)
                             @php

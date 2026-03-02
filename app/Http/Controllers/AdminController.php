@@ -117,8 +117,16 @@ class AdminController extends Controller
     /** Delete a single lesson plan (admin bypasses author check). */
     public function destroyPlan(LessonPlan $lessonPlan)
     {
-        $this->deletePlanFile($lessonPlan);
-        $lessonPlan->delete();
+        try {
+            $this->deletePlanFile($lessonPlan);
+            $lessonPlan->delete();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error(
+                "AdminController::destroyPlan failed for plan {$lessonPlan->id}: " . $e->getMessage()
+            );
+            return redirect()->route('admin.index')
+                ->with('error', 'Could not delete lesson plan: ' . $e->getMessage());
+        }
 
         return redirect()->route('admin.index')->with('success', 'Lesson plan deleted.');
     }
