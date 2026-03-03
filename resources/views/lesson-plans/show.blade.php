@@ -73,7 +73,7 @@
                 {{-- Row 1: External viewers (engagement ping fires before tab opens) --}}
                 @if ($lessonPlan->file_path)
                     @php $viewerUrl = asset('storage/' . $lessonPlan->file_path); @endphp
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <a href="https://docs.google.com/gview?url={{ urlencode($viewerUrl) }}"
                            target="_blank" rel="noopener"
                            @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
@@ -104,26 +104,10 @@
                             <span>View in Microsoft Office ↗</span>
                             <span class="text-xs font-normal opacity-75">(best for desktop)</span>
                         </a>
-                        <a href="https://writer.zoho.com/writer/open?url={{ urlencode($viewerUrl) }}"
-                           target="_blank" rel="noopener"
-                           @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
-                               method: 'POST',
-                               headers: {
-                                   'Content-Type': 'application/json',
-                                   'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                   'Accept': 'application/json'
-                               },
-                               body: JSON.stringify({ type: 'zoho_writer' })
-                           }).catch(() => {})"
-                           class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
-                            <span>View in Zoho Writer ↗</span>
-                            <span class="text-xs font-normal opacity-75">(sign in to Zoho first)</span>
-                        </a>
                     </div>
                 @endif
 
                 {{-- Row 2: Download · Upload Revision · Delete (if author) --}}
-                {{-- Spans 3 cols when Delete is present, 2 cols otherwise (same total width as Row 1) --}}
                 <div class="grid grid-cols-1 {{ $row2Cols }} gap-2">
                     @if ($lessonPlan->file_path)
                         <a href="{{ route('lesson-plans.download', $lessonPlan) }}"

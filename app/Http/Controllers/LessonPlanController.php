@@ -531,7 +531,7 @@ class LessonPlanController extends Controller
     public function trackEngagement(Request $request, LessonPlan $lessonPlan): JsonResponse
     {
         $data = $request->validate([
-            'type' => 'required|in:google_docs,ms_office,zoho_writer',
+            'type' => 'required|in:google_docs,ms_office',
         ]);
 
         LessonPlanEngagement::firstOrCreate([
