@@ -200,9 +200,11 @@ class AdminController extends Controller
      * to another version before deleting the user.  This prevents a class/day
      * losing its designated official version via cascade.
      *
-     * The official-plan check and the delete run inside a transaction with a
-     * pessimistic lock so a concurrent setOfficial() cannot sneak in between
-     * the check and the delete.
+     * All of the user's plans are locked for update (not just official ones) so
+     * a concurrent setOfficial() cannot promote a non-official plan between the
+     * check and the delete.  Files are deleted after the DB commit, not inside
+     * the transaction, so a commit failure cannot leave orphaned DB rows with
+     * already-deleted files on disk.
      */
     public function destroyUser(User $user)
     {
@@ -211,31 +213,33 @@ class AdminController extends Controller
             return redirect()->route('admin.index')->with('error', 'You cannot delete your own account.');
         }
 
-        $blocked = false;
+        $blocked      = false;
         $officialCount = 0;
+        $filesToDelete = [];
 
-        DB::transaction(function () use ($user, &$blocked, &$officialCount) {
-            // Lock this user's plans so no concurrent setOfficial() can promote one
-            // between our check and the delete.
-            $officialCount = LessonPlan::where('author_id', $user->id)
-                ->where('is_official', true)
-                ->lockForUpdate()
-                ->count();
+        DB::transaction(function () use ($user, &$blocked, &$officialCount, &$filesToDelete) {
+            // Lock ALL of this user's plans (not just official ones) so a concurrent
+            // setOfficial() cannot promote a non-official plan between our check and
+            // the delete. bulkDestroyUsers() uses the same broad-lock pattern.
+            $plans = LessonPlan::where('author_id', $user->id)->lockForUpdate()->get();
+
+            $officialCount = $plans->where('is_official', true)->count();
 
             if ($officialCount > 0) {
                 $blocked = true;
                 return; // abort the closure; transaction rolls back (no writes happened)
             }
 
-            // Remove every lesson plan file this user uploaded before deleting the DB rows.
-            // The foreign-key CASCADE would remove lesson_plan rows automatically, but it
-            // would leave orphaned files on disk — so we clean up manually first.
-            $plans = LessonPlan::where('author_id', $user->id)->get();
+            // Collect file paths before deleting rows. Files are removed after the
+            // transaction commits; deleting them inside the transaction risks losing
+            // files on disk if the subsequent DB commit fails.
             foreach ($plans as $plan) {
-                $this->deletePlanFile($plan);
+                if ($plan->file_path) {
+                    $filesToDelete[] = $plan->file_path;
+                }
             }
 
-            $user->delete();
+            $user->delete(); // FK CASCADE removes the lesson_plan rows
         });
 
         if ($blocked) {
@@ -244,6 +248,11 @@ class AdminController extends Controller
                 "Cannot delete {$user->name}: they own {$officialCount} Official plan(s). "
                 . 'Reassign Official to another version first.'
             );
+        }
+
+        // Delete files only after the DB transaction has committed successfully.
+        foreach ($filesToDelete as $path) {
+            Storage::disk('public')->delete($path);
         }
 
         return redirect()->route('admin.index')->with('success', 'User deleted.');
@@ -274,8 +283,9 @@ class AdminController extends Controller
 
         $deletedCount    = 0;
         $officialOwnerIds = [];
+        $filesToDelete   = [];
 
-        DB::transaction(function () use ($ids, &$deletedCount, &$officialOwnerIds) {
+        DB::transaction(function () use ($ids, &$deletedCount, &$officialOwnerIds, &$filesToDelete) {
             // Lock all plans for the selected users so no concurrent setOfficial()
             // can promote a plan between our check and the delete.
             LessonPlan::whereIn('author_id', $ids)->lockForUpdate()->get();
@@ -289,18 +299,26 @@ class AdminController extends Controller
 
             $deletableIds = array_values(array_diff($ids, $officialOwnerIds));
 
-            // Load users individually so we can clean up their files before deleting.
-            // Using a mass-delete (whereIn->delete()) would skip file cleanup.
+            // Collect file paths before deleting rows. Files are removed after the
+            // transaction commits; deleting them inside the transaction risks losing
+            // files on disk if the subsequent DB commit fails.
             $users = User::whereIn('id', $deletableIds)->get();
             foreach ($users as $user) {
                 $plans = LessonPlan::where('author_id', $user->id)->get();
                 foreach ($plans as $plan) {
-                    $this->deletePlanFile($plan);
+                    if ($plan->file_path) {
+                        $filesToDelete[] = $plan->file_path;
+                    }
                 }
-                $user->delete();
+                $user->delete(); // FK CASCADE removes the lesson_plan rows
                 $deletedCount++;
             }
         });
+
+        // Delete files only after the DB transaction has committed successfully.
+        foreach ($filesToDelete as $path) {
+            Storage::disk('public')->delete($path);
+        }
 
         $message = $deletedCount . ' user(s) deleted.';
         if (!empty($officialOwnerIds)) {

@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (Codex round 3: F0 — store() is_official now conditional on no existing plans for class/day; F1 — destroyUser + bulkDestroyUsers wrapped in DB::transaction + lockForUpdate to close check-then-delete race; F3 — DEPLOYMENT.md backfill migration added to file tree. 2 new tests. Previous round: E0–E2 (user-delete cascade guard, retire desync, migration comment).)
+**Last updated:** 2026-03-03 (Codex round 4: P1 #2 — destroyUser() now locks ALL user plans, not just official ones, matching bulkDestroyUsers() pattern; P1 #3 — both destroyUser() and bulkDestroyUsers() now collect file paths inside transaction and delete files outside after commit. Also: Diff/Compare feature (admin-only, accessible from Admin panel); voting gate fixed (immediate unlock via Alpine window event on Google Docs/MS Office/Download click); Download button now tracks engagement; author notice shows Favorite/Unfavorite toggle; "Introduction to" → "Intro to" in table excerpts. Previous: F0–F3, E0–E2 security audit rounds.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -94,7 +94,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - **Admin system:**
   - `is_admin` boolean column on `users` table (migration `2026_02_26_210000_add_is_admin_to_users_table.php`)
   - `AdminMiddleware` enforces the flag; 403 if not admin
-  - `AdminController` with per-row delete and bulk-delete for both plans and users
+  - `AdminController` with per-row delete and bulk-delete for both plans and users; `destroyUser()`/`bulkDestroyUsers()` lock ALL user plans (not just official ones), delete files after DB commit (not inside transaction)
   - `/admin` page: 3 counter boxes (Unique Classes, Total Plans, Contributors) + two searchable/sortable tables (lesson plans + registered users) paginated at 20, with checkboxes, bulk-delete, Verify AJAX button; default sort: Lesson Plans by Class name asc, Users by Teacher Name asc; fallback sort aligned with defaults
   - Admin link in header (visible to admins only, left of username)
   - Sub-navigation links removed from layout; Upload button moved to below the dashboard table
