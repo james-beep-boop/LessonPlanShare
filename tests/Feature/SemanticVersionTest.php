@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\LessonPlanController;
 use App\Models\LessonPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -42,7 +42,7 @@ class SemanticVersionTest extends TestCase
     //  Model unit tests (computeNextSemanticVersion logic via model)
     // ──────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function first_upload_for_class_day_gets_version_1_0_0(): void
     {
         $plan = LessonPlan::factory()->create([
@@ -56,7 +56,7 @@ class SemanticVersionTest extends TestCase
         $this->assertEquals('1.0.0', $plan->semantic_version);
     }
 
-    /** @test */
+    #[Test]
     public function semantic_version_accessor_formats_correctly(): void
     {
         $plan = LessonPlan::factory()->create([
@@ -72,7 +72,7 @@ class SemanticVersionTest extends TestCase
     //  Controller integration tests (full HTTP request cycle)
     // ──────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function store_assigns_1_0_0_when_no_existing_plan_for_class_day(): void
     {
         $this->actingAs($this->user);
@@ -92,7 +92,7 @@ class SemanticVersionTest extends TestCase
         $this->assertEquals('1.0.0', $plan->semantic_version);
     }
 
-    /** @test */
+    #[Test]
     public function store_assigns_next_major_when_plan_already_exists_for_class_day(): void
     {
         // Seed an existing plan at 1.0.0
@@ -121,7 +121,7 @@ class SemanticVersionTest extends TestCase
         $this->assertEquals('1.1.0', $newPlan->semantic_version);
     }
 
-    /** @test */
+    #[Test]
     public function store_version_major_revision_increments_minor_and_resets_patch(): void
     {
         // Seed existing plan at 1.0.0
@@ -151,7 +151,7 @@ class SemanticVersionTest extends TestCase
         $this->assertEquals('1.1.0', $newVersion->semantic_version);
     }
 
-    /** @test */
+    #[Test]
     public function store_version_minor_revision_increments_patch_only(): void
     {
         // Seed existing plan at 1.1.0
@@ -181,7 +181,7 @@ class SemanticVersionTest extends TestCase
         $this->assertEquals('1.1.1', $newVersion->semantic_version);
     }
 
-    /** @test */
+    #[Test]
     public function store_version_with_changed_class_day_gets_version_1_0_0_if_new(): void
     {
         $parent = LessonPlan::factory()->create([
@@ -211,7 +211,7 @@ class SemanticVersionTest extends TestCase
         $this->assertEquals('1.0.0', $newVersion->semantic_version);
     }
 
-    /** @test */
+    #[Test]
     public function revision_type_is_required_for_store_version(): void
     {
         $parent = LessonPlan::factory()->create([
@@ -230,7 +230,7 @@ class SemanticVersionTest extends TestCase
         $response->assertSessionHasErrors('revision_type');
     }
 
-    /** @test */
+    #[Test]
     public function canonical_filename_includes_version_suffix(): void
     {
         $this->actingAs($this->user);
@@ -250,7 +250,7 @@ class SemanticVersionTest extends TestCase
     //  AJAX nextVersion endpoint
     // ──────────────────────────────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function next_version_endpoint_returns_1_0_0_for_new_class_day(): void
     {
         $this->actingAs($this->user);
@@ -264,7 +264,7 @@ class SemanticVersionTest extends TestCase
         $response->assertOk()->assertJson(['version' => '1.0.0']);
     }
 
-    /** @test */
+    #[Test]
     public function next_version_endpoint_returns_correct_major_increment(): void
     {
         LessonPlan::factory()->create([
@@ -286,7 +286,7 @@ class SemanticVersionTest extends TestCase
         $response->assertOk()->assertJson(['version' => '1.4.0']);
     }
 
-    /** @test */
+    #[Test]
     public function next_version_endpoint_returns_correct_minor_increment(): void
     {
         LessonPlan::factory()->create([
@@ -308,7 +308,7 @@ class SemanticVersionTest extends TestCase
         $response->assertOk()->assertJson(['version' => '1.3.3']);
     }
 
-    /** @test */
+    #[Test]
     public function next_version_endpoint_returns_1_0_0_when_class_day_missing(): void
     {
         $this->actingAs($this->user);

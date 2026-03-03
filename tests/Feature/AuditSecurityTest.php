@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -33,7 +34,7 @@ class AuditSecurityTest extends TestCase
 
     // ── A1: Email verification signed URL ─────────────────────────────
 
-    /** @test */
+    #[Test]
     public function verification_link_without_signature_returns_403(): void
     {
         $user = User::factory()->create(['email_verified_at' => null]);
@@ -44,7 +45,7 @@ class AuditSecurityTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function valid_verification_link_verifies_user_and_redirects_to_dashboard(): void
     {
         $user = User::factory()->create(['email_verified_at' => null]);
@@ -60,7 +61,7 @@ class AuditSecurityTest extends TestCase
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
     }
 
-    /** @test */
+    #[Test]
     public function already_verified_email_link_redirects_without_re_logging_in(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
@@ -78,7 +79,7 @@ class AuditSecurityTest extends TestCase
 
     // ── A4: Login throttling ──────────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function login_is_throttled_after_five_failed_attempts(): void
     {
         $user = User::factory()->create([
@@ -115,7 +116,7 @@ class AuditSecurityTest extends TestCase
         RateLimiter::clear($key);
     }
 
-    /** @test */
+    #[Test]
     public function rate_limiter_clears_after_successful_login(): void
     {
         $password = 'CorrectP@ss1';
@@ -150,7 +151,7 @@ class AuditSecurityTest extends TestCase
 
     // ── A5: Password confirmation ─────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function registration_fails_when_passwords_do_not_match(): void
     {
         $response = $this->post(route('register.store'), [
@@ -164,7 +165,7 @@ class AuditSecurityTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'teacher@example.com']);
     }
 
-    /** @test */
+    #[Test]
     public function registration_fails_when_password_confirmation_missing(): void
     {
         $response = $this->post(route('register.store'), [
@@ -178,7 +179,7 @@ class AuditSecurityTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'teacher@example.com']);
     }
 
-    /** @test */
+    #[Test]
     public function registration_succeeds_when_passwords_match(): void
     {
         $this->post(route('register.store'), [
@@ -193,7 +194,7 @@ class AuditSecurityTest extends TestCase
 
     // ── B1: Self-vote prevention ──────────────────────────────────────
 
-    /** @test */
+    #[Test]
     public function user_cannot_vote_on_their_own_plan(): void
     {
         $author = User::factory()->create(['email_verified_at' => now()]);
@@ -206,7 +207,7 @@ class AuditSecurityTest extends TestCase
         $response->assertJson(['message' => 'You cannot vote on your own plan.']);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_vote_without_prior_engagement(): void
     {
         $author = User::factory()->create(['email_verified_at' => now()]);
@@ -222,7 +223,7 @@ class AuditSecurityTest extends TestCase
         $response->assertJson(['message' => 'Download or view the plan in an external viewer before voting.']);
     }
 
-    /** @test */
+    #[Test]
     public function user_can_vote_after_engagement(): void
     {
         $author = User::factory()->create(['email_verified_at' => now()]);
@@ -244,7 +245,7 @@ class AuditSecurityTest extends TestCase
 
     // ── A2: Retire endpoint authorization ─────────────────────────────
 
-    /** @test */
+    #[Test]
     public function retire_class_day_is_blocked_for_non_author_non_admin(): void
     {
         $author   = User::factory()->create(['email_verified_at' => now()]);
@@ -266,7 +267,7 @@ class AuditSecurityTest extends TestCase
         $response->assertJson(['success' => false]);
     }
 
-    /** @test */
+    #[Test]
     public function retire_class_day_is_allowed_for_plan_author(): void
     {
         $author = User::factory()->create(['email_verified_at' => now()]);
@@ -287,7 +288,7 @@ class AuditSecurityTest extends TestCase
         $response->assertJson(['success' => true]);
     }
 
-    /** @test */
+    #[Test]
     public function retire_class_day_is_allowed_for_admin(): void
     {
         $admin  = User::factory()->create([

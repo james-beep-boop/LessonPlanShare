@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -28,7 +29,7 @@ class AuditCommandTest extends TestCase
 
     // ── A7: Dedup command protects official plans ──────────────────────
 
-    /** @test */
+    #[Test]
     public function detect_duplicates_skips_official_plans(): void
     {
         $author = User::factory()->create();
@@ -55,7 +56,7 @@ class AuditCommandTest extends TestCase
         $this->assertDatabaseHas('lesson_plans', ['id' => $official->id]);
     }
 
-    /** @test */
+    #[Test]
     public function detect_duplicates_removes_non_official_duplicate_keeping_earliest(): void
     {
         $author = User::factory()->create();
@@ -80,7 +81,7 @@ class AuditCommandTest extends TestCase
         $this->assertDatabaseMissing('lesson_plans', ['id' => $duplicate->id]);
     }
 
-    /** @test */
+    #[Test]
     public function detect_duplicates_dry_run_does_not_delete_anything(): void
     {
         $author = User::factory()->create();
@@ -97,7 +98,7 @@ class AuditCommandTest extends TestCase
         $this->assertCount(2, LessonPlan::where('file_hash', $hash)->get());
     }
 
-    /** @test */
+    #[Test]
     public function detect_duplicates_skips_plan_with_dependent_versions(): void
     {
         $author = User::factory()->create();
