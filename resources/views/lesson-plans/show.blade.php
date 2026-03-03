@@ -63,7 +63,7 @@
                 </div>
             </div>
 
-            {{-- Action Buttons: Row 1 = three viewers, Row 2 = Download + Upload + Delete --}}
+            {{-- Action Buttons: Row 1 = two viewers, Row 2 = Download + Upload + Delete --}}
             @php
                 $isAuthor = $lessonPlan->author_id === auth()->id();
                 $row2Cols = $isAuthor ? 'sm:grid-cols-3' : 'sm:grid-cols-2';

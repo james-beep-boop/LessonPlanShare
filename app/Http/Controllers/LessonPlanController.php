@@ -431,6 +431,56 @@ class LessonPlanController extends Controller
     }
 
     /**
+     * Compare the currently viewed version against another version in the same family.
+     *
+     * This MVP supports line-level diffs for .txt files only.
+     * Other formats return a clear "not yet supported" message instead of failing.
+     */
+    public function compare(Request $request, LessonPlan $lessonPlan)
+    {
+        $lessonPlan->load('author');
+
+        $versions = $lessonPlan->familyVersions()
+            ->with('author')
+            ->get()
+            ->sortBy('created_at')
+            ->values();
+
+        $targetPlan = $this->resolveCompareTarget($lessonPlan, $versions, $request->query('compare_to'));
+
+        $diffSummary = null;
+        $diffOps = [];
+        $warning = null;
+
+        if ($targetPlan) {
+            [$newSupported, $newLines, $newError] = $this->readPlanLinesForDiff($lessonPlan);
+            [$oldSupported, $oldLines, $oldError] = $this->readPlanLinesForDiff($targetPlan);
+
+            if (! $newSupported || ! $oldSupported) {
+                $warning = $newError ?: $oldError;
+            } else {
+                if (count($oldLines) > 2000 || count($newLines) > 2000) {
+                    $warning = 'Comparison unavailable: selected text files are too large for inline diff. Please compare these files locally.';
+                } else {
+                    $diffOps     = $this->buildLineDiffOperations($oldLines, $newLines);
+                    $diffSummary = $this->buildDiffSummary($diffOps);
+                }
+            }
+        } else {
+            $warning = 'No previous version is available to compare against yet.';
+        }
+
+        return view('lesson-plans.compare', [
+            'lessonPlan'   => $lessonPlan,
+            'versions'     => $versions,
+            'targetPlan'   => $targetPlan,
+            'diffSummary'  => $diffSummary,
+            'diffOps'      => $diffOps,
+            'warning'      => $warning,
+        ]);
+    }
+
+    /**
      * Show the form to create a new version of an existing plan.
      *
      * Pre-computes the next major and minor version so the form can
@@ -714,5 +764,154 @@ class LessonPlanController extends Controller
                 'Upload confirmation email failed: ' . $e->getMessage()
             );
         }
+    }
+
+    /**
+     * Resolve the comparison target from query string or default to immediate predecessor.
+     *
+     * Only plans within the same version family are accepted as targets; a foreign
+     * plan ID supplied via ?compare_to= is silently ignored and falls back to the
+     * previous in-family version.
+     *
+     * @param \Illuminate\Support\Collection<int, LessonPlan> $versions
+     */
+    private function resolveCompareTarget(LessonPlan $lessonPlan, $versions, mixed $compareTo): ?LessonPlan
+    {
+        if ($compareTo !== null) {
+            $requestedId = (int) $compareTo;
+            $requested = $versions->first(fn (LessonPlan $version) => $version->id === $requestedId);
+            if ($requested && $requested->id !== $lessonPlan->id) {
+                return $requested;
+            }
+        }
+
+        $index = $versions->search(fn (LessonPlan $version) => $version->id === $lessonPlan->id);
+        if ($index === false || $index === 0) {
+            return null;
+        }
+
+        return $versions->get($index - 1);
+    }
+
+    /**
+     * Read a lesson plan into comparable lines.
+     *
+     * Supports only .txt files in this MVP. Other extensions return a warning reason.
+     * Line endings are normalised to \n before splitting.
+     *
+     * @return array{0: bool, 1: array<int, string>, 2: string|null}
+     */
+    private function readPlanLinesForDiff(LessonPlan $plan): array
+    {
+        if (! $plan->file_path) {
+            return [false, [], 'Comparison unavailable: one of the selected versions has no file path.'];
+        }
+
+        if (! Storage::disk('public')->exists($plan->file_path)) {
+            return [false, [], 'Comparison unavailable: one of the selected files is missing from storage.'];
+        }
+
+        $extension = strtolower(pathinfo($plan->file_name ?? $plan->file_path, PATHINFO_EXTENSION));
+        if ($extension !== 'txt') {
+            return [false, [], 'Comparison currently supports .txt files only. DOC/DOCX/RTF/ODT support is planned next.'];
+        }
+
+        $absolutePath = Storage::disk('public')->path($plan->file_path);
+        $content = @file_get_contents($absolutePath);
+        if ($content === false) {
+            return [false, [], 'Comparison failed: could not read one of the selected files.'];
+        }
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $content);
+        return [true, explode("\n", $normalized), null];
+    }
+
+    /**
+     * Build line-level diff operations via a longest-common-subsequence matrix.
+     *
+     * Returns an array of operations, each with 'type' (equal | add | remove)
+     * and 'line' (the text of that line).
+     *
+     * @param array<int, string> $oldLines
+     * @param array<int, string> $newLines
+     * @return array<int, array{type: string, line: string}>
+     */
+    private function buildLineDiffOperations(array $oldLines, array $newLines): array
+    {
+        $oldCount = count($oldLines);
+        $newCount = count($newLines);
+
+        $lcs = array_fill(0, $oldCount + 1, array_fill(0, $newCount + 1, 0));
+
+        for ($i = $oldCount - 1; $i >= 0; $i--) {
+            for ($j = $newCount - 1; $j >= 0; $j--) {
+                if ($oldLines[$i] === $newLines[$j]) {
+                    $lcs[$i][$j] = $lcs[$i + 1][$j + 1] + 1;
+                } else {
+                    $lcs[$i][$j] = max($lcs[$i + 1][$j], $lcs[$i][$j + 1]);
+                }
+            }
+        }
+
+        $ops = [];
+        $i = 0;
+        $j = 0;
+        while ($i < $oldCount && $j < $newCount) {
+            if ($oldLines[$i] === $newLines[$j]) {
+                $ops[] = ['type' => 'equal', 'line' => $oldLines[$i]];
+                $i++;
+                $j++;
+                continue;
+            }
+
+            if ($lcs[$i + 1][$j] >= $lcs[$i][$j + 1]) {
+                $ops[] = ['type' => 'remove', 'line' => $oldLines[$i]];
+                $i++;
+            } else {
+                $ops[] = ['type' => 'add', 'line' => $newLines[$j]];
+                $j++;
+            }
+        }
+
+        while ($i < $oldCount) {
+            $ops[] = ['type' => 'remove', 'line' => $oldLines[$i]];
+            $i++;
+        }
+        while ($j < $newCount) {
+            $ops[] = ['type' => 'add', 'line' => $newLines[$j]];
+            $j++;
+        }
+
+        return $ops;
+    }
+
+    /**
+     * Build high-level summary counts from line-level operations.
+     *
+     * 'changed' is an approximation: the smaller of added vs removed counts,
+     * since paired add/remove sequences typically represent modified lines.
+     *
+     * @param array<int, array{type: string, line: string}> $ops
+     * @return array{added: int, removed: int, changed: int}
+     */
+    private function buildDiffSummary(array $ops): array
+    {
+        $added = 0;
+        $removed = 0;
+
+        foreach ($ops as $op) {
+            if ($op['type'] === 'add') {
+                $added++;
+            } elseif ($op['type'] === 'remove') {
+                $removed++;
+            }
+        }
+
+        return [
+            'added'   => $added,
+            'removed' => $removed,
+            // Approximation: paired adds/removes typically represent modified lines.
+            'changed' => min($added, $removed),
+        ];
     }
 }

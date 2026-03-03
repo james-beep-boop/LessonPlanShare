@@ -129,6 +129,7 @@ resources/views/auth/register.blade.php                 →  (REPLACE or NEW)
 resources/views/auth/forgot-password.blade.php          →  (REPLACE Breeze's)
 resources/views/auth/reset-password.blade.php           →  (REPLACE Breeze's)
 resources/views/auth/verify-email.blade.php             →  (NEW)
+resources/views/lesson-plans/compare.blade.php          →  (NEW)
 resources/views/lesson-plans/create.blade.php           →  (NEW)
 resources/views/lesson-plans/show.blade.php             →  (NEW)
 resources/views/lesson-plans/edit.blade.php             →  (NEW)
@@ -557,6 +558,7 @@ LessonPlanShare/
 │   │   ├── lesson-plan-uploaded.blade.php
 │   │   └── duplicate-content-removed.blade.php
 │   └── lesson-plans/
+│       ├── compare.blade.php
 │       ├── create.blade.php
 │       ├── show.blade.php
 │       └── edit.blade.php
@@ -564,6 +566,7 @@ LessonPlanShare/
 ├── tests/Feature/
 │   ├── AuditCommandTest.php                           (4 tests for dedup command)
 │   ├── AuditSecurityTest.php                          (security/quality audit tests)
+│   ├── CompareVersionsTest.php                        (3 tests for diff feature)
 │   ├── SemanticVersionTest.php                        (11 tests for semantic versioning)
 │   ├── ExampleTest.php                                (override: dashboard returns 200)
 │   ├── ProfileTest.php                                (override: no /profile route; dashboard/auth tests)
