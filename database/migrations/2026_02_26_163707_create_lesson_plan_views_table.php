@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Tracks which authenticated users have visited the detail page of each lesson plan.
  *
- * This is used to gate voting on the dashboard: a user must have viewed a plan
- * (visited lesson-plans.show) before they can vote on it.
+ * NOTE: Voting is gated on LessonPlanEngagement (download or viewer open), NOT on this table.
+ * This table records page-view visits (lesson-plans.show) for analytics/future use only.
  *
  * Design choices:
  * - No updated_at: we only care whether a view has ever happened, not when it last occurred.

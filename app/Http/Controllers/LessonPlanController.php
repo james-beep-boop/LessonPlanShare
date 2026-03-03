@@ -278,6 +278,25 @@ class LessonPlanController extends Controller
                 try {
                     if (Storage::disk('public')->exists($plan->file_path)) {
                         Storage::disk('public')->move($plan->file_path, $newPath);
+                        // Only update file_path/file_name when the move actually succeeded —
+                        // writing a new path to the DB when no rename happened would desync
+                        // the DB from the filesystem.
+                        DB::table('lesson_plans')->where('id', $plan->id)->update([
+                            'file_name' => $newName,
+                            'file_path' => $newPath,
+                            'name'      => $plan->name . $suffix,
+                        ]);
+                    } else {
+                        // File missing from disk (e.g. manually removed).
+                        // Keep the original file_path to avoid a stale/wrong path in the DB;
+                        // still mark the display name so the plan appears retired.
+                        \Illuminate\Support\Facades\Log::warning(
+                            "retireForClassDay: file missing on disk for plan {$plan->id} "
+                            . "(path: {$plan->file_path}) – name marked retired, file_path unchanged."
+                        );
+                        DB::table('lesson_plans')->where('id', $plan->id)->update([
+                            'name' => $plan->name . $suffix,
+                        ]);
                     }
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::warning(
@@ -285,12 +304,6 @@ class LessonPlanController extends Controller
                     );
                     continue; // leave DB unchanged so it still matches old disk path
                 }
-
-                DB::table('lesson_plans')->where('id', $plan->id)->update([
-                    'file_name' => $newName,
-                    'file_path' => $newPath,
-                    'name'      => $plan->name . $suffix,
-                ]);
             } else {
                 // No file — just append the suffix to the display name.
                 DB::table('lesson_plans')->where('id', $plan->id)->update([

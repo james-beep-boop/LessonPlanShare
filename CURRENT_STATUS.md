@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (Security/quality audit pass + full test suite green. Fixes: A1–C4 + D (Codex P0/P1/P2/P3). Test fixes: AuditSecurityTest 2 failures fixed (verification URL path, unique constraint); Breeze scaffolded test overrides added for ExampleTest, ProfileTest, Auth/RegistrationTest, Auth/EmailVerificationTest, Auth/PasswordConfirmationTest + confirm-password.blade.php (uses <x-layout>, no Vite). Run tests with: php artisan config:clear && php artisan test && php artisan config:cache && php artisan route:cache && php artisan view:cache)
+**Last updated:** 2026-03-03 (Codex round 2: E0 — user deletion blocked if user owns official plans (destroyUser + bulkDestroyUsers skip with message); E1 — retireForClassDay missing-file desync fixed (DB file_path only updated on successful move; missing file → name-only update + warning log); E2 — migration 2026_02_26_163707 comment corrected (views table is NOT the voting gate); 3 new tests. Previous round: A1–C4 + D (full audit + Breeze test overrides).)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 

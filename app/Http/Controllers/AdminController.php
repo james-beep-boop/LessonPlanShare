@@ -193,12 +193,30 @@ class AdminController extends Controller
             : "Admin privileges revoked from {$user->name}.");
     }
 
-    /** Delete a single user account and all their uploaded lesson plan files. */
+    /**
+     * Delete a single user account and all their uploaded lesson plan files.
+     *
+     * Blocked if the user owns any Official plan — admin must reassign Official
+     * to another version before deleting the user.  This prevents a class/day
+     * losing its designated official version via cascade.
+     */
     public function destroyUser(User $user)
     {
         // Prevent self-deletion
         if ($user->id === auth()->id()) {
             return redirect()->route('admin.index')->with('error', 'You cannot delete your own account.');
+        }
+
+        // Block deletion if this user owns any Official plan.
+        $officialCount = LessonPlan::where('author_id', $user->id)
+            ->where('is_official', true)
+            ->count();
+        if ($officialCount > 0) {
+            return redirect()->route('admin.index')->with(
+                'error',
+                "Cannot delete {$user->name}: they own {$officialCount} Official plan(s). "
+                . 'Reassign Official to another version first.'
+            );
         }
 
         // Remove every lesson plan file this user uploaded before deleting the DB rows.
@@ -214,7 +232,11 @@ class AdminController extends Controller
         return redirect()->route('admin.index')->with('success', 'User deleted.');
     }
 
-    /** Bulk-delete multiple user accounts and all their uploaded lesson plan files. */
+    /**
+     * Bulk-delete multiple user accounts and all their uploaded lesson plan files.
+     *
+     * Users who own Official plans are skipped (same invariant as destroyUser).
+     */
     public function bulkDestroyUsers(Request $request)
     {
         $data = $request->validate([
@@ -230,9 +252,18 @@ class AdminController extends Controller
             return redirect()->route('admin.index')->with('error', 'No users selected (or only yourself).');
         }
 
+        // Identify which selected users own Official plans — skip them.
+        $officialOwnerIds = LessonPlan::whereIn('author_id', $ids)
+            ->where('is_official', true)
+            ->pluck('author_id')
+            ->unique()
+            ->toArray();
+
+        $deletableIds = array_values(array_diff($ids, $officialOwnerIds));
+
         // Load users individually so we can clean up their files before deleting.
         // Using a mass-delete (whereIn->delete()) would skip file cleanup.
-        $users = User::whereIn('id', $ids)->get();
+        $users = User::whereIn('id', $deletableIds)->get();
         foreach ($users as $user) {
             $plans = LessonPlan::where('author_id', $user->id)->get();
             foreach ($plans as $plan) {
@@ -241,8 +272,14 @@ class AdminController extends Controller
             $user->delete();
         }
 
-        return redirect()->route('admin.index')
-            ->with('success', count($users) . ' user(s) deleted.');
+        $message = count($users) . ' user(s) deleted.';
+        if (!empty($officialOwnerIds)) {
+            $skippedNames = User::whereIn('id', $officialOwnerIds)->pluck('name')->implode(', ');
+            $message .= ' Skipped ' . count($officialOwnerIds)
+                . ' user(s) who own Official plans (reassign Official first): ' . $skippedNames . '.';
+        }
+
+        return redirect()->route('admin.index')->with('success', $message);
     }
 
     /**

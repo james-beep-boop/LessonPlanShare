@@ -397,4 +397,94 @@ class AuditSecurityTest extends TestCase
         $response->assertSessionHas('error');
         $this->assertDatabaseHas('lesson_plans', ['id' => $officialPlan->id]);
     }
+
+    // ── P0: User deletion cascade guard ───────────────────────────────
+
+    #[Test]
+    public function admin_cannot_delete_user_who_owns_official_plan(): void
+    {
+        $admin  = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_admin'          => true,
+        ]);
+        $author = User::factory()->create(['email_verified_at' => now()]);
+
+        $officialPlan = LessonPlan::factory()->create([
+            'author_id'  => $author->id,
+            'is_official' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->delete(route('admin.users.destroy', $author));
+
+        $response->assertRedirect(route('admin.index'));
+        $response->assertSessionHas('error');
+        // User must still exist — the cascade would have deleted the official plan
+        $this->assertDatabaseHas('users', ['id' => $author->id]);
+        $this->assertDatabaseHas('lesson_plans', ['id' => $officialPlan->id]);
+    }
+
+    #[Test]
+    public function admin_bulk_delete_skips_users_owning_official_plans(): void
+    {
+        $admin   = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_admin'          => true,
+        ]);
+        $safeUser    = User::factory()->create(['email_verified_at' => now()]);
+        $blockedUser = User::factory()->create(['email_verified_at' => now()]);
+
+        LessonPlan::factory()->create([
+            'author_id'  => $blockedUser->id,
+            'is_official' => true,
+        ]);
+        // $safeUser has no official plans — should be deleted
+        LessonPlan::factory()->create(['author_id' => $safeUser->id]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.users.bulk-delete'), [
+                'user_ids' => [$safeUser->id, $blockedUser->id],
+            ]);
+
+        $response->assertRedirect(route('admin.index'));
+        $response->assertSessionHas('success');
+        // Safe user deleted; blocked user still exists
+        $this->assertDatabaseMissing('users', ['id' => $safeUser->id]);
+        $this->assertDatabaseHas('users', ['id' => $blockedUser->id]);
+    }
+
+    // ── P1: retireForClassDay missing-file DB desync ───────────────────
+
+    #[Test]
+    public function retire_class_day_with_missing_file_does_not_update_file_path(): void
+    {
+        $author = User::factory()->create(['email_verified_at' => now()]);
+
+        $originalPath = 'lessons/original_file.pdf';
+        $plan = LessonPlan::factory()->create([
+            'author_id'  => $author->id,
+            'class_name' => 'Chemistry',
+            'lesson_day' => 2,
+            'file_path'  => $originalPath,
+            'file_name'  => 'original_file.pdf',
+        ]);
+
+        // Intentionally do NOT create the file in the fake disk — it is "missing"
+        // (Storage::fake('public') is already set up in setUp())
+
+        $response = $this->actingAs($author)
+            ->postJson(route('lesson-plans.retire'), [
+                'class_name' => 'Chemistry',
+                'lesson_day' => 2,
+            ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'count' => 1]);
+
+        $refreshed = $plan->fresh();
+        // file_path must remain the original — must NOT be rewritten to a renamed path
+        $this->assertEquals($originalPath, $refreshed->file_path);
+        // name should still get the _deleted_ suffix so the plan is visibly retired
+        $this->assertStringContainsString('_deleted_', $refreshed->name);
+    }
 }
