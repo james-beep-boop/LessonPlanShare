@@ -176,10 +176,45 @@
         {{-- window event (fired by Google Docs / MS Office / Download click handlers above) --}}
         {{-- updates it client-side immediately so voting unlocks without a page reload. --}}
         @if($isAuthorOfPlan)
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <p class="text-sm text-gray-500 text-center">
-                    You cannot vote on your own plan.
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                 x-data="{
+                     favorited: {{ $isFavorited ? 'true' : 'false' }},
+                     loading: false,
+                     toggle() {
+                         if (this.loading) return;
+                         this.loading = true;
+                         fetch('{{ route('favorites.toggle', $lessonPlan) }}', {
+                             method: 'POST',
+                             headers: {
+                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                 'Accept': 'application/json'
+                             }
+                         })
+                         .then(r => r.ok ? r.json() : null)
+                         .then(d => { if (d !== null) this.favorited = d.favorited; })
+                         .catch(() => {})
+                         .finally(() => { this.loading = false; });
+                     }
+                 }">
+                <p class="text-sm text-gray-500 text-center mb-3">
+                    You cannot vote on your own lesson plan, but you can make it a favorite.
                 </p>
+                <div class="flex flex-col sm:flex-row gap-2 justify-center">
+                    <button @click="toggle()" type="button" :disabled="loading || favorited"
+                            :class="favorited
+                                ? 'bg-yellow-100 border-yellow-400 text-yellow-700 cursor-default'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-yellow-50 hover:border-yellow-300'"
+                            class="px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
+                        Favorite
+                    </button>
+                    <button @click="toggle()" type="button" :disabled="loading || !favorited"
+                            :class="!favorited
+                                ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'"
+                            class="px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
+                        Unfavorite
+                    </button>
+                </div>
             </div>
         @else
             <div class="border border-gray-200 rounded-lg"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\LessonPlanUploaded;
+use App\Models\Favorite;
 use App\Models\LessonPlan;
 use App\Models\LessonPlanEngagement;
 use App\Models\LessonPlanView;
@@ -423,11 +424,15 @@ class LessonPlanController extends Controller
                 && LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
                     ->where('user_id', Auth::id())
                     ->exists();
+
+            $isFavorited = Favorite::where('lesson_plan_id', $lessonPlan->id)
+                ->where('user_id', Auth::id())
+                ->exists();
         }
 
         $isAuthorOfPlan = Auth::check() && $lessonPlan->author_id === Auth::id();
 
-        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged', 'isAuthorOfPlan'));
+        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged', 'isAuthorOfPlan', 'isFavorited'));
     }
 
     /**
