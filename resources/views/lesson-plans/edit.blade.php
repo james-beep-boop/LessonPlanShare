@@ -1,5 +1,5 @@
 <x-layout>
-    <x-slot:title>Upload Revision — {{ $lessonPlan->class_name }} — ARES Education</x-slot>
+    <x-slot:title>Upload Revision — {{ $lessonPlan->class_name }} Lesson {{ $lessonPlan->lesson_day }} — ARES Education</x-slot>
 
     @php
         $currentClass = old('class_name', $lessonPlan->class_name);
@@ -7,7 +7,7 @@
     @endphp
 
     <div class="max-w-2xl mx-auto">
-        <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload New Version</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload New Version of {{ $lessonPlan->class_name }} Lesson {{ $lessonPlan->lesson_day }}</h1>
 
         {{--
             Top-level Alpine component manages:

@@ -105,6 +105,9 @@ database/migrations/2026_02_26_163707_create_lesson_plan_views_table.php        
 database/migrations/2026_02_26_210000_add_is_admin_to_users_table.php            →  (NEW)
 database/migrations/2026_02_26_230000_create_favorites_table.php                 →  (NEW)
 database/migrations/2026_02_27_000000_add_semantic_version_to_lesson_plans.php   →  (NEW)
+database/migrations/2026_03_01_000001_create_lesson_plan_engagements_table.php    →  (NEW)
+database/migrations/2026_03_01_000002_add_is_official_to_lesson_plans_table.php   →  (NEW)
+database/migrations/2026_03_02_100000_backfill_anonymous_user_names.php           →  (NEW)
 
 database/factories/LessonPlanFactory.php                →  (NEW)
 
@@ -120,8 +123,6 @@ resources/views/auth/verify-email.blade.php             →  (NEW)
 resources/views/lesson-plans/create.blade.php           →  (NEW)
 resources/views/lesson-plans/show.blade.php             →  (NEW)
 resources/views/lesson-plans/edit.blade.php             →  (NEW)
-resources/views/lesson-plans/preview.blade.php          →  (NEW)
-resources/views/lesson-plans/my-plans.blade.php         →  (NEW)
 resources/views/emails/lesson-plan-uploaded.blade.php   →  (NEW)
 resources/views/emails/duplicate-content-removed.blade.php  →  (NEW)
 resources/views/guide.blade.php                         →  (NEW)

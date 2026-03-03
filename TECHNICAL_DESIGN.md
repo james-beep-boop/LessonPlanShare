@@ -1,7 +1,7 @@
 # ARES Education — Kenya Lesson Plan Repository: Technical Design Document
 
-**Version:** 3.2
-**Date:** February 2026 (updated 2026-02-28)
+**Version:** 3.3
+**Date:** February 2026 (updated 2026-03-02)
 **Status:** Deployed at www.sheql.com
 
 ---
@@ -357,36 +357,48 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 
 **Access:** Requires authentication + verified email.
 
-**Layout:** Two-column grid on large screens (2/3 + 1/3), stacks vertically on mobile.
+**Layout:** Single column, `max-4xl`, stacks vertically. Top header row has `h1` (left) and `← Back to Dashboard` black button (right).
 
-### 5.1 Left Column — Lesson Plan Details Card
+**Page title (browser tab):** `{Class} Lesson {N} — ARES Education`
 
-- Header: "Lesson Plan Details" as the card heading
-- Subheading: "{Class Name} — Day {N}"
-- Info line: "Version {N} · by {author} · {date} UTC"
-- Monospace canonical name below the info line
+**h1:** `Lesson Plan Details: {Class}: Lesson {N}`
+
+**Back button:** black (`bg-gray-900 text-white`), top-right, `← Back to Dashboard`.
+
+### 5.1 Details Box
+
+- **Box header (replaces old "Lesson Plan Details" h2):**
+  - Info line: `Version {N} · by {Contributor} · {date} UTC`
+  - Monospace canonical filename below
 - Description text (or "No description provided" in italic)
-- Detail grid (2 columns): Class, Lesson Day, Version, Author, File (name + formatted size), Uploaded date
-- Action buttons (two rows):
-  - **Row 1** (`grid-cols-2`, visible if file exists): **Preview** (gray-900 primary) — opens document viewer page; **Download** (gray-100 outlined) — direct file download. Print/PDF is on the Preview page, not here.
-  - **Row 2 — author only** (`grid-cols-2`): **Upload New Version** (gray-100 outlined) — opens the new-version form; **Delete** (red-50) — opens an Alpine.js confirmation modal ("Are you sure? This action cannot be undone" / "Yes, Delete" / "Cancel"). Native `confirm()` is not used (cannot customise the OK label).
-  - **Row 2 — non-author authenticated** (full-width): **Upload New Version** (gray-100 outlined).
-  - Author fallback: if the author account no longer exists, displays "Anonymous".
+- **Detail grid** (2 columns): Class, Lesson (not "Lesson Day"), Version, Contributor, Uploaded
+- Community Rating score (colored +/- number)
+- **Action buttons** (separated by `border-t`, wrapped in a single `x-data="{ confirmOpen: false }"` for the delete modal):
+  - **Row 1 — three viewers** (`sm:grid-cols-3`, visible if file exists):
+    - View in Google Docs ↗ (dark primary, engagement-tracked)
+    - View in Microsoft Office ↗ (light outlined, engagement-tracked)
+    - View in Zoho Writer ↗ (light outlined, engagement-tracked)
+  - **Row 2** (`sm:grid-cols-3` for authors, `sm:grid-cols-2` for non-authors — same total width as Row 1):
+    - Download This Document (light outlined)
+    - Upload Your Revision of This Document (light outlined)
+    - Delete Your Version (red-50, **author only**) — opens Alpine.js confirm modal ("Are you sure? This action cannot be undone." / "Yes, Delete" / "Cancel"). Native `confirm()` not used.
+  - Contributor fallback: "Anonymous" if author account deleted.
 
-### 5.2 Left Column — Community Rating Card
+### 5.2 Community Rating Card
 
-- Large vote score number (green if positive, red if negative, gray if zero)
-- Text: "{N} upvotes, {N} downvotes"
-- Vote display label: "Vote 👍 👎"
-- **If authenticated and not the author:** Interactive upvote/downvote buttons (Material Design thumbs-up/down SVG). The active vote direction is highlighted (green background for upvote, red for downvote). Clicking the same direction again removes the vote (toggle off). Clicking the opposite direction switches the vote. A helper text appears when a vote is active: "Click the same thumb again to remove your vote."
-- **If authenticated and is the author:** Text: "You cannot vote on your own lesson plan."
-- **If not authenticated:** "Sign in to vote on this plan." with a clickable "Sign in" link that opens the auth modal.
+**Engagement-gated:** only shown (as interactive voting) when `$hasEngaged` is true — the user must have opened the plan in an external viewer or downloaded it. Engagement is tracked in `lesson_plan_engagements` (`type` values: `google_docs`, `ms_office`, `zoho_writer`, `download`).
 
-### 5.3 Right Column — Version History Card
+- Large vote score number (green / red / gray)
+- Three inline Alpine.js AJAX buttons: **Upvote This Version** / **Downvote This Version** / **Reset Vote**. Active direction highlighted. Reset disabled when no vote is active.
+- Helper text: "Your vote is recorded. Click 'Reset Vote' to remove it." (shown when userVote ≠ null)
 
-- Lists all versions in the plan's family, ordered by version number ascending
-- Each entry shows: circular badge with version number (no "v" prefix), class + day label, author, date, vote score
-- The current version is highlighted with a gray background
+If not yet engaged: gray-50 nudge card: "Open this plan in an external viewer or download it to unlock voting."
+
+### 5.3 Version History Card
+
+- Lists all versions in the plan's family, sorted by `created_at DESC`
+- Each entry: version badge (monospace), `{Class} Lesson {N}` label, contributor, date, vote score
+- Current version highlighted (`bg-gray-50 -mx-2 px-2 py-1.5 rounded-md`)
 - Other versions are clickable links to their detail pages
 
 ---
@@ -403,7 +415,7 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 
 1. **Class Name** (required, Alpine.js combo widget): A dropdown lists all existing class names from the database, plus an "Other (enter new class name)" option. Selecting "Other" reveals a text input for entering a custom class name (max 100 characters). A hidden `<input>` submits the actual value (either the dropdown selection or the custom text). This allows teachers to create new subjects without requiring code changes.
 2. **Lesson Number** (required dropdown): Numbers 1 through 20. Small (w-32) dropdown.
-3. **Author** (read-only display): Shows the logged-in user's email address in a gray-50 bordered box. Text: "Plans are always uploaded under your account." Author is always `Auth::id()`.
+3. **Contributor** (read-only display): Shows the logged-in user's Teacher Name in a gray-50 bordered box. Text: "Plans are always uploaded under your account." Author is always `Auth::id()`.
 4. **Description** (optional textarea): 4 rows, max 2000 characters.
 5. **Document Name** (info box): Gray-50 box showing the naming format: `{ClassName}_Day{N}_{AuthorName}_{UTC-Timestamp}`.
 6. **Lesson Plan File** (required file input): Styled file input. Max 1 MB. Accepted types: DOC, DOCX, TXT, RTF, ODT. Client-side JavaScript validates file size before submission and shows an error if the file exceeds 1 MB.
@@ -448,57 +460,22 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 
 ---
 
-## 8. My Plans (`/my-plans`)
+## 8. My Plans — REMOVED
 
-> **Modularity note:** This section fully describes the "My Plans" page. Changes here should NOT require reading any other section.
-
-**Access:** Requires authentication + verified email.
-
-**Header:** "My Lesson Plans" heading + "+ Upload New Plan" button (gray-900).
-
-**Table columns:** Document Name (linked), Class, Day #, Version (integer, no "v"), Rating (readonly), Updated, Actions (Download link + Delete button).
-
-**Pagination:** 25 per page. Sorted by `updated_at DESC`.
-
-**Empty state:** "You haven't uploaded any lesson plans yet. Upload your first one!" with a link to the upload form.
+> **Removed:** The `/my-plans` page has been replaced by a "Show only my contributions" checkbox in the main dashboard filter bar. The route, controller method (`myPlans()`), and Blade view (`my-plans.blade.php`) are all deleted.
 
 ---
 
-## 9. Document Preview Page (`/lesson-plans/{id}/preview`)
+## 9. Document Preview Page — REMOVED
 
-> **Modularity note:** This section fully describes the document preview page. Changes here should NOT require reading any other section.
+> **Removed:** The `/lesson-plans/{id}/preview` page (embedded Google Docs Viewer) has been replaced by three external viewer buttons on the plan detail page (see Section 5.1). The route, controller method (`preview()`), and Blade view (`preview.blade.php`) are all deleted.
 
-**Access:** Requires authentication + verified email.
+The three viewer buttons on the show page open the document in:
+- Google Docs Viewer (`docs.google.com/gview?url=...`) — best for mobile
+- Microsoft Office Online (`view.officeapps.live.com/op/view.aspx?src=...`) — best for desktop
+- Zoho Writer (`writer.zoho.com/writer/open?url=...`) — sign in to Zoho first
 
-**Layout:** Centered max-width 5xl page with header bar and embedded document viewer.
-
-### 9.1 Header Bar
-
-- "Preview" label in uppercase gray text above the plan title
-- Plan title: "{Class Name} — Day {N}"
-- Subtext: version number, author, filename
-- Hint text below filename: "Click 'Refresh Viewer' if the lesson plan does not appear in the viewer."
-- Action buttons (flex-wrap row, right-aligned): **↻ Refresh Viewer** (Alpine.js, updates iframe `:src` without page reload), **Print / PDF** (gray-100 outlined, opens raw storage URL in new tab — PDFs open in browser native viewer for Ctrl+P printing; other formats download), **Download File** (gray-100 outlined, force-download via response header), **Back to Details** (gray-100 outlined, links to show page), **Home** (gray-100 outlined, links to dashboard)
-- Author fallback: if the author account no longer exists, displays "Anonymous".
-
-### 9.2 Document Viewer
-
-- Uses Google Docs Viewer to render `.doc`/`.docx` files in an iframe without server-side conversion
-- The iframe URL format: `https://docs.google.com/gview?url={public_file_url}&embedded=true&t={timestamp}`
-- The `&t=` timestamp is a required cache-buster: without it, Google's viewer silently goes blank on the second and subsequent views of the same document URL
-- Alpine.js manages the iframe `:src` reactively: initial `ts` = PHP `time()` (server); clicking "↻ Refresh Viewer" updates `ts = Date.now()` client-side, triggering an iframe reload without a full page reload
-- **↻ Refresh Viewer button:** small button above the iframe, right-aligned. Sufficient for most cases of a stuck/blank viewer without requiring a full page reload.
-- The file must be publicly accessible via its storage URL for the viewer to work
-- Iframe height: `75vh` (minimum 500px)
-- Below the iframe: a gray-50 footer bar with a note about Google Docs Viewer and a secondary download link
-
-**Privacy note:** Because the Google Docs Viewer fetches the file via its public URL, the document's content is transmitted to Google's servers for rendering. Users should be aware that previewed documents are not private. The download button provides direct access without third-party involvement.
-
-**Fallback:** If the plan has no file attached, redirects to the detail page with an error flash message.
-
-### 9.3 Deferred Feature: In-Browser Editing
-
-In-browser editing is intentionally deferred to a future version. When implemented, it would add Edit, Undo, Discard, and Save buttons to the preview page. The Save button would: increment version if the same author saves, or create a new independent plan if a different user saves. This section is a placeholder for future planning.
+Each viewer click fires an engagement-tracking AJAX request before opening the tab.
 
 ---
 
@@ -584,27 +561,24 @@ Vote values: +1 (upvote) or -1 (downvote).
 
 To avoid expensive `SUM()` queries on every dashboard page load, each lesson plan has a `vote_score` column that caches the aggregate. After every vote action (create, delete, update), `recalculateVoteScore()` runs: it queries `SUM(value)` from the votes table and updates the cached value using `DB::table('lesson_plans')->where('id', $this->id)->update(['vote_score' => $score])`. This raw update intentionally bypasses Eloquent so that `updated_at` is NOT changed (a vote cast today should not make a 2-year-old plan appear at the top of the "recently updated" sort).
 
-### 14.3 View-Gated Dashboard Voting
+### 14.3 Engagement-Gated Show Page Voting
 
-AJAX voting from the dashboard is gated behind a view requirement: a user must have visited a plan's detail page (`lesson-plans.show`) before they can cast an inline vote. This is enforced by the `lesson_plan_views` table (Section 2.4) — a view record is created via `LessonPlanView::firstOrCreate()` when `show()` is called.
+Voting is **exclusively on the plan detail page** (not inline on the dashboard). Before a user can vote, they must have engaged with the plan — opened it in an external viewer or downloaded it. Engagement is tracked in the `lesson_plan_engagements` table.
 
-The `DashboardController@index` loads two arrays for authenticated users:
-- `$userVotes` — their existing votes for the visible plan IDs
-- `$viewedIds` — which of the visible plan IDs they have viewed
+`LessonPlanController@show()` sets `$hasEngaged`:
+- Always true if the user is the plan author (can see their own plan's rating)
+- True if a `LessonPlanEngagement` record exists for `(user_id, lesson_plan_id)`
+- Otherwise false
 
-These are passed to the view and used to determine which voting mode to render for each row.
+If `$hasEngaged` is false, a gray nudge card is shown instead of the voting UI.
 
 ### 14.4 Vote Display
 
-The `vote-buttons` Blade component operates in four modes:
+**Dashboard:** Display-only. The Rating column shows the cached `vote_score` as a colored `+N` / `-N` / `0` number. No interactive voting on the dashboard.
 
-**Readonly** (guests): Shows the score with label "Vote 👍 👎 +N". No interactive elements.
+**Show page (engaged users):** Alpine.js inline AJAX — three buttons: Upvote This Version / Downvote This Version / Reset Vote. Clicking sends a `fetch()` POST with `Accept: application/json`. `VoteController` returns `{ score, userVote }` JSON. Score and button highlighting update in place without page reload. `.catch(() => {})` prevents unhandled rejections on session expiry.
 
-**Locked** (authenticated; plan not yet viewed, or is author): Greyed 👍 score 👎. Tooltip: "View this plan to unlock voting". No action on click.
-
-**Inline/AJAX** (authenticated; plan viewed; not author): Alpine.js 👍 score 👎 buttons. Clicking sends a `fetch()` POST with `Accept: application/json`. On non-ok responses, the handler returns early and swallows errors (`.catch(() => {})`), preventing unhandled rejections. The `VoteController` returns `{ score, userVote }` JSON. Score and highlighting update in place without page reload.
-
-**Form-based** (plan detail page): Standard POST form buttons (Material Design thumbs-up/down SVG). Active direction highlighted (green/red). Helper text when vote is active: "Click the same thumb again to remove your vote."
+The `vote-buttons` Blade component has been removed; voting UI is now inlined directly in `show.blade.php`.
 
 ---
 
@@ -626,7 +600,7 @@ php artisan tinker
 
 ### 15.1 Lesson Plans Table
 
-Displays ALL lesson plans (paginated 20/page) with columns: checkbox, Delete button, Class, Day#, Author, Version, File, Updated.
+Displays ALL lesson plans (paginated 20/page) with columns: checkbox, Delete button, Main (✓ for official), Class, Lesson, Description, Contributor, Version, Update, File. Sortable via blue header pills. "Set Official" button for non-official plans.
 
 - **Per-row Delete:** individual form POST with browser `confirm()` guard. Admin can delete any plan (bypasses author check).
 - **Bulk Delete:** checkboxes use HTML5 `form="bulk-plans-form"` attribute to link to a `<form>` outside the table (avoids nested forms). Select-all checkbox via inline JS.
@@ -634,7 +608,7 @@ Displays ALL lesson plans (paginated 20/page) with columns: checkbox, Delete but
 
 ### 15.2 Registered Users Table
 
-Displays ALL users (paginated 20/page) with columns: checkbox, Delete button, Teacher Name, Email, Verified, Admin, Registered, Action.
+Displays ALL users (paginated 20/page) with columns: checkbox, Delete button, Contributor (Teacher Name), Email, Verified, Registered, Admin, Action.
 
 - **Per-row Delete:** admin can delete any user except themselves (self-deletion is blocked both in UI and controller).
 - **Bulk Delete:** same checkbox pattern as plans table; own ID is filtered out server-side.
@@ -1056,20 +1030,26 @@ Class names are not restricted to a fixed list. The upload and edit forms presen
 
 | File | Responsibility |
 |---|---|
-| `components/layout.blade.php` | Master layout: header, merged auth modal, Admin link, upload dialog, footer |
-| `components/vote-buttons.blade.php` | 4-mode vote component (readonly / locked / inline AJAX / form) |
-| `dashboard.blade.php` | Main public page with counters, search/filter/sort table, AJAX vote buttons |
-| `admin/index.blade.php` | Admin panel: lesson plans + users tables with delete/bulk-delete |
-| `lesson-plans/show.blade.php` | Plan detail page with voting, version history, Upload New Version + Delete (Alpine modal) |
-| `lesson-plans/preview.blade.php` | Document preview with embedded Google Docs Viewer |
-| `lesson-plans/create.blade.php` | Upload form for new plans (submit button gated on valid file) |
-| `lesson-plans/edit.blade.php` | New version form (submit button gated on valid file) |
-| `lesson-plans/my-plans.blade.php` | Authenticated user's own plan list |
+| `components/layout.blade.php` | Master layout: header, two-modal auth (Sign In + Sign Up), upload dialog, footer, auto-logout JS |
+| `dashboard.blade.php` | Main public page: counters, search/filter/sort table, display-only rating scores |
+| `admin/index.blade.php` | Admin panel: lesson plans + users tables with delete/bulk-delete, Official plans table |
+| `lesson-plans/show.blade.php` | Plan detail page: 3 viewer buttons, engagement-gated voting (Alpine AJAX), version history |
+| `lesson-plans/create.blade.php` | Upload form for new plans (duplicate checker, version preview, submit gated on valid file) |
+| `lesson-plans/edit.blade.php` | New version form (confirmation checkbox, locked fields, version preview, submit gated on valid file) |
+| `guide.blade.php` | Public guide page with print button |
 | `auth/login.blade.php` | Standalone login page (fallback for modal validation failures) |
 | `auth/register.blade.php` | Standalone registration page (fallback) |
 | `auth/forgot-password.blade.php` | Password reset request form (enter email) |
 | `auth/reset-password.blade.php` | Set new password form (from email link) |
 | `auth/verify-email.blade.php` | Email verification notice page with Resend button |
+| `emails/lesson-plan-uploaded.blade.php` | Upload confirmation email to contributor |
+| `emails/duplicate-content-removed.blade.php` | Notification email when a duplicate is removed |
+
+**Removed views (no longer in repo):**
+- `components/vote-buttons.blade.php` — voting is now inlined in `show.blade.php`
+- `lesson-plans/preview.blade.php` — replaced by external viewer buttons on show page
+- `lesson-plans/my-plans.blade.php` — replaced by "Show only my contributions" dashboard filter
+- `stats.blade.php` — replaced by dashboard counter boxes
 
 ---
 

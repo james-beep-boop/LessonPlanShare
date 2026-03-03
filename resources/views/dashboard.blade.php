@@ -53,7 +53,7 @@
             <div class="flex-1 min-w-[200px]">
                 <label for="search" class="block text-xs font-medium text-gray-500 mb-1">Search</label>
                 <input type="text" name="search" id="search" value="{{ request('search') }}"
-                       placeholder="Class name, description, or contributor..."
+                       placeholder="Class, Description, Contributor, or any criterion..."
                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
             </div>
@@ -62,6 +62,7 @@
             <div class="w-48">
                 <label for="class_name" class="block text-xs font-medium text-gray-500 mb-1">Class</label>
                 <select name="class_name" id="class_name"
+                        onchange="this.form.submit()"
                         class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     <option value="">All Classes</option>

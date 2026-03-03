@@ -70,10 +70,13 @@ class DashboardController extends Controller
             $query->where(function ($q) use ($search) {
                 // Prefix lesson_plans columns to avoid ambiguity with the users JOIN.
                 // users.name is searched directly (replaces the old orWhereHas subquery).
+                // CONCAT searches the version string (e.g. "1.2.3") and lesson_day number.
                 $q->where('lesson_plans.name', 'like', "%{$search}%")
                   ->orWhere('lesson_plans.class_name', 'like', "%{$search}%")
                   ->orWhere('lesson_plans.description', 'like', "%{$search}%")
-                  ->orWhere('users.name', 'like', "%{$search}%");
+                  ->orWhere('users.name', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(lesson_plans.version_major, '.', lesson_plans.version_minor, '.', lesson_plans.version_patch) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CAST(lesson_plans.lesson_day AS CHAR) LIKE ?", ["%{$search}%"]);
             });
         }
 

@@ -63,9 +63,9 @@
                 @error('lesson_day') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            {{-- Author (locked to logged-in user) --}}
+            {{-- Contributor (locked to logged-in user) --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Author</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Contributor</label>
                 <p class="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-sm text-gray-700">
                     {{ auth()->user()->name }}
                 </p>

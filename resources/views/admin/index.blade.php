@@ -43,7 +43,7 @@
                 <input type="hidden" name="user_sort"   value="{{ $userSort }}">
                 <input type="hidden" name="user_order"  value="{{ $userOrder }}">
                 <input type="text" name="plan_search" value="{{ $planSearch }}"
-                       placeholder="Class name, description, or contributor…"
+                       placeholder="Class, Description, Contributor, or any criterion..."
                        class="flex-1 min-w-[200px] border border-gray-300 rounded-md px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                 <button type="submit"
@@ -89,7 +89,7 @@
                                         'class_name'       => ['label' => 'Class',       'align' => 'left'],
                                         'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
                                         'description'      => ['label' => 'Description', 'align' => 'left'],
-                                        'author_name'      => ['label' => 'Author',      'align' => 'left'],
+                                        'author_name'      => ['label' => 'Contributor', 'align' => 'left'],
                                         'semantic_version' => ['label' => 'Ver.',        'align' => 'center'],
                                         'updated_at'       => ['label' => 'Update',      'align' => 'left'],
                                     ];
@@ -246,7 +246,7 @@
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
                                 @php
                                     $userCols = [
-                                        'name'               => ['label' => 'Teacher Name', 'align' => 'left'],
+                                        'name'               => ['label' => 'Contributor',  'align' => 'left'],
                                         'email'              => ['label' => 'Email',         'align' => 'left'],
                                         'email_verified_at'  => ['label' => 'Verified',      'align' => 'center'],
                                         'created_at'         => ['label' => 'Registered',    'align' => 'left'],
@@ -412,7 +412,7 @@
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lesson</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Author</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contributor</th>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Ver.</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Updated</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>

@@ -431,5 +431,33 @@
         </div>
     </footer>
 
+    {{-- ──────────────────────────────────────────────────────────
+         Auto-logout: submit the logout form after 60 min of inactivity.
+         Activity is any mouse move, key press, click, scroll, or touch.
+         Only active for authenticated users.
+    ────────────────────────────────────────────────────────────── --}}
+    @auth
+    <form id="inactivity-logout-form" method="POST" action="{{ route('logout') }}" class="hidden">
+        @csrf
+    </form>
+    <script>
+        (function () {
+            const TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+            let timer;
+            function logout() {
+                document.getElementById('inactivity-logout-form').submit();
+            }
+            function resetTimer() {
+                clearTimeout(timer);
+                timer = setTimeout(logout, TIMEOUT_MS);
+            }
+            ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (evt) {
+                document.addEventListener(evt, resetTimer, { passive: true });
+            });
+            resetTimer();
+        })();
+    </script>
+    @endauth
+
 </body>
 </html>

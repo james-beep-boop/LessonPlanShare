@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-02-28 (Multiple UX improvements: guest dashboard limited to 6 rows + Author column hidden; ARES Education branding styled as border button; Teacher Name in header is a link to "my plans" filtered dashboard; upload form shows duplicate class+day warning dialog with 4 options (change class, next available day, archive existing, cancel); Guide page updated for new two-dialog auth, Google Docs + Microsoft Office viewers, duplicate warning, username click, View/Edit button rename, Section 9 "For Administrators" removed; `latestVersions()` scope fixed to show highest semantic version per class/day globally via NOT EXISTS anti-join.)
+**Last updated:** 2026-03-02 (UX pass: Guide print button; dashboard search placeholder + class dropdown auto-submit on change; show page restructured — "Lesson Plan Details: Class: Lesson X" header, version/filename moved into box header, buttons consolidated to 2 rows (3 viewers | Download + Upload + Delete), "Day"→"Lesson" throughout, Back button black; edit page title "Upload New Version of Class Lesson N"; "Author"/"Teacher Name" → "Contributor" throughout all pages; admin search placeholder updated; auto-logout after 60 min inactivity via JS in layout; search covers version number + lesson day; new migration backfills anonymous names for users with no name; LessonPlanController AuthorizesRequests trait added (fixes delete 500); My Fave column sortable on dashboard; contributor truncated to 16 chars. Code cleanup pass: Zoho Writer engagement type fixed (was sending 'ms_office', now sends 'zoho_writer'; controller validation updated to accept 'zoho_writer'); TECHNICAL_DESIGN.md updated to v3.3.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -53,8 +53,11 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - `favorites_only` filter on dashboard: `Favorite::where('user_id',...)->pluck('lesson_plan_id')` + `whereIn` on `lesson_plans.id`; only active for verified users
 - `my_plans_only` filter on dashboard: `where('lesson_plans.author_id', Auth::id())`; only active for verified users; replaces the old My Plans page
 - Plan detail page (two-column layout, voting, version history sidebar)
-- Black `← Back to Dashboard` button in the top-right header area on: show page, guide page, admin panel
-- Show page action buttons: 3-row layout — Row 1: "View in Google Docs ↗" + "View in Microsoft Office ↗" (new tab, external); Row 2: "Download" + "Upload New Version" (auth); Row 3: full-width "Delete — Cannot Be Undone!" (author only, Alpine confirm modal)
+- Black `← Back to Dashboard` button (bg-gray-900) in the top-right header area on: show page, guide page, admin panel — all uniform
+- Show page action buttons: 2-row layout — Row 1: 3 viewers (Google Docs / MS Office / Zoho Writer); Row 2: Download + Upload Revision + Delete (3 cols if author, 2 cols otherwise — same total width)
+- Show page header: "Lesson Plan Details: [Class]: Lesson [N]"; version + filename inside box header (no "Lesson Plan Details" h2)
+- All UI labels: "Day" → "Lesson"; "Author"/"Teacher Name" → "Contributor" on all pages
+- Auto-logout: JS timer in layout.blade.php; 60 min of inactivity → POST to /logout (auth users only)
 - Dashboard: clicking anywhere on a table row navigates to `lesson-plans.show`; Rating, Favorite, and Actions cells use `event.stopPropagation()`; Actions button labelled "View/Edit" (not "View/Edit/Vote")
 - Dashboard Author column: shows Teacher Name (`users.name`); falls back to "No Teacher Name" (not "Anonymous") when user account is deleted or name is blank
 - **Preview page removed** — route, controller method (`preview()`), and blade file deleted; replaced by external viewer buttons on show page

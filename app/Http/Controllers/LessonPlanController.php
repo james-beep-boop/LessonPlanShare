@@ -525,14 +525,13 @@ class LessonPlanController extends Controller
     /**
      * AJAX: Record that the user opened this plan in an external viewer.
      *
-     * Called client-side when the user clicks "View in Google Docs" or
-     * "View in Microsoft Office". The engagement record unlocks voting
-     * on this plan version for the authenticated user.
+     * Called client-side when the user clicks any external viewer button.
+     * The engagement record unlocks voting on this plan for the user.
      */
     public function trackEngagement(Request $request, LessonPlan $lessonPlan): JsonResponse
     {
         $data = $request->validate([
-            'type' => 'required|in:google_docs,ms_office',
+            'type' => 'required|in:google_docs,ms_office,zoho_writer',
         ]);
 
         LessonPlanEngagement::firstOrCreate([

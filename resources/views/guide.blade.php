@@ -1,8 +1,8 @@
 <x-layout>
     <x-slot:title>Teacher Guide — ARES Education</x-slot>
     <div class="max-w-2xl mx-auto" x-data="{ lang: 'en' }">
-        {{-- Language Toggle --}}
-        <div class="flex gap-2 mb-6">
+        {{-- Language Toggle + Print --}}
+        <div class="flex gap-2 mb-6 flex-wrap">
             <button @click="lang = 'en'"
                     :class="lang === 'en'
                         ? 'bg-gray-900 text-white'
@@ -16,6 +16,10 @@
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
                     class="px-4 py-2 text-sm font-medium rounded-md transition-colors">
                 Kiswahili
+            </button>
+            <button onclick="window.print()"
+                    class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                🖨 Print
             </button>
         </div>
         {{-- ══════════════════════════════════════════════════════
