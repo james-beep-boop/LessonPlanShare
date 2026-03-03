@@ -75,6 +75,7 @@ remove_if_exists "resources/views/stats.blade.php"
 
 # Files removed 2026-03-01:
 remove_if_exists "resources/views/components/vote-buttons.blade.php"
+remove_if_exists "resources/views/lesson-plans/my-plans.blade.php"
 
 # Write version string to storage so the page footer can display it.
 # Source of truth: the VERSION file in the repo (e.g. "0.61").
