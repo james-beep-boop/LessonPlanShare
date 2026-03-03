@@ -82,6 +82,7 @@
                                            class="rounded border-gray-300">
                                 </th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Diff</th>
                                 @php
                                     // Sortable plan column headers
                                     $planCols = [
@@ -141,6 +142,12 @@
                                             </button>
                                         </form>
                                     </td>
+                                    <td class="px-3 py-2">
+                                        <a href="{{ route('admin.lesson-plans.compare', $plan) }}"
+                                           class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 transition-colors">
+                                            Diff
+                                        </a>
+                                    </td>
                                     {{-- Official: ✓ for official plans; "Set Official" button for others --}}
                                     <td class="px-3 py-2 text-center">
                                         @if ($plan->is_official)
@@ -174,7 +181,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="11" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="12" class="px-4 py-6 text-center text-gray-400">
                                         No lesson plans{{ $planSearch ? ' matching "' . e($planSearch) . '"' : '' }}.
                                     </td>
                                 </tr>

@@ -92,6 +92,9 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
 
     // Lesson plan management
+    Route::get('/lesson-plans/{lessonPlan}/compare', [LessonPlanController::class, 'compare'])
+        ->name('admin.lesson-plans.compare')
+        ->middleware('throttle:60,1');
     Route::delete('/lesson-plans/{lessonPlan}', [AdminController::class, 'destroyPlan'])
         ->name('admin.lesson-plans.destroy');
     Route::post('/lesson-plans/bulk-delete', [AdminController::class, 'bulkDestroyPlans'])
