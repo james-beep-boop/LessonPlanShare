@@ -39,8 +39,14 @@ class AuditSecurityTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => null]);
 
-        // Hit the route with no ?signature parameter — should be rejected
-        $response = $this->get("/email/verify/{$user->id}/" . sha1($user->email));
+        // Hit the route with no ?signature parameter — should be rejected.
+        // Use route() so the correct /verify-email/{id}/{hash} URL is built,
+        // but without URL::signedRoute() so there is no signature parameter.
+        $url = route('verification.verify', [
+            'id'   => $user->id,
+            'hash' => sha1($user->email),
+        ]);
+        $response = $this->get($url);
 
         $response->assertStatus(403);
     }
@@ -326,9 +332,10 @@ class AuditSecurityTest extends TestCase
             'lesson_day' => 1,
         ]);
         $otherPlan = LessonPlan::factory()->create([
-            'author_id'  => $other->id,
-            'class_name' => 'Geography',
-            'lesson_day' => 1,
+            'author_id'     => $other->id,
+            'class_name'    => 'Geography',
+            'lesson_day'    => 1,
+            'version_minor' => 1, // avoids unique(class_name, lesson_day, version) conflict with $ownPlan's 1.0.0
         ]);
 
         $response = $this->actingAs($author)

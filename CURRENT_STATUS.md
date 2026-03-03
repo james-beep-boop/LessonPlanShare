@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (Security/quality audit pass — 13 fixes across A1–C2 + new tests: A1 VerifyEmailController defense-in-depth signed URL guard; A2 retireForClassDay auth (admin archives all; non-admin archives only own plans) + file-first DB-update consistency; A4 login rate limiting (5 attempts/60s via RateLimiter); A5 password confirmation required for registration; A6 setOfficial() atomic with transaction + lockForUpdate; A7 dedup command skips official plans; A8 exception messages no longer leak to flash; B1 self-vote enforcement in VoteController + show page author notice; B2 register.blade.php form action → route(register.store) + name field + named error bags; B3 DEPLOYMENT.md stale file list cleaned; C1 LessonPlanView docblock corrected; C2 StoreLessonPlanRequest dead PUT/PATCH branch removed; C3 Official plan deletion blocked in destroy() + destroyPlan() + bulkDestroyPlans(); C4 redundant $dupe->votes()->delete() removed (FK cascade); D SemanticVersionTest 4 broken tests fixed; AuditSecurityTest + AuditCommandTest added (22 tests total); Zoho Writer removed from all docs.)
+**Last updated:** 2026-03-03 (Security/quality audit pass + full test suite green. Fixes: A1–C4 + D (Codex P0/P1/P2/P3). Test fixes: AuditSecurityTest 2 failures fixed (verification URL path, unique constraint); Breeze scaffolded test overrides added for ExampleTest, ProfileTest, Auth/RegistrationTest, Auth/EmailVerificationTest, Auth/PasswordConfirmationTest + confirm-password.blade.php (uses <x-layout>, no Vite). Run tests with: php artisan config:clear && php artisan test && php artisan config:cache && php artisan route:cache && php artisan view:cache)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -149,6 +149,12 @@ No major features remain. All spec items are implemented.
 | `tests/Feature/SemanticVersionTest.php` | 11 feature tests for semantic versioning (4 tests fixed: now use lesson-plans.store-version via POST) |
 | `tests/Feature/AuditSecurityTest.php` | 18 feature tests: A1 (email verify), A2 (retire auth + own-plans-only), A4 (throttle), A5 (pw confirm), B1 (self-vote + engagement), C3 (official plan deletion blocked) |
 | `tests/Feature/AuditCommandTest.php` | 4 feature tests: A7 (dedup command official-plan protection, dry-run, children) |
+| `tests/Feature/ExampleTest.php` | Override: dashboard returns 200 (replaces Breeze default) |
+| `tests/Feature/ProfileTest.php` | Override: no /profile route; tests dashboard/password-update (replaces Breeze) |
+| `tests/Feature/Auth/RegistrationTest.php` | Override: GET /register → 302, POST → verify-email redirect (replaces Breeze) |
+| `tests/Feature/Auth/EmailVerificationTest.php` | Override: no ?verified=1 param, custom verification flow (replaces Breeze) |
+| `tests/Feature/Auth/PasswordConfirmationTest.php` | Override: confirm-password uses <x-layout> (no Vite manifest error) |
+| `resources/views/auth/confirm-password.blade.php` | New: uses <x-layout>, consistent UI, no Vite |
 
 ## Admin Access Setup
 

@@ -85,6 +85,15 @@ app/Http/Controllers/LessonPlanController.php           →  (NEW)
 app/Http/Controllers/VoteController.php                 →  (NEW)
 
 tests/Feature/SemanticVersionTest.php                   →  (NEW)
+tests/Feature/AuditCommandTest.php                      →  (NEW)
+tests/Feature/AuditSecurityTest.php                     →  (NEW)
+tests/Feature/ExampleTest.php                           →  (REPLACE Breeze's)
+tests/Feature/ProfileTest.php                           →  (REPLACE Breeze's — no /profile route)
+tests/Feature/Auth/RegistrationTest.php                 →  (REPLACE Breeze's — modal-based reg)
+tests/Feature/Auth/EmailVerificationTest.php            →  (REPLACE Breeze's — no ?verified=1)
+tests/Feature/Auth/PasswordConfirmationTest.php         →  (REPLACE Breeze's)
+
+resources/views/auth/confirm-password.blade.php         →  (REPLACE Breeze's — use <x-layout>, no Vite)
 
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 
@@ -552,7 +561,15 @@ LessonPlanShare/
 │       └── edit.blade.php
 │
 ├── tests/Feature/
-│   └── SemanticVersionTest.php                        (11 tests for semantic versioning)
+│   ├── AuditCommandTest.php                           (4 tests for dedup command)
+│   ├── AuditSecurityTest.php                          (security/quality audit tests)
+│   ├── SemanticVersionTest.php                        (11 tests for semantic versioning)
+│   ├── ExampleTest.php                                (override: dashboard returns 200)
+│   ├── ProfileTest.php                                (override: no /profile route; dashboard/auth tests)
+│   └── Auth/
+│       ├── RegistrationTest.php                       (override: modal-based registration flow)
+│       ├── EmailVerificationTest.php                  (override: no ?verified=1 suffix)
+│       └── PasswordConfirmationTest.php               (uses <x-layout>, no Vite)
 │
 └── routes/
     ├── web.php
