@@ -38,8 +38,8 @@ This plan is written for the full Laravel install on server (`~/LessonPlanShare`
 
 ### SM-04 Upload + download round trip
 - Upload valid file as verified user.
-- Open detail, preview, and download.
-- Expected: canonical filename stored, preview opens, download returns file.
+- Open detail and download.
+- Expected: canonical filename stored, download returns file.
 
 ### SM-05 Vote toggle
 - As non-author: upvote, upvote again, downvote.

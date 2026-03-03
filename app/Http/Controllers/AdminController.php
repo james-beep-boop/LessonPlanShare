@@ -117,6 +117,12 @@ class AdminController extends Controller
     /** Delete a single lesson plan (admin bypasses author check). */
     public function destroyPlan(LessonPlan $lessonPlan)
     {
+        // Official plans must have their designation reassigned before deletion.
+        if ($lessonPlan->is_official) {
+            return redirect()->route('admin.index')
+                ->with('error', 'Cannot delete the Official version. Mark another plan as Official first.');
+        }
+
         try {
             $this->deletePlanFile($lessonPlan);
             $lessonPlan->delete();
@@ -144,13 +150,21 @@ class AdminController extends Controller
 
         $plans = LessonPlan::whereIn('id', $ids)->get();
 
-        foreach ($plans as $plan) {
+        // Skip official plans — they cannot be bulk-deleted.
+        $officialIds  = $plans->where('is_official', true)->pluck('id');
+        $deletable    = $plans->where('is_official', false);
+
+        foreach ($deletable as $plan) {
             $this->deletePlanFile($plan);
             $plan->delete();
         }
 
-        return redirect()->route('admin.index')
-            ->with('success', count($plans) . ' lesson plan(s) deleted.');
+        $message = $deletable->count() . ' lesson plan(s) deleted.';
+        if ($officialIds->isNotEmpty()) {
+            $message .= ' ' . $officialIds->count() . ' Official plan(s) were skipped — reassign Official first.';
+        }
+
+        return redirect()->route('admin.index')->with('success', $message);
     }
 
     /**

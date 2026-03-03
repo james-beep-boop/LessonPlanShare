@@ -212,19 +212,20 @@ class LessonPlanController extends Controller
     }
 
     /**
-     * Archive (rename) all lesson plan files for a given class/day.
+     * Archive (rename) plans for a given class/day.
      *
      * Called by the duplicate-warning dialog (option c) when a teacher wants
      * to mark existing plans as superseded before uploading a replacement.
      * Appends "_deleted_YYYYMMDD_HHMMSSz" to each file's name on disk and
      * in the database. DB records are kept; only filenames are changed.
      *
-     * Authorization: the caller must be an admin, or the author of at least
-     * one plan in the targeted class/day. This prevents a teacher from
-     * retiring another teacher's plans to "make room" for their own upload.
+     * Authorization:
+     *   - Admins can archive ALL plans in the class/day.
+     *   - Non-admins can only archive plans they authored (not other teachers').
      *
-     * File renames happen after the DB updates commit. Per-plan failures are
-     * logged but don't abort the whole operation.
+     * Consistency: the disk rename is attempted first for each plan. The DB row
+     * is only updated after the rename succeeds. A rename failure is logged and
+     * that plan is skipped, leaving its DB record pointing to the original path.
      */
     public function retireForClassDay(Request $request): JsonResponse
     {
@@ -236,69 +237,68 @@ class LessonPlanController extends Controller
         $className = $request->input('class_name');
         $lessonDay = (int) $request->input('lesson_day');
 
-        $plans = LessonPlan::where('class_name', $className)
+        $currentUserId = Auth::id();
+        $isAdmin       = Auth::user()->is_admin ?? false;
+
+        $allPlans = LessonPlan::where('class_name', $className)
             ->where('lesson_day', $lessonDay)
             ->get();
 
-        if ($plans->isEmpty()) {
+        if ($allPlans->isEmpty()) {
             return response()->json(['success' => true, 'count' => 0]);
         }
 
-        // Authorization: admin, or author of at least one plan in this class/day.
-        $currentUserId = Auth::id();
-        $isAdmin       = Auth::user()->is_admin ?? false;
-        $isAuthorOfAny = $plans->contains('author_id', $currentUserId);
-
-        if (! $isAdmin && ! $isAuthorOfAny) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only archive plans that you have authored.',
-            ], 403);
+        // Non-admins can only archive their own plans, not other teachers' plans.
+        if ($isAdmin) {
+            $plansToArchive = $allPlans;
+        } else {
+            $plansToArchive = $allPlans->where('author_id', $currentUserId);
+            if ($plansToArchive->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only archive plans that you have authored.',
+                ], 403);
+            }
         }
 
         // e.g. "_deleted_20260228_153045Z"
         $suffix = '_deleted_' . now()->utc()->format('Ymd_His') . 'Z';
         $count  = 0;
 
-        // Wrap DB updates in a transaction so partial failures don't leave
-        // the database in an inconsistent state (some rows renamed, some not).
-        DB::transaction(function () use ($plans, $suffix, &$count) {
-            foreach ($plans as $plan) {
-                if ($plan->file_path) {
-                    $ext     = pathinfo($plan->file_name ?? '', PATHINFO_EXTENSION);
-                    $base    = pathinfo($plan->file_name ?? '', PATHINFO_FILENAME);
-                    $newName = $base . $suffix . ($ext ? '.' . $ext : '');
-                    $newPath = 'lessons/' . $newName;
-                    DB::table('lesson_plans')->where('id', $plan->id)->update([
-                        'file_name' => $newName,
-                        'file_path' => $newPath,
-                        'name'      => $plan->name . $suffix,
-                    ]);
-                    $plan->file_path = $newPath; // keep in-memory copy current for rename below
-                    $plan->file_name = $newName;
-                }
-                $count++;
-            }
-        });
+        // Per-plan: rename the file on disk FIRST, then update the DB row.
+        // This keeps disk and DB in sync — a failed rename leaves the DB row
+        // pointing to the original path (no stale path written to DB).
+        foreach ($plansToArchive as $plan) {
+            $ext     = pathinfo($plan->file_name ?? '', PATHINFO_EXTENSION);
+            $base    = pathinfo($plan->file_name ?? '', PATHINFO_FILENAME);
+            $newName = $base . $suffix . ($ext ? '.' . $ext : '');
+            $newPath = 'lessons/' . $newName;
 
-        // Rename files on disk after the DB transaction commits.
-        // File-system errors don't roll back the DB (files can be renamed manually),
-        // but are logged so they can be investigated.
-        foreach ($plans as $plan) {
-            if ($plan->file_path && Storage::disk('public')->exists(
-                str_replace($suffix, '', $plan->file_path)
-            )) {
+            if ($plan->file_path) {
                 try {
-                    Storage::disk('public')->move(
-                        str_replace($suffix, '', $plan->file_path),
-                        $plan->file_path
-                    );
+                    if (Storage::disk('public')->exists($plan->file_path)) {
+                        Storage::disk('public')->move($plan->file_path, $newPath);
+                    }
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::warning(
                         "retireForClassDay: disk rename failed for plan {$plan->id} – {$e->getMessage()}"
                     );
+                    continue; // leave DB unchanged so it still matches old disk path
                 }
+
+                DB::table('lesson_plans')->where('id', $plan->id)->update([
+                    'file_name' => $newName,
+                    'file_path' => $newPath,
+                    'name'      => $plan->name . $suffix,
+                ]);
+            } else {
+                // No file — just append the suffix to the display name.
+                DB::table('lesson_plans')->where('id', $plan->id)->update([
+                    'name' => $plan->name . $suffix,
+                ]);
             }
+
+            $count++;
         }
 
         return response()->json(['success' => true, 'count' => $count]);
@@ -595,6 +595,13 @@ class LessonPlanController extends Controller
         $this->authorize('delete', $lessonPlan);
 
         try {
+            // Guard: official plans must have their designation reassigned before deletion.
+            if ($lessonPlan->is_official) {
+                return back()->with('error',
+                    'This plan is the Official version for its class/lesson. '
+                    . 'Please mark a different version as Official before deleting this one.');
+            }
+
             // Guard: root plans cannot be deleted while they still have descendants.
             if ($lessonPlan->is_original) {
                 $hasDescendants = LessonPlan::where('original_id', $lessonPlan->id)->exists();

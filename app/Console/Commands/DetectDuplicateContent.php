@@ -119,8 +119,8 @@ class DetectDuplicateContent extends Command
                     }
                 }
 
-                // Delete the duplicate record (safe — no dependents)
-                $dupe->votes()->delete();
+                // Delete the duplicate record (safe — no dependents).
+                // votes/favorites/engagements are removed automatically via ON DELETE CASCADE FK.
                 $dupe->delete();
                 $totalRemoved++;
             }

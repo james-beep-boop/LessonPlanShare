@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (Security/quality audit pass — 13 fixes across A1–C2 + new tests: A1 VerifyEmailController defense-in-depth signed URL guard; A2 retireForClassDay auth (admin or plan-author only) + DB transaction; A4 login rate limiting (5 attempts/60s via RateLimiter); A5 password confirmation required for registration; A6 setOfficial() atomic with transaction + lockForUpdate; A7 dedup command skips official plans; A8 exception messages no longer leak to flash; B1 self-vote enforcement in VoteController + show page author notice; B2 register.blade.php form action → route(register.store); B3 DEPLOYMENT.md stale file list cleaned; C1 LessonPlanView docblock corrected; C2 StoreLessonPlanRequest dead PUT/PATCH branch removed; D SemanticVersionTest 4 broken tests fixed (lesson-plans.update → lesson-plans.store-version); new AuditSecurityTest + AuditCommandTest test files added.)
+**Last updated:** 2026-03-03 (Security/quality audit pass — 13 fixes across A1–C2 + new tests: A1 VerifyEmailController defense-in-depth signed URL guard; A2 retireForClassDay auth (admin archives all; non-admin archives only own plans) + file-first DB-update consistency; A4 login rate limiting (5 attempts/60s via RateLimiter); A5 password confirmation required for registration; A6 setOfficial() atomic with transaction + lockForUpdate; A7 dedup command skips official plans; A8 exception messages no longer leak to flash; B1 self-vote enforcement in VoteController + show page author notice; B2 register.blade.php form action → route(register.store) + name field + named error bags; B3 DEPLOYMENT.md stale file list cleaned; C1 LessonPlanView docblock corrected; C2 StoreLessonPlanRequest dead PUT/PATCH branch removed; C3 Official plan deletion blocked in destroy() + destroyPlan() + bulkDestroyPlans(); C4 redundant $dupe->votes()->delete() removed (FK cascade); D SemanticVersionTest 4 broken tests fixed; AuditSecurityTest + AuditCommandTest added (22 tests total); Zoho Writer removed from all docs.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -54,7 +54,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - `my_plans_only` filter on dashboard: `where('lesson_plans.author_id', Auth::id())`; only active for verified users; replaces the old My Plans page
 - Plan detail page (two-column layout, voting, version history sidebar)
 - Black `← Back to Dashboard` button (bg-gray-900) in the top-right header area on: show page, guide page, admin panel — all uniform
-- Show page action buttons: 2-row layout — Row 1: 3 viewers (Google Docs / MS Office / Zoho Writer); Row 2: Download + Upload Revision + Delete (3 cols if author, 2 cols otherwise — same total width)
+- Show page action buttons: 2-row layout — Row 1: 2 viewers (Google Docs / MS Office); Row 2: Download + Upload Revision + Delete (3 cols if author, 2 cols otherwise — same total width)
 - Show page header: "Lesson Plan Details: [Class]: Lesson [N]"; version + filename inside box header (no "Lesson Plan Details" h2)
 - All UI labels: "Day" → "Lesson"; "Author"/"Teacher Name" → "Contributor" on all pages
 - Auto-logout: JS timer in layout.blade.php; 60 min of inactivity → POST to /logout (auth users only)
@@ -109,9 +109,10 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - **Registration:** `password_confirmation` field required (modal + fallback page); `'confirmed'` rule in `RegisteredUserController`.
 - **Self-vote:** enforced server-side in `VoteController::store()` (returns 403 JSON for API, back() for web); show page displays "You cannot vote on your own plan." when author views their own plan.
 - **`setOfficial()`:** wrapped in `DB::transaction()` with `lockForUpdate()` — prevents race condition where two concurrent requests could leave two plans marked official.
-- **`retireForClassDay()`:** authorization check (admin or author of any plan in class/day) + `DB::transaction()` around all DB updates; file renames happen after commit with per-file error logging.
+- **`retireForClassDay()`:** authorization check (admin archives ALL plans; non-admin can only archive their OWN plans in class/day); per-plan file rename happens FIRST, DB row only updated if rename succeeds — keeps disk and DB in sync.
 - **`VerifyEmailController`:** `abort_unless($request->hasValidSignature(), 403)` added as defense-in-depth before user lookup.
-- **`votes` table** has `ON DELETE CASCADE` FK — `$lessonPlan->votes()->delete()` in `destroy()` was redundant and removed.
+- **`votes` table** has `ON DELETE CASCADE` FK — `$lessonPlan->votes()->delete()` in `destroy()` and in `DetectDuplicateContent` were redundant and removed.
+- **Official plan deletion guard:** `LessonPlanController::destroy()` and `AdminController::destroyPlan()` both reject deletion of `is_official = true` plans with a clear error message; `bulkDestroyPlans()` skips official plans and reports the count. Admin must reassign Official via `setOfficial()` before the plan can be deleted.
 - **`CLASS_NAMES`** → `private const` (was `public const`); `buildPlanAttributes()` private method eliminates duplicate attribute array in `store()` and `storeVersion()`.
 
 ---
@@ -146,7 +147,7 @@ No major features remain. All spec items are implemented.
 | `database/migrations/` | 7 migrations (views, is_admin, favorites, semantic_version) |
 | `database/factories/LessonPlanFactory.php` | Factory for feature tests |
 | `tests/Feature/SemanticVersionTest.php` | 11 feature tests for semantic versioning (4 tests fixed: now use lesson-plans.store-version via POST) |
-| `tests/Feature/AuditSecurityTest.php` | 14 feature tests: A1 (email verify), A2 (retire auth), A4 (throttle), A5 (pw confirm), B1 (self-vote + engagement) |
+| `tests/Feature/AuditSecurityTest.php` | 18 feature tests: A1 (email verify), A2 (retire auth + own-plans-only), A4 (throttle), A5 (pw confirm), B1 (self-vote + engagement), C3 (official plan deletion blocked) |
 | `tests/Feature/AuditCommandTest.php` | 4 feature tests: A7 (dedup command official-plan protection, dry-run, children) |
 
 ## Admin Access Setup

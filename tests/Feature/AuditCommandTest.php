@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\LessonPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
@@ -15,6 +16,11 @@ use Tests\TestCase;
  *
  * Covers:
  *   A7 — lessons:detect-duplicates skips official plans
+ *
+ * Uses Artisan::call() + Artisan::output() instead of the PendingCommand
+ * ->expectsOutputToContain() fluent API. The PendingCommand mock intercepts
+ * output in an interactive mode that can block when warn() writes to the
+ * command's error channel rather than stdout.
  */
 class AuditCommandTest extends TestCase
 {
@@ -36,7 +42,7 @@ class AuditCommandTest extends TestCase
         $hash   = hash('sha256', 'duplicate-content-official');
 
         // Two plans with identical hashes; the second one is Official
-        $nonOfficial = LessonPlan::factory()->create([
+        LessonPlan::factory()->create([
             'author_id'   => $author->id,
             'file_hash'   => $hash,
             'is_official' => false,
@@ -48,9 +54,11 @@ class AuditCommandTest extends TestCase
             'is_official' => true,
         ]);
 
-        $this->artisan('lessons:detect-duplicates')
-            ->expectsOutputToContain('is the Official version')
-            ->assertSuccessful();
+        $exitCode = Artisan::call('lessons:detect-duplicates');
+        $output   = Artisan::output();
+
+        $this->assertEquals(0, $exitCode);
+        $this->assertStringContainsString('is the Official version', $output);
 
         // Official plan must still exist
         $this->assertDatabaseHas('lesson_plans', ['id' => $official->id]);
@@ -74,9 +82,9 @@ class AuditCommandTest extends TestCase
             'is_official' => false,
         ]);
 
-        $this->artisan('lessons:detect-duplicates')
-            ->assertSuccessful();
+        $exitCode = Artisan::call('lessons:detect-duplicates');
 
+        $this->assertEquals(0, $exitCode);
         $this->assertDatabaseHas('lesson_plans', ['id' => $keeper->id]);
         $this->assertDatabaseMissing('lesson_plans', ['id' => $duplicate->id]);
     }
@@ -90,9 +98,11 @@ class AuditCommandTest extends TestCase
         LessonPlan::factory()->create(['author_id' => $author->id, 'file_hash' => $hash]);
         LessonPlan::factory()->create(['author_id' => $author->id, 'file_hash' => $hash]);
 
-        $this->artisan('lessons:detect-duplicates', ['--dry-run' => true])
-            ->expectsOutputToContain('[DRY RUN]')
-            ->assertSuccessful();
+        $exitCode = Artisan::call('lessons:detect-duplicates', ['--dry-run' => true]);
+        $output   = Artisan::output();
+
+        $this->assertEquals(0, $exitCode);
+        $this->assertStringContainsString('[DRY RUN]', $output);
 
         // Both records should still exist
         $this->assertCount(2, LessonPlan::where('file_hash', $hash)->get());
@@ -105,7 +115,7 @@ class AuditCommandTest extends TestCase
         $hash   = hash('sha256', 'duplicate-content-with-children');
 
         // The "duplicate" plan has children pointing to it via parent_id
-        $keeper    = LessonPlan::factory()->create([
+        LessonPlan::factory()->create([
             'author_id' => $author->id,
             'file_hash' => $hash,
         ]);
@@ -119,9 +129,11 @@ class AuditCommandTest extends TestCase
             'parent_id' => $withChild->id,
         ]);
 
-        $this->artisan('lessons:detect-duplicates')
-            ->expectsOutputToContain('has dependent versions')
-            ->assertSuccessful();
+        $exitCode = Artisan::call('lessons:detect-duplicates');
+        $output   = Artisan::output();
+
+        $this->assertEquals(0, $exitCode);
+        $this->assertStringContainsString('has dependent versions', $output);
 
         // withChild must not have been deleted (it has dependents)
         $this->assertDatabaseHas('lesson_plans', ['id' => $withChild->id]);

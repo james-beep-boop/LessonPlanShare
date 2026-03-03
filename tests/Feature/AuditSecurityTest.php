@@ -312,4 +312,82 @@ class AuditSecurityTest extends TestCase
         $response->assertOk();
         $response->assertJson(['success' => true]);
     }
+
+    #[Test]
+    public function retire_class_day_non_admin_only_archives_own_plans(): void
+    {
+        $author   = User::factory()->create(['email_verified_at' => now()]);
+        $other    = User::factory()->create(['email_verified_at' => now()]);
+
+        // $author owns one plan; $other owns a second plan in the same class/day
+        $ownPlan   = LessonPlan::factory()->create([
+            'author_id'  => $author->id,
+            'class_name' => 'Geography',
+            'lesson_day' => 1,
+        ]);
+        $otherPlan = LessonPlan::factory()->create([
+            'author_id'  => $other->id,
+            'class_name' => 'Geography',
+            'lesson_day' => 1,
+        ]);
+
+        $response = $this->actingAs($author)
+            ->postJson(route('lesson-plans.retire'), [
+                'class_name' => 'Geography',
+                'lesson_day' => 1,
+            ]);
+
+        // Should succeed (author has own plans to archive)
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'count' => 1]);
+
+        // Author's own plan name should have the suffix appended
+        $this->assertStringContainsString('_deleted_', $ownPlan->fresh()->name);
+
+        // Other teacher's plan should be untouched
+        $this->assertEquals($otherPlan->name, $otherPlan->fresh()->name);
+    }
+
+    // ── Official plan deletion guard ─────────────────────────────────
+
+    #[Test]
+    public function deleting_official_plan_returns_error(): void
+    {
+        $author = User::factory()->create(['email_verified_at' => now()]);
+
+        $officialPlan = LessonPlan::factory()->create([
+            'author_id'  => $author->id,
+            'is_official' => true,
+        ]);
+
+        $response = $this->actingAs($author)
+            ->delete(route('lesson-plans.destroy', $officialPlan));
+
+        // Should redirect back with an error flash (not delete the plan)
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+        $this->assertDatabaseHas('lesson_plans', ['id' => $officialPlan->id]);
+    }
+
+    #[Test]
+    public function admin_cannot_delete_official_plan_via_admin_panel(): void
+    {
+        $admin  = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_admin'          => true,
+        ]);
+        $author = User::factory()->create(['email_verified_at' => now()]);
+
+        $officialPlan = LessonPlan::factory()->create([
+            'author_id'  => $author->id,
+            'is_official' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->delete(route('admin.lesson-plans.destroy', $officialPlan));
+
+        $response->assertRedirect(route('admin.index'));
+        $response->assertSessionHas('error');
+        $this->assertDatabaseHas('lesson_plans', ['id' => $officialPlan->id]);
+    }
 }

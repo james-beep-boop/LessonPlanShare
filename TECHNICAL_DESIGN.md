@@ -374,10 +374,9 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 - **Detail grid** (2 columns): Class, Lesson (not "Lesson Day"), Version, Contributor, Uploaded
 - Community Rating score (colored +/- number)
 - **Action buttons** (separated by `border-t`, wrapped in a single `x-data="{ confirmOpen: false }"` for the delete modal):
-  - **Row 1 — three viewers** (`sm:grid-cols-3`, visible if file exists):
+  - **Row 1 — two viewers** (`sm:grid-cols-2`, visible if file exists):
     - View in Google Docs ↗ (dark primary, engagement-tracked)
     - View in Microsoft Office ↗ (light outlined, engagement-tracked)
-    - View in Zoho Writer ↗ (light outlined, engagement-tracked)
   - **Row 2** (`sm:grid-cols-3` for authors, `sm:grid-cols-2` for non-authors — same total width as Row 1):
     - Download This Document (light outlined)
     - Upload Your Revision of This Document (light outlined)
@@ -386,7 +385,7 @@ Eight columns. Sort headers are styled as distinct blue button pills (active = b
 
 ### 5.2 Community Rating Card
 
-**Engagement-gated:** only shown (as interactive voting) when `$hasEngaged` is true — the user must have opened the plan in an external viewer or downloaded it. Engagement is tracked in `lesson_plan_engagements` (`type` values: `google_docs`, `ms_office`, `zoho_writer`, `download`).
+**Engagement-gated:** only shown (as interactive voting) when `$hasEngaged` is true — the user must have opened the plan in an external viewer or downloaded it. Engagement is tracked in `lesson_plan_engagements` (`type` values: `google_docs`, `ms_office`, `download`).
 
 - Large vote score number (green / red / gray)
 - Three inline Alpine.js AJAX buttons: **Upvote This Version** / **Downvote This Version** / **Reset Vote**. Active direction highlighted. Reset disabled when no vote is active.
@@ -470,10 +469,9 @@ If not yet engaged: gray-50 nudge card: "Open this plan in an external viewer or
 
 > **Removed:** The `/lesson-plans/{id}/preview` page (embedded Google Docs Viewer) has been replaced by three external viewer buttons on the plan detail page (see Section 5.1). The route, controller method (`preview()`), and Blade view (`preview.blade.php`) are all deleted.
 
-The three viewer buttons on the show page open the document in:
+The two viewer buttons on the show page open the document in:
 - Google Docs Viewer (`docs.google.com/gview?url=...`) — best for mobile
 - Microsoft Office Online (`view.officeapps.live.com/op/view.aspx?src=...`) — best for desktop
-- Zoho Writer (`writer.zoho.com/writer/open?url=...`) — sign in to Zoho first
 
 Each viewer click fires an engagement-tracking AJAX request before opening the tab.
 

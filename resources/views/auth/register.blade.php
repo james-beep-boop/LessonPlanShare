@@ -8,14 +8,27 @@
             @csrf
 
             <div class="mb-4">
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                    Username <span class="font-normal text-gray-400">(must be a valid email)</span>
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                    Teacher Name
                 </label>
-                <input type="email" id="email" name="email"
-                       value="{{ old('email') }}" required autofocus
+                <input type="text" id="name" name="name"
+                       value="{{ old('name') }}" required autofocus
                        class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                @error('email')
+                @error('name', 'register')
+                    <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                    Teacher Email
+                </label>
+                <input type="email" id="email" name="email"
+                       value="{{ old('email') }}" required
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
+                              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                @error('email', 'register')
                     <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
@@ -46,7 +59,7 @@
                             class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
                             x-text="showPw ? 'Hide' : 'Show'"></button>
                 </div>
-                @error('password')
+                @error('password', 'register')
                     <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
