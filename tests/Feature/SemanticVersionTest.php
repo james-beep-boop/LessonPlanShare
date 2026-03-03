@@ -122,7 +122,7 @@ class SemanticVersionTest extends TestCase
     }
 
     /** @test */
-    public function update_major_revision_increments_minor_and_resets_patch(): void
+    public function store_version_major_revision_increments_minor_and_resets_patch(): void
     {
         // Seed existing plan at 1.0.0
         $parent = LessonPlan::factory()->create([
@@ -136,7 +136,7 @@ class SemanticVersionTest extends TestCase
 
         $this->actingAs($this->user);
 
-        $this->put(route('lesson-plans.update', $parent), [
+        $this->post(route('lesson-plans.store-version', $parent), [
             'class_name'    => 'History',
             'lesson_day'    => 7,
             'revision_type' => 'major',
@@ -152,7 +152,7 @@ class SemanticVersionTest extends TestCase
     }
 
     /** @test */
-    public function update_minor_revision_increments_patch_only(): void
+    public function store_version_minor_revision_increments_patch_only(): void
     {
         // Seed existing plan at 1.1.0
         $parent = LessonPlan::factory()->create([
@@ -166,7 +166,7 @@ class SemanticVersionTest extends TestCase
 
         $this->actingAs($this->user);
 
-        $this->put(route('lesson-plans.update', $parent), [
+        $this->post(route('lesson-plans.store-version', $parent), [
             'class_name'    => 'Mathematics',
             'lesson_day'    => 10,
             'revision_type' => 'minor',
@@ -182,7 +182,7 @@ class SemanticVersionTest extends TestCase
     }
 
     /** @test */
-    public function update_with_changed_class_day_gets_version_1_0_0_if_new(): void
+    public function store_version_with_changed_class_day_gets_version_1_0_0_if_new(): void
     {
         $parent = LessonPlan::factory()->create([
             'author_id'     => $this->user->id,
@@ -196,7 +196,7 @@ class SemanticVersionTest extends TestCase
         $this->actingAs($this->user);
 
         // Create new version but switch to a completely different class/day
-        $this->put(route('lesson-plans.update', $parent), [
+        $this->post(route('lesson-plans.store-version', $parent), [
             'class_name'    => 'History', // no existing plans for History/day 20
             'lesson_day'    => 20,
             'revision_type' => 'major',
@@ -212,7 +212,7 @@ class SemanticVersionTest extends TestCase
     }
 
     /** @test */
-    public function revision_type_is_required_for_update(): void
+    public function revision_type_is_required_for_store_version(): void
     {
         $parent = LessonPlan::factory()->create([
             'author_id' => $this->user->id,
@@ -220,7 +220,7 @@ class SemanticVersionTest extends TestCase
 
         $this->actingAs($this->user);
 
-        $response = $this->put(route('lesson-plans.update', $parent), [
+        $response = $this->post(route('lesson-plans.store-version', $parent), [
             'class_name' => 'English',
             'lesson_day' => 1,
             // revision_type intentionally omitted

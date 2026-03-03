@@ -219,8 +219,12 @@ class LessonPlanController extends Controller
      * Appends "_deleted_YYYYMMDD_HHMMSSz" to each file's name on disk and
      * in the database. DB records are kept; only filenames are changed.
      *
-     * Any verified teacher can archive plans for any class/day. Failures are
-     * logged per-plan but don't abort the whole operation.
+     * Authorization: the caller must be an admin, or the author of at least
+     * one plan in the targeted class/day. This prevents a teacher from
+     * retiring another teacher's plans to "make room" for their own upload.
+     *
+     * File renames happen after the DB updates commit. Per-plan failures are
+     * logged but don't abort the whole operation.
      */
     public function retireForClassDay(Request $request): JsonResponse
     {
@@ -240,29 +244,60 @@ class LessonPlanController extends Controller
             return response()->json(['success' => true, 'count' => 0]);
         }
 
+        // Authorization: admin, or author of at least one plan in this class/day.
+        $currentUserId = Auth::id();
+        $isAdmin       = Auth::user()->is_admin ?? false;
+        $isAuthorOfAny = $plans->contains('author_id', $currentUserId);
+
+        if (! $isAdmin && ! $isAuthorOfAny) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only archive plans that you have authored.',
+            ], 403);
+        }
+
         // e.g. "_deleted_20260228_153045Z"
         $suffix = '_deleted_' . now()->utc()->format('Ymd_His') . 'Z';
         $count  = 0;
 
-        foreach ($plans as $plan) {
-            try {
-                if ($plan->file_path && Storage::disk('public')->exists($plan->file_path)) {
+        // Wrap DB updates in a transaction so partial failures don't leave
+        // the database in an inconsistent state (some rows renamed, some not).
+        DB::transaction(function () use ($plans, $suffix, &$count) {
+            foreach ($plans as $plan) {
+                if ($plan->file_path) {
                     $ext     = pathinfo($plan->file_name ?? '', PATHINFO_EXTENSION);
                     $base    = pathinfo($plan->file_name ?? '', PATHINFO_FILENAME);
                     $newName = $base . $suffix . ($ext ? '.' . $ext : '');
                     $newPath = 'lessons/' . $newName;
-                    Storage::disk('public')->move($plan->file_path, $newPath);
                     DB::table('lesson_plans')->where('id', $plan->id)->update([
                         'file_name' => $newName,
                         'file_path' => $newPath,
                         'name'      => $plan->name . $suffix,
                     ]);
+                    $plan->file_path = $newPath; // keep in-memory copy current for rename below
+                    $plan->file_name = $newName;
                 }
                 $count++;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning(
-                    "retireForClassDay: plan {$plan->id} – {$e->getMessage()}"
-                );
+            }
+        });
+
+        // Rename files on disk after the DB transaction commits.
+        // File-system errors don't roll back the DB (files can be renamed manually),
+        // but are logged so they can be investigated.
+        foreach ($plans as $plan) {
+            if ($plan->file_path && Storage::disk('public')->exists(
+                str_replace($suffix, '', $plan->file_path)
+            )) {
+                try {
+                    Storage::disk('public')->move(
+                        str_replace($suffix, '', $plan->file_path),
+                        $plan->file_path
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        "retireForClassDay: disk rename failed for plan {$plan->id} – {$e->getMessage()}"
+                    );
+                }
             }
         }
 
@@ -364,15 +399,18 @@ class LessonPlanController extends Controller
                 'lesson_plan_id' => $lessonPlan->id,
             ]);
 
-            // Engagement check: author can always vote; others need to have
+            // Engagement check: only non-authors can vote; they must have
             // downloaded the plan or opened it in an external viewer first.
-            $hasEngaged = $lessonPlan->author_id === Auth::id()
-                || LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
+            // Authors see a "cannot vote on own plan" notice instead.
+            $hasEngaged = $lessonPlan->author_id !== Auth::id()
+                && LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
                     ->where('user_id', Auth::id())
                     ->exists();
         }
 
-        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged'));
+        $isAuthorOfPlan = Auth::check() && $lessonPlan->author_id === Auth::id();
+
+        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged', 'isAuthorOfPlan'));
     }
 
     /**
@@ -590,8 +628,7 @@ class LessonPlanController extends Controller
                 . "\n" . $e->getTraceAsString()
             );
             return back()->with('error',
-                'Could not delete this lesson plan: ' . $e->getMessage()
-                . ' — Details have been logged.');
+                'Could not delete this lesson plan. Details have been logged.');
         }
 
         return redirect()->route('dashboard')

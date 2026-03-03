@@ -83,6 +83,15 @@ class DetectDuplicateContent extends Command
                     continue;
                 }
 
+                // ── Official-plan protection ──
+                // Never auto-delete a plan that is the Official version for
+                // its class/day. The admin must manually reassign the Official
+                // designation before the duplicate can be cleaned up.
+                if ($dupe->is_official) {
+                    $this->warn("    Skipping: [{$dupe->id}] {$dupe->name} — is the Official version (reassign first)");
+                    continue;
+                }
+
                 $this->line("    Removing: [{$dupe->id}] {$dupe->name} by {$authorName}");
 
                 if ($this->option('dry-run')) {

@@ -162,9 +162,16 @@
         </div>
 
         {{-- Rate This Document --}}
-        {{-- Shown only when the user has engaged (author / downloaded / viewed in external viewer). --}}
-        {{-- Non-engaged users see a nudge instead. --}}
-        @if($hasEngaged)
+        {{-- Authors see a notice (self-votes not allowed). --}}
+        {{-- Non-authors who have engaged see vote buttons. --}}
+        {{-- Non-engaged non-authors see a nudge to open/download first. --}}
+        @if($isAuthorOfPlan)
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <p class="text-sm text-gray-500 text-center">
+                    You cannot vote on your own plan.
+                </p>
+            </div>
+        @elseif($hasEngaged)
             <div class="border border-gray-200 rounded-lg p-6">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Rate This Document</h2>
 

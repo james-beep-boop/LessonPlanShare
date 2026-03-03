@@ -122,10 +122,12 @@ class AdminController extends Controller
             $lessonPlan->delete();
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error(
-                "AdminController::destroyPlan failed for plan {$lessonPlan->id}: " . $e->getMessage()
+                "AdminController::destroyPlan failed for plan {$lessonPlan->id}: "
+                . get_class($e) . ': ' . $e->getMessage()
+                . "\n" . $e->getTraceAsString()
             );
             return redirect()->route('admin.index')
-                ->with('error', 'Could not delete lesson plan: ' . $e->getMessage());
+                ->with('error', 'Could not delete the lesson plan. Details have been logged.');
         }
 
         return redirect()->route('admin.index')->with('success', 'Lesson plan deleted.');
@@ -253,16 +255,28 @@ class AdminController extends Controller
      */
     public function setOfficial(LessonPlan $lessonPlan): RedirectResponse
     {
-        // Clear existing official designation for this class/day combination.
-        DB::table('lesson_plans')
-            ->where('class_name', $lessonPlan->class_name)
-            ->where('lesson_day', $lessonPlan->lesson_day)
-            ->update(['is_official' => false]);
+        // Wrap in a transaction with a pessimistic lock so two simultaneous
+        // setOfficial requests for the same class/day cannot both commit,
+        // preventing a window where zero or two plans are marked official.
+        DB::transaction(function () use ($lessonPlan) {
+            // Acquire a write lock on all rows for this class/day before updating.
+            DB::table('lesson_plans')
+                ->where('class_name', $lessonPlan->class_name)
+                ->where('lesson_day', $lessonPlan->lesson_day)
+                ->lockForUpdate()
+                ->get(); // fetch to acquire the lock; result is not used
 
-        // Mark the chosen plan as official.
-        DB::table('lesson_plans')
-            ->where('id', $lessonPlan->id)
-            ->update(['is_official' => true]);
+            // Clear existing official designation for this class/day combination.
+            DB::table('lesson_plans')
+                ->where('class_name', $lessonPlan->class_name)
+                ->where('lesson_day', $lessonPlan->lesson_day)
+                ->update(['is_official' => false]);
+
+            // Mark the chosen plan as official.
+            DB::table('lesson_plans')
+                ->where('id', $lessonPlan->id)
+                ->update(['is_official' => true]);
+        });
 
         return back()->with('success',
             "Version {$lessonPlan->semantic_version} of {$lessonPlan->class_name} Lesson {$lessonPlan->lesson_day} is now the Official version.");

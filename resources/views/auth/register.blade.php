@@ -4,7 +4,7 @@
     <div class="max-w-sm mx-auto mt-8">
         <h2 class="text-xl font-semibold text-gray-900 mb-6">Create Account</h2>
 
-        <form method="POST" action="{{ route('register') }}" x-data="{ showPw: false }">
+        <form method="POST" action="{{ route('register.store') }}" x-data="{ showPw: false }">
             @csrf
 
             <div class="mb-4">

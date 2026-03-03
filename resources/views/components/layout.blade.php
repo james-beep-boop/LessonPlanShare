@@ -294,7 +294,7 @@
                     </div>
 
                     {{-- Password --}}
-                    <div class="mb-6" x-data="{ show: false }">
+                    <div class="mb-4" x-data="{ show: false }">
                         <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-1">
                             Password
                         </label>
@@ -310,6 +310,22 @@
                         @error('password', 'register')
                             <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                         @enderror
+                    </div>
+
+                    {{-- Confirm Password --}}
+                    <div class="mb-6" x-data="{ show: false }">
+                        <label for="signup-password-confirmation" class="block text-sm font-medium text-gray-700 mb-1">
+                            Confirm Password
+                        </label>
+                        <div class="relative">
+                            <input :type="show ? 'text' : 'password'" id="signup-password-confirmation"
+                                   name="password_confirmation" required autocomplete="new-password"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 pr-16 text-sm
+                                          focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                            <button type="button" @click="show = !show"
+                                    class="absolute inset-y-0 right-0 px-3 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                                    x-text="show ? 'Hide' : 'Show'"></button>
+                        </div>
                     </div>
 
                     <button type="submit"

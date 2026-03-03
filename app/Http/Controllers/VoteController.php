@@ -15,12 +15,12 @@ use Illuminate\Support\Facades\Auth;
  * - Each user gets exactly one active vote per lesson plan version.
  * - Voting the same direction again REMOVES the vote (toggle off).
  * - Voting the opposite direction SWITCHES the vote.
- * - All authenticated users can vote, including the plan's own author.
+ * - Users cannot vote on their own plans (self-vote prevention).
  * - The cached vote_score on the lesson plan is recalculated after each action.
  *
  * Engagement gate:
  * - Users must have engaged with the plan before voting (downloaded it,
- *   or viewed it in Google Docs / MS Office). Authors are exempt.
+ *   or viewed it in Google Docs / MS Office).
  * - Enforced server-side to prevent API-level bypasses.
  *
  * Only authenticated + verified users can vote (enforced by route middleware).
@@ -39,14 +39,19 @@ class VoteController extends Controller
             'value' => 'required|integer|in:-1,1',
         ]);
 
-        // Guard: must have engaged with the plan before voting.
-        // Authors are exempt; everyone else needs a download or viewer engagement.
-        $canVote = $lessonPlan->author_id === Auth::id()
-            || LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
-                ->where('user_id', Auth::id())
-                ->exists();
+        // Guard: users cannot vote on their own plans.
+        if ($lessonPlan->author_id === Auth::id()) {
+            return $request->expectsJson()
+                ? response()->json(['message' => 'You cannot vote on your own plan.'], 403)
+                : back()->with('error', 'You cannot vote on your own plan.');
+        }
 
-        if (! $canVote) {
+        // Guard: must have engaged with the plan (download or external viewer) before voting.
+        $hasEngaged = LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
+            ->where('user_id', Auth::id())
+            ->exists();
+
+        if (! $hasEngaged) {
             return $request->expectsJson()
                 ? response()->json(['message' => 'Download or view the plan in an external viewer before voting.'], 403)
                 : back()->with('error', 'Please download or open the plan in an external viewer before voting.');

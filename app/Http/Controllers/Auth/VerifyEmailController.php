@@ -26,6 +26,12 @@ class VerifyEmailController extends Controller
 {
     public function __invoke(Request $request, int $id, string $hash): RedirectResponse
     {
+        // Defense-in-depth: explicitly check signed URL validity before any
+        // user lookup. The 'signed' middleware on this route already rejects
+        // tampered requests, but this guard ensures the check runs even if
+        // the middleware stack is misconfigured.
+        abort_unless($request->hasValidSignature(), 403, 'Invalid or expired verification link.');
+
         $user = User::findOrFail($id);
 
         // Verify the hash matches the user's email (same check Breeze does)

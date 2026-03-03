@@ -50,7 +50,7 @@ class RegisteredUserController extends Controller
         $request->validateWithBag('register', [
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255'],
-            'password' => ['required', Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         // Check email uniqueness (return error in 'register' bag)

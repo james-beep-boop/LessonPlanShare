@@ -549,9 +549,7 @@ LessonPlanShare/
 │   └── lesson-plans/
 │       ├── create.blade.php
 │       ├── show.blade.php
-│       ├── edit.blade.php
-│       ├── preview.blade.php                           (Google Docs Viewer)
-│       └── my-plans.blade.php
+│       └── edit.blade.php
 │
 ├── tests/Feature/
 │   └── SemanticVersionTest.php                        (11 tests for semantic versioning)

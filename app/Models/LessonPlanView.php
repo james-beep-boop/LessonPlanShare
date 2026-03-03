@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Tracks whether a user has visited the detail page of a lesson plan.
- * Used to gate voting: users must view a plan before they can vote on it.
+ * Records page visits to lesson plan detail pages (informational metric).
  *
- * Created via LessonPlanView::firstOrCreate() in LessonPlanController::show().
+ * NOTE: This model is NOT used to gate voting. Voting is gated by
+ * LessonPlanEngagement (download / external viewer open). This model
+ * is written for historical/analytical data only.
+ *
+ * Written via LessonPlanView::firstOrCreate() in LessonPlanController::show().
  */
 class LessonPlanView extends Model
 {
