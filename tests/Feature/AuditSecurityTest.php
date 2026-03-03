@@ -500,7 +500,7 @@ class AuditSecurityTest extends TestCase
             'class_name'  => 'Mathematics',
             'lesson_day'  => 5,
             'description' => 'First plan',
-            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.pdf', 10, 'application/pdf'),
+            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.docx', 100),
         ]);
 
         $plan = LessonPlan::where('class_name', 'Mathematics')->where('lesson_day', 5)->first();
@@ -520,7 +520,7 @@ class AuditSecurityTest extends TestCase
             'class_name'  => 'History',
             'lesson_day'  => 3,
             'description' => 'First plan',
-            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.pdf', 10, 'application/pdf'),
+            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.docx', 100),
         ]);
 
         // Second teacher uploads a brand-new plan for the same class/day via store()
@@ -528,7 +528,7 @@ class AuditSecurityTest extends TestCase
             'class_name'  => 'History',
             'lesson_day'  => 3,
             'description' => 'Second plan',
-            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson2.pdf', 10, 'application/pdf'),
+            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson2.docx', 100),
         ]);
 
         $plans = LessonPlan::where('class_name', 'History')->where('lesson_day', 3)->get();
