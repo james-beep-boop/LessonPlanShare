@@ -199,6 +199,10 @@ class AdminController extends Controller
      * Blocked if the user owns any Official plan — admin must reassign Official
      * to another version before deleting the user.  This prevents a class/day
      * losing its designated official version via cascade.
+     *
+     * The official-plan check and the delete run inside a transaction with a
+     * pessimistic lock so a concurrent setOfficial() cannot sneak in between
+     * the check and the delete.
      */
     public function destroyUser(User $user)
     {
@@ -207,27 +211,40 @@ class AdminController extends Controller
             return redirect()->route('admin.index')->with('error', 'You cannot delete your own account.');
         }
 
-        // Block deletion if this user owns any Official plan.
-        $officialCount = LessonPlan::where('author_id', $user->id)
-            ->where('is_official', true)
-            ->count();
-        if ($officialCount > 0) {
+        $blocked = false;
+        $officialCount = 0;
+
+        DB::transaction(function () use ($user, &$blocked, &$officialCount) {
+            // Lock this user's plans so no concurrent setOfficial() can promote one
+            // between our check and the delete.
+            $officialCount = LessonPlan::where('author_id', $user->id)
+                ->where('is_official', true)
+                ->lockForUpdate()
+                ->count();
+
+            if ($officialCount > 0) {
+                $blocked = true;
+                return; // abort the closure; transaction rolls back (no writes happened)
+            }
+
+            // Remove every lesson plan file this user uploaded before deleting the DB rows.
+            // The foreign-key CASCADE would remove lesson_plan rows automatically, but it
+            // would leave orphaned files on disk — so we clean up manually first.
+            $plans = LessonPlan::where('author_id', $user->id)->get();
+            foreach ($plans as $plan) {
+                $this->deletePlanFile($plan);
+            }
+
+            $user->delete();
+        });
+
+        if ($blocked) {
             return redirect()->route('admin.index')->with(
                 'error',
                 "Cannot delete {$user->name}: they own {$officialCount} Official plan(s). "
                 . 'Reassign Official to another version first.'
             );
         }
-
-        // Remove every lesson plan file this user uploaded before deleting the DB rows.
-        // The foreign-key CASCADE would remove lesson_plan rows automatically, but it
-        // would leave orphaned files on disk — so we clean up manually first.
-        $plans = LessonPlan::where('author_id', $user->id)->get();
-        foreach ($plans as $plan) {
-            $this->deletePlanFile($plan);
-        }
-
-        $user->delete();
 
         return redirect()->route('admin.index')->with('success', 'User deleted.');
     }
@@ -236,6 +253,9 @@ class AdminController extends Controller
      * Bulk-delete multiple user accounts and all their uploaded lesson plan files.
      *
      * Users who own Official plans are skipped (same invariant as destroyUser).
+     * The official-ownership check and each user deletion run inside a single
+     * transaction with a pessimistic lock to close the same race window as
+     * destroyUser().
      */
     public function bulkDestroyUsers(Request $request)
     {
@@ -252,27 +272,37 @@ class AdminController extends Controller
             return redirect()->route('admin.index')->with('error', 'No users selected (or only yourself).');
         }
 
-        // Identify which selected users own Official plans — skip them.
-        $officialOwnerIds = LessonPlan::whereIn('author_id', $ids)
-            ->where('is_official', true)
-            ->pluck('author_id')
-            ->unique()
-            ->toArray();
+        $deletedCount    = 0;
+        $officialOwnerIds = [];
 
-        $deletableIds = array_values(array_diff($ids, $officialOwnerIds));
+        DB::transaction(function () use ($ids, &$deletedCount, &$officialOwnerIds) {
+            // Lock all plans for the selected users so no concurrent setOfficial()
+            // can promote a plan between our check and the delete.
+            LessonPlan::whereIn('author_id', $ids)->lockForUpdate()->get();
 
-        // Load users individually so we can clean up their files before deleting.
-        // Using a mass-delete (whereIn->delete()) would skip file cleanup.
-        $users = User::whereIn('id', $deletableIds)->get();
-        foreach ($users as $user) {
-            $plans = LessonPlan::where('author_id', $user->id)->get();
-            foreach ($plans as $plan) {
-                $this->deletePlanFile($plan);
+            // Identify which selected users own Official plans — skip them.
+            $officialOwnerIds = LessonPlan::whereIn('author_id', $ids)
+                ->where('is_official', true)
+                ->pluck('author_id')
+                ->unique()
+                ->toArray();
+
+            $deletableIds = array_values(array_diff($ids, $officialOwnerIds));
+
+            // Load users individually so we can clean up their files before deleting.
+            // Using a mass-delete (whereIn->delete()) would skip file cleanup.
+            $users = User::whereIn('id', $deletableIds)->get();
+            foreach ($users as $user) {
+                $plans = LessonPlan::where('author_id', $user->id)->get();
+                foreach ($plans as $plan) {
+                    $this->deletePlanFile($plan);
+                }
+                $user->delete();
+                $deletedCount++;
             }
-            $user->delete();
-        }
+        });
 
-        $message = count($users) . ' user(s) deleted.';
+        $message = $deletedCount . ' user(s) deleted.';
         if (!empty($officialOwnerIds)) {
             $skippedNames = User::whereIn('id', $officialOwnerIds)->pluck('name')->implode(', ');
             $message .= ' Skipped ' . count($officialOwnerIds)

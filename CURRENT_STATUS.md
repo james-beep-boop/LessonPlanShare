@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (Codex round 2: E0 — user deletion blocked if user owns official plans (destroyUser + bulkDestroyUsers skip with message); E1 — retireForClassDay missing-file desync fixed (DB file_path only updated on successful move; missing file → name-only update + warning log); E2 — migration 2026_02_26_163707 comment corrected (views table is NOT the voting gate); 3 new tests. Previous round: A1–C4 + D (full audit + Breeze test overrides).)
+**Last updated:** 2026-03-03 (Codex round 3: F0 — store() is_official now conditional on no existing plans for class/day; F1 — destroyUser + bulkDestroyUsers wrapped in DB::transaction + lockForUpdate to close check-then-delete race; F3 — DEPLOYMENT.md backfill migration added to file tree. 2 new tests. Previous round: E0–E2 (user-delete cascade guard, retire desync, migration comment).)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 

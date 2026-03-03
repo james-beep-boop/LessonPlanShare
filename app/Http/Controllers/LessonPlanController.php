@@ -367,8 +367,12 @@ class LessonPlanController extends Controller
 
         try {
             $attrs = $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch);
-            // First upload for any class/day is always v1.0.0 and becomes the Official version.
-            $attrs['is_official'] = true;
+            // Only the very first plan for a class/day becomes Official automatically.
+            // If plans already exist (another teacher uploaded first), the existing
+            // Official designation is preserved — admin must manually reassign if needed.
+            $attrs['is_official'] = !LessonPlan::where('class_name', $data['class_name'])
+                ->where('lesson_day', $data['lesson_day'])
+                ->exists();
             $plan = LessonPlan::create($attrs);
         } catch (\Illuminate\Database\QueryException $e) {
             Storage::disk('public')->delete($upload['filePath']);

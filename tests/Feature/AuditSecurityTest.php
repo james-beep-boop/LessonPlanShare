@@ -487,4 +487,56 @@ class AuditSecurityTest extends TestCase
         // name should still get the _deleted_ suffix so the plan is visibly retired
         $this->assertStringContainsString('_deleted_', $refreshed->name);
     }
+
+    // ── F0: store() is_official only for the first plan in a class/day ──
+
+    #[Test]
+    public function first_store_for_class_day_is_marked_official(): void
+    {
+        $author = User::factory()->create(['email_verified_at' => now()]);
+        Storage::fake('public');
+
+        $response = $this->actingAs($author)->post(route('lesson-plans.store'), [
+            'class_name'  => 'Mathematics',
+            'lesson_day'  => 5,
+            'description' => 'First plan',
+            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.pdf', 10, 'application/pdf'),
+        ]);
+
+        $plan = LessonPlan::where('class_name', 'Mathematics')->where('lesson_day', 5)->first();
+        $this->assertNotNull($plan);
+        $this->assertTrue((bool) $plan->is_official, 'First upload for a class/day must be Official');
+    }
+
+    #[Test]
+    public function subsequent_store_for_same_class_day_is_not_marked_official(): void
+    {
+        $first  = User::factory()->create(['email_verified_at' => now()]);
+        $second = User::factory()->create(['email_verified_at' => now()]);
+        Storage::fake('public');
+
+        // First plan uploaded by $first — should become Official
+        $this->actingAs($first)->post(route('lesson-plans.store'), [
+            'class_name'  => 'History',
+            'lesson_day'  => 3,
+            'description' => 'First plan',
+            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.pdf', 10, 'application/pdf'),
+        ]);
+
+        // Second teacher uploads a brand-new plan for the same class/day via store()
+        $this->actingAs($second)->post(route('lesson-plans.store'), [
+            'class_name'  => 'History',
+            'lesson_day'  => 3,
+            'description' => 'Second plan',
+            'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson2.pdf', 10, 'application/pdf'),
+        ]);
+
+        $plans = LessonPlan::where('class_name', 'History')->where('lesson_day', 3)->get();
+        $this->assertCount(2, $plans);
+
+        $officialPlans = $plans->where('is_official', true);
+        // Exactly one official plan — the second upload must NOT override Official
+        $this->assertCount(1, $officialPlans, 'Only one plan per class/day may be Official');
+        $this->assertEquals($first->id, $officialPlans->first()->author_id, 'The first upload must remain Official');
+    }
 }

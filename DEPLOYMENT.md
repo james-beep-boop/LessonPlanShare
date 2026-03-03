@@ -500,7 +500,8 @@ LessonPlanShare/
 │   ├── 2026_02_26_230000_create_favorites_table.php
 │   ├── 2026_02_27_000000_add_semantic_version_to_lesson_plans.php
 │   ├── 2026_03_01_000001_create_lesson_plan_engagements_table.php
-│   └── 2026_03_01_000002_add_is_official_to_lesson_plans_table.php
+│   ├── 2026_03_01_000002_add_is_official_to_lesson_plans_table.php
+│   └── 2026_03_02_100000_backfill_anonymous_user_names.php
 │
 ├── database/factories/
 │   └── LessonPlanFactory.php
