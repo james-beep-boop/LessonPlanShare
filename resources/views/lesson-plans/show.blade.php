@@ -84,7 +84,7 @@
                                    'Accept': 'application/json'
                                },
                                body: JSON.stringify({ type: 'google_docs' })
-                           }).catch(() => {})"
+                           }).then(r => { if (r.ok) $dispatch('engagement-recorded'); }).catch(() => {})"
                            class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                             <span>View in Google Docs ↗</span>
                             <span class="text-xs font-normal opacity-75">(best for mobile)</span>
@@ -99,7 +99,7 @@
                                    'Accept': 'application/json'
                                },
                                body: JSON.stringify({ type: 'ms_office' })
-                           }).catch(() => {})"
+                           }).then(r => { if (r.ok) $dispatch('engagement-recorded'); }).catch(() => {})"
                            class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                             <span>View in Microsoft Office ↗</span>
                             <span class="text-xs font-normal opacity-75">(best for desktop)</span>
@@ -111,6 +111,15 @@
                 <div class="grid grid-cols-1 {{ $row2Cols }} gap-2">
                     @if ($lessonPlan->file_path)
                         <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
+                           @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
+                               method: 'POST',
+                               headers: {
+                                   'Content-Type': 'application/json',
+                                   'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                   'Accept': 'application/json'
+                               },
+                               body: JSON.stringify({ type: 'download' })
+                           }).then(r => { if (r.ok) $dispatch('engagement-recorded'); }).catch(() => {})"
                            class="flex items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300 text-center">
                             Download This Document
                         </a>
@@ -163,55 +172,68 @@
 
         {{-- Rate This Document --}}
         {{-- Authors see a notice (self-votes not allowed). --}}
-        {{-- Non-authors who have engaged see vote buttons. --}}
-        {{-- Non-engaged non-authors see a nudge to open/download first. --}}
+        {{-- Non-authors: 'engaged' is set server-side on page load; the engagement-recorded --}}
+        {{-- window event (fired by Google Docs / MS Office / Download click handlers above) --}}
+        {{-- updates it client-side immediately so voting unlocks without a page reload. --}}
         @if($isAuthorOfPlan)
             <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <p class="text-sm text-gray-500 text-center">
                     You cannot vote on your own plan.
                 </p>
             </div>
-        @elseif($hasEngaged)
-            <div class="border border-gray-200 rounded-lg p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Rate This Document</h2>
+        @else
+            <div class="border border-gray-200 rounded-lg"
+                 x-data="{
+                     engaged: {{ $hasEngaged ? 'true' : 'false' }},
+                     score: {{ (int) $lessonPlan->vote_score }},
+                     userVote: {{ $userVote ? (int) $userVote->value : 'null' }},
+                     loading: false,
+                     castVote(value) {
+                         if (this.loading) return;
+                         this.loading = true;
+                         fetch('{{ route('votes.store', $lessonPlan) }}', {
+                             method: 'POST',
+                             headers: {
+                                 'Content-Type': 'application/json',
+                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                 'Accept': 'application/json'
+                             },
+                             body: JSON.stringify({ value: value })
+                         })
+                         .then(r => r.ok ? r.json() : null)
+                         .then(d => { if (d) { this.score = d.score; this.userVote = d.userVote; } })
+                         .catch(() => {})
+                         .finally(() => { this.loading = false; });
+                     },
+                     resetVote() {
+                         if (this.loading || this.userVote === null) return;
+                         this.loading = true;
+                         fetch('{{ route('votes.destroy', $lessonPlan) }}', {
+                             method: 'DELETE',
+                             headers: {
+                                 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                 'Accept': 'application/json'
+                             }
+                         })
+                         .then(r => r.ok ? r.json() : null)
+                         .then(d => { if (d) { this.score = d.score; this.userVote = null; } })
+                         .catch(() => {})
+                         .finally(() => { this.loading = false; });
+                     }
+                 }"
+                 @engagement-recorded.window="engaged = true">
 
-                <div x-data="{
-                    score: {{ (int) $lessonPlan->vote_score }},
-                    userVote: {{ $userVote ? (int) $userVote->value : 'null' }},
-                    loading: false,
-                    castVote(value) {
-                        if (this.loading) return;
-                        this.loading = true;
-                        fetch('{{ route('votes.store', $lessonPlan) }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({ value: value })
-                        })
-                        .then(r => r.ok ? r.json() : null)
-                        .then(d => { if (d) { this.score = d.score; this.userVote = d.userVote; } })
-                        .catch(() => {})
-                        .finally(() => { this.loading = false; });
-                    },
-                    resetVote() {
-                        if (this.loading || this.userVote === null) return;
-                        this.loading = true;
-                        fetch('{{ route('votes.destroy', $lessonPlan) }}', {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                'Accept': 'application/json'
-                            }
-                        })
-                        .then(r => r.ok ? r.json() : null)
-                        .then(d => { if (d) { this.score = d.score; this.userVote = null; } })
-                        .catch(() => {})
-                        .finally(() => { this.loading = false; });
-                    }
-                }">
+                {{-- Nudge: shown until the user opens or downloads the plan --}}
+                <div x-show="!engaged" class="p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-500 text-center">
+                        Open this plan in an external viewer or download it to unlock voting.
+                    </p>
+                </div>
+
+                {{-- Voting buttons: revealed immediately once engagement fires --}}
+                <div x-show="engaged" class="p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Rate This Document</h2>
+
                     <div class="flex items-center gap-3 mb-5">
                         <span class="text-3xl font-bold tabular-nums"
                               :class="score > 0 ? 'text-green-600' : (score < 0 ? 'text-red-600' : 'text-gray-400')"
@@ -248,12 +270,6 @@
                         Your vote is recorded. Click "Reset Vote" to remove it.
                     </p>
                 </div>
-            </div>
-        @else
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <p class="text-sm text-gray-500 text-center">
-                    Open this plan in an external viewer or download it to unlock voting.
-                </p>
             </div>
         @endif
 

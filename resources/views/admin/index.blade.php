@@ -161,8 +161,11 @@
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
                                         @php
-                                            $excerpt = $plan->description
-                                                ? mb_substr($plan->description, 0, 24)
+                                            $displayDesc = $plan->description
+                                                ? preg_replace('/^Introduction to\b/i', 'Intro to', $plan->description)
+                                                : null;
+                                            $excerpt = $displayDesc
+                                                ? mb_substr($displayDesc, 0, 24)
                                                 : mb_substr($plan->file_name ?? '', 0, 24);
                                         @endphp
                                         {{ $excerpt ?: '—' }}
@@ -426,8 +429,11 @@
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
                                         @php
-                                            $excerpt = $plan->description
-                                                ? mb_substr($plan->description, 0, 24)
+                                            $displayDesc = $plan->description
+                                                ? preg_replace('/^Introduction to\b/i', 'Intro to', $plan->description)
+                                                : null;
+                                            $excerpt = $displayDesc
+                                                ? mb_substr($displayDesc, 0, 24)
                                                 : mb_substr($plan->file_name ?? '', 0, 24);
                                         @endphp
                                         {{ $excerpt ?: '—' }}
