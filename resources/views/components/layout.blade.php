@@ -458,19 +458,61 @@
     </form>
     <script>
         (function () {
-            const TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+            // ── Inactivity logout (60 minutes of no user activity) ──
+            const TIMEOUT_MS = 60 * 60 * 1000;
             let timer;
-            function logout() {
+            function inactivityLogout() {
+                markNavigating(); // prevent close-beacon from also firing
                 document.getElementById('inactivity-logout-form').submit();
             }
             function resetTimer() {
                 clearTimeout(timer);
-                timer = setTimeout(logout, TIMEOUT_MS);
+                timer = setTimeout(inactivityLogout, TIMEOUT_MS);
             }
             ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (evt) {
                 document.addEventListener(evt, resetTimer, { passive: true });
             });
             resetTimer();
+
+            // ── Sign out when the browser window / tab is closed ──
+            // markNavigating() sets a short-lived sessionStorage flag before any
+            // click or form-submit that causes internal navigation, so that the
+            // pagehide beacon is not fired during normal browsing within the site.
+            // The flag auto-expires after 3 s in case the click did not actually
+            // navigate (e.g. a toggle button or checkbox).
+            let navFlagTimer;
+            function markNavigating() {
+                sessionStorage.setItem('ares_nav', '1');
+                clearTimeout(navFlagTimer);
+                navFlagTimer = setTimeout(function () {
+                    sessionStorage.removeItem('ares_nav');
+                }, 3000);
+            }
+
+            // Detect link clicks and onclick-driven navigation (e.g. table-row clicks).
+            document.addEventListener('click', function (e) {
+                var a = e.target.closest('a[href]');
+                if (a && !a.target) { markNavigating(); return; }
+                if (e.target.closest('[onclick]')) { markNavigating(); }
+            }, true);
+
+            // Detect form submissions (covers Sign Out, Delete, Upload, etc.).
+            document.addEventListener('submit', markNavigating, true);
+
+            window.addEventListener('pagehide', function (ev) {
+                if (ev.persisted) { return; } // page went to bfcache — not being destroyed
+                if (sessionStorage.getItem('ares_nav')) {
+                    sessionStorage.removeItem('ares_nav');
+                    clearTimeout(navFlagTimer);
+                    return; // internal navigation — do not log out
+                }
+                // Window / tab was closed or navigated to an external site.
+                if (navigator.sendBeacon) {
+                    var d = new FormData();
+                    d.append('_token', document.querySelector('meta[name=csrf-token]').content);
+                    navigator.sendBeacon('{{ route("logout") }}', d);
+                }
+            });
         })();
     </script>
     @endauth

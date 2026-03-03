@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (Codex round 4: P1 #2 — destroyUser() now locks ALL user plans, not just official ones, matching bulkDestroyUsers() pattern; P1 #3 — both destroyUser() and bulkDestroyUsers() now collect file paths inside transaction and delete files outside after commit. Also: Diff/Compare feature (admin-only, accessible from Admin panel); voting gate fixed (immediate unlock via Alpine window event on Google Docs/MS Office/Download click); Download button now tracks engagement; author notice shows Favorite/Unfavorite toggle; "Introduction to" → "Intro to" in table excerpts. Previous: F0–F3, E0–E2 security audit rounds.)
+**Last updated:** 2026-03-03 (UI pass: dashboard View column removed; column headers renamed (Main→Official, Lesson→Day, Version→Rev., Update→Date, Rating→Rated) and Official moved after Day; date format changed to dd/mm/yy; sort hint updated; show page Download button adds MS Office note; guide Back-to-Dashboard moved into top button row; sign-out on window/tab close via pagehide beacon. Previous: Codex P1 fixes, diff/compare, voting gate, favorites.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
