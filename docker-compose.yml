@@ -1,0 +1,46 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      APP_NAME: "Lesson Plan Exchange"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: "http://localhost:8080"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: lessonplanshare
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+      # Emails go to storage/logs/laravel.log — no SMTP needed locally
+      MAIL_MAILER: log
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      FILESYSTEM_DISK: public
+    volumes:
+      # Persist uploaded lesson files across container restarts
+      - lesson_files:/var/www/html/storage/app/public/lessons
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: lessonplanshare
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ularavel", "-psecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
+  lesson_files:

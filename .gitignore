@@ -1,46 +1,29 @@
-# ─── Laravel Framework ───────────────────────────────────────
-/vendor
-/node_modules
-/public/hot
-/public/storage
-/storage/*.key
-/storage/framework/cache/data/*
-/storage/framework/sessions/*
-/storage/framework/views/*
-/storage/logs/*
-/bootstrap/cache/*
-
-# ─── Environment files (contain secrets) ─────────────────────
+*.log
+.DS_Store
 .env
 .env.backup
 .env.production
-
-# ─── Compiled / Generated ────────────────────────────────────
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
 /public/build
-/public/css
-/public/js
-*.cache
-
-# ─── IDE / Editor ────────────────────────────────────────────
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.DS_Store
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+Homestead.json
+Homestead.yaml
 Thumbs.db
 
-# ─── Composer ────────────────────────────────────────────────
-composer.phar
-
-# ─── npm (if ever used locally for asset compilation) ────────
-package-lock.json
-npm-debug.log
-yarn-error.log
-
-# ─── Uploaded lesson plan files (stored in storage, not repo) ─
+# Uploaded lesson plan files and runtime storage — never commit
 /storage/app/public/lessons/*
 !/storage/app/public/lessons/.gitkeep
-
-# ─── Generated at deploy time (not part of source) ───────────
 /storage/app/version.txt
