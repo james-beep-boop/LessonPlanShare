@@ -167,7 +167,10 @@ class LessonPlanController extends Controller
     {
         $className    = $request->input('class_name', '');
         $lessonDay    = (int) $request->input('lesson_day', 0);
-        $revisionType = $request->input('revision_type', 'major');
+        // Clamp to valid values; any other input silently defaults to 'major'
+        $revisionType = in_array($request->input('revision_type'), ['major', 'minor'], true)
+            ? $request->input('revision_type')
+            : 'major';
 
         if (!$className || !$lessonDay) {
             return response()->json(['version' => '1.0.0']);
