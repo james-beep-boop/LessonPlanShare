@@ -3,11 +3,16 @@ set -e
 
 cd /var/www/html
 
+# Generate APP_KEY with plain PHP before writing .env.
+# This avoids the race where artisan partially boots Laravel (needing a key)
+# before the key has been written, which leaves config:cache with APP_KEY empty.
+APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+
 # Write .env from Docker environment variables
 cat > .env <<EOF
 APP_NAME="${APP_NAME:-Lesson Plan Exchange}"
 APP_ENV=${APP_ENV:-local}
-APP_KEY=
+APP_KEY=${APP_KEY}
 APP_DEBUG=${APP_DEBUG:-true}
 APP_URL=${APP_URL:-http://localhost:8080}
 
@@ -26,9 +31,6 @@ SESSION_DRIVER=${SESSION_DRIVER:-file}
 CACHE_STORE=${CACHE_STORE:-file}
 FILESYSTEM_DISK=${FILESYSTEM_DISK:-public}
 EOF
-
-# Generate APP_KEY (safe to run every start — only sets it if empty)
-php artisan key:generate --force
 
 # Wait for MySQL and run migrations
 php artisan config:clear
