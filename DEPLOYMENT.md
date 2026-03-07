@@ -97,6 +97,7 @@ resources/views/auth/confirm-password.blade.php         →  (REPLACE Breeze's �
 
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 
+app/Http/Requests/Auth/LoginRequest.php                 →  (NEW)
 app/Http/Requests/StoreLessonPlanRequest.php            →  (NEW)
 app/Http/Requests/StoreVersionRequest.php               →  (NEW)
 
@@ -529,6 +530,8 @@ LessonPlanShare/
 │   └── AdminMiddleware.php                             (enforces is_admin flag)
 │
 ├── app/Http/Requests/
+│   ├── Auth/
+│   │   └── LoginRequest.php                            (Breeze login validation + rate limiting)
 │   ├── StoreLessonPlanRequest.php                      (new plan upload validation)
 │   └── StoreVersionRequest.php                         (new version upload validation)
 │
