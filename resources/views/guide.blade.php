@@ -18,8 +18,8 @@
                 Kiswahili
             </button>
             <a href="{{ route('dashboard') }}"
+               x-text="lang === 'sw' ? '\u2190 Rudi kwenye Dashibodi' : '\u2190 Back to Dashboard'"
                class="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
-                &larr; Back to Dashboard
             </a>
             <button onclick="window.print()"
                     class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">

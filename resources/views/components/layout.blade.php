@@ -493,6 +493,9 @@
             document.addEventListener('click', function (e) {
                 var a = e.target.closest('a[href]');
                 if (a && !a.target) { markNavigating(); return; }
+                // Note: only catches literal onclick="..." HTML attributes (e.g. the Print button).
+                // Alpine @click handlers compile to addEventListener() and are NOT matched here;
+                // their form submissions are already covered by the submit listener below.
                 if (e.target.closest('[onclick]')) { markNavigating(); }
             }, true);
 

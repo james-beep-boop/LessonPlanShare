@@ -122,7 +122,7 @@
                            }).then(r => { if (r.ok) $dispatch('engagement-recorded'); }).catch(() => {})"
                            class="flex flex-col items-center justify-center min-h-[3.5rem] px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300 text-center">
                             <span>Download This Document</span>
-                            <span class="text-xs font-normal opacity-75">(must have Microsoft Office to edit)</span>
+                            <span class="text-xs font-normal opacity-75">(DOC/DOCX — opens in Word, LibreOffice, or Google Docs)</span>
                         </a>
                     @endif
                     <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"

@@ -251,9 +251,7 @@ class AdminController extends Controller
         }
 
         // Delete files only after the DB transaction has committed successfully.
-        foreach ($filesToDelete as $path) {
-            Storage::disk('public')->delete($path);
-        }
+        $this->deleteFiles($filesToDelete);
 
         return redirect()->route('admin.index')->with('success', 'User deleted.');
     }
@@ -287,14 +285,14 @@ class AdminController extends Controller
 
         DB::transaction(function () use ($ids, &$deletedCount, &$officialOwnerIds, &$filesToDelete) {
             // Lock all plans for the selected users so no concurrent setOfficial()
-            // can promote a plan between our check and the delete.
-            LessonPlan::whereIn('author_id', $ids)->lockForUpdate()->get();
+            // can promote a plan between our check and the delete. Group by author_id
+            // so we can reuse this collection instead of issuing per-user queries below.
+            $allPlans = LessonPlan::whereIn('author_id', $ids)->lockForUpdate()->get()->groupBy('author_id');
 
             // Identify which selected users own Official plans — skip them.
-            $officialOwnerIds = LessonPlan::whereIn('author_id', $ids)
-                ->where('is_official', true)
-                ->pluck('author_id')
-                ->unique()
+            $officialOwnerIds = $allPlans
+                ->filter(fn ($group) => $group->where('is_official', true)->isNotEmpty())
+                ->keys()
                 ->toArray();
 
             $deletableIds = array_values(array_diff($ids, $officialOwnerIds));
@@ -304,7 +302,7 @@ class AdminController extends Controller
             // files on disk if the subsequent DB commit fails.
             $users = User::whereIn('id', $deletableIds)->get();
             foreach ($users as $user) {
-                $plans = LessonPlan::where('author_id', $user->id)->get();
+                $plans = $allPlans->get($user->id, collect());
                 foreach ($plans as $plan) {
                     if ($plan->file_path) {
                         $filesToDelete[] = $plan->file_path;
@@ -316,9 +314,7 @@ class AdminController extends Controller
         });
 
         // Delete files only after the DB transaction has committed successfully.
-        foreach ($filesToDelete as $path) {
-            Storage::disk('public')->delete($path);
-        }
+        $this->deleteFiles($filesToDelete);
 
         $message = $deletedCount . ' user(s) deleted.';
         if (!empty($officialOwnerIds)) {
@@ -386,6 +382,14 @@ class AdminController extends Controller
     {
         if ($plan->file_path) {
             Storage::disk('public')->delete($plan->file_path);
+        }
+    }
+
+    /** Delete a batch of file paths from the public disk (used after DB transactions commit). */
+    private function deleteFiles(array $paths): void
+    {
+        if ($paths) {
+            Storage::disk('public')->delete($paths);
         }
     }
 }
