@@ -106,11 +106,58 @@ class AdminController extends Controller
         $totalPlanCount   = LessonPlan::count();
         $contributorCount = LessonPlan::distinct('author_id')->count('author_id');
 
+        // ── Analytics chart data (weekly cumulative) ──
+        $earliestUser = User::min('created_at');
+        $earliestPlan = LessonPlan::min('created_at');
+        $chartStart   = collect([$earliestUser, $earliestPlan])
+            ->filter()
+            ->map(fn ($d) => \Carbon\Carbon::parse($d))
+            ->min()
+            ?->startOfWeek(\Carbon\Carbon::MONDAY)
+            ?? now()->subMonths(6)->startOfWeek(\Carbon\Carbon::MONDAY);
+
+        // Build weekly Monday-aligned labels from $chartStart to today
+        $chartLabels = [];
+        $cursor = $chartStart->copy();
+        while ($cursor->lte(now())) {
+            $chartLabels[] = $cursor->format('d M');
+            $cursor->addWeek();
+        }
+
+        // Returns week-start date → count array for any append-only table
+        $weekly = fn (string $table, array $where = []) => DB::table($table)
+            ->where($where)
+            ->selectRaw("DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY)) as week_start, COUNT(*) as cnt")
+            ->groupBy('week_start')
+            ->pluck('cnt', 'week_start')
+            ->toArray();
+
+        // Converts a week→count map to a cumulative series aligned to $chartLabels
+        $toCumulative = function (array $weeklyCounts) use ($chartStart): array {
+            $result  = [];
+            $running = 0;
+            $cur     = $chartStart->copy();
+            while ($cur->lte(now())) {
+                $running  += $weeklyCounts[$cur->format('Y-m-d')] ?? 0;
+                $result[]  = $running;
+                $cur->addWeek();
+            }
+            return $result;
+        };
+
+        $userCumulative     = $toCumulative($weekly('users'));
+        $loginCumulative    = $toCumulative($weekly('user_logins'));
+        $allPlansCumulative = $toCumulative($weekly('lesson_plans'));
+        $officialCumulative = $toCumulative($weekly('lesson_plans', ['is_official' => true]));
+        $downloadCumulative = $toCumulative($weekly('lesson_plan_downloads'));
+
         return view('admin.index', compact(
             'plans', 'users', 'officialPlans',
             'uniqueClassCount', 'totalPlanCount', 'contributorCount',
             'planSearch', 'planSort', 'planOrder',
-            'userSearch', 'userSort', 'userOrder'
+            'userSearch', 'userSort', 'userOrder',
+            'chartLabels', 'userCumulative', 'loginCumulative',
+            'allPlansCumulative', 'officialCumulative', 'downloadCumulative'
         ));
     }
 

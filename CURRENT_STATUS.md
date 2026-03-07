@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-03 (UI pass: dashboard View column removed; column headers renamed (Main→Official, Lesson→Day, Version→Rev., Update→Date, Rating→Rated) and Official moved after Day; date format changed to dd/mm/yy; sort hint updated; show page Download button adds MS Office note; guide Back-to-Dashboard moved into top button row; sign-out on window/tab close via pagehide beacon. Previous: Codex P1 fixes, diff/compare, voting gate, favorites.)
+**Last updated:** 2026-03-07 (Analytics charts + VersionService: two cumulative line graphs on admin panel (Engagement: unique users + total logins; Content: official plans + all docs + downloads); weekly granularity via DB bucketing; `user_logins` and `lesson_plan_downloads` event tables; `VersionService` caches footer version via `Cache::rememberForever`; git `post-merge-hook.sh` writes short hash to `version.txt` on every pull; `UPDATE_SITE.sh` updated. Previous: UI pass 2026-03-03.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -114,6 +114,12 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - **`votes` table** has `ON DELETE CASCADE` FK — `$lessonPlan->votes()->delete()` in `destroy()` and in `DetectDuplicateContent` were redundant and removed.
 - **Official plan deletion guard:** `LessonPlanController::destroy()` and `AdminController::destroyPlan()` both reject deletion of `is_official = true` plans with a clear error message; `bulkDestroyPlans()` skips official plans and reports the count. Admin must reassign Official via `setOfficial()` before the plan can be deleted.
 - **`CLASS_NAMES`** → `private const` (was `public const`); `buildPlanAttributes()` private method eliminates duplicate attribute array in `store()` and `storeVersion()`.
+- **Analytics charts on admin panel:** Two cumulative line graphs above the Lesson Plans table. Graph 1 (Engagement): unique users (blue) + total logins (red). Graph 2 (Content): official plans (blue) + all documents (red) + downloads (green). Weekly Monday-aligned granularity via `DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY))`. Chart.js 4 CDN, admin page only. X-axis starts at earliest user or plan date.
+- **`user_logins` table:** Append-only login event log (`UserLogin` model); no unique constraint; one row per successful login. Recorded in `AuthenticatedSessionController` after both Case 2 and Case 3 `Auth::login()` calls.
+- **`lesson_plan_downloads` table:** Append-only raw download log (`LessonPlanDownload` model); no unique constraint; one row per download click. Recorded in `LessonPlanController::download()` alongside the existing `LessonPlanEngagement` record.
+- **`VersionService`:** `Cache::rememberForever('app_version')` reads `storage/app/version.txt` once and caches indefinitely. Footer uses `\App\Services\VersionService::get()`. Clear with `php artisan cache:forget app_version`.
+- **`scripts/post-merge-hook.sh`:** Git hook installed by `UPDATE_SITE.sh` to `~/LessonPlanShare/.git/hooks/post-merge`; writes `git rev-parse --short HEAD` to `storage/app/version.txt` after every `git pull`. `UPDATE_SITE.sh` also clears `app_version` cache key on each deploy.
+- **Super-admin restriction:** Already implemented in `AdminController::toggleAdmin()` — `SUPER_ADMIN_EMAIL = 'priority2@protonmail.ch'`; any admin can promote; only super-admin can demote; self-modification blocked. No changes needed.
 
 ---
 

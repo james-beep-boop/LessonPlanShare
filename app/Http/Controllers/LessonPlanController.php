@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\LessonPlanUploaded;
 use App\Models\Favorite;
 use App\Models\LessonPlan;
+use App\Models\LessonPlanDownload;
 use App\Models\LessonPlanEngagement;
 use App\Models\LessonPlanView;
 use App\Models\User;
@@ -626,6 +627,10 @@ class LessonPlanController extends Controller
                 'user_id'        => Auth::id(),
                 'lesson_plan_id' => $lessonPlan->id,
                 'type'           => LessonPlanEngagement::DOWNLOAD,
+            ]);
+            LessonPlanDownload::create([
+                'lesson_plan_id' => $lessonPlan->id,
+                'user_id'        => Auth::id(),
             ]);
         }
 

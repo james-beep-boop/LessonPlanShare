@@ -31,6 +31,68 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════
+             ANALYTICS CHARTS
+        ══════════════════════════════════════════════════════════ --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+            {{-- Graph 1: Engagement --}}
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Engagement (cumulative)</h3>
+                <canvas id="engagementChart"></canvas>
+            </div>
+
+            {{-- Graph 2: Content --}}
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Content (cumulative)</h3>
+                <canvas id="contentChart"></canvas>
+            </div>
+
+        </div>
+
+        {{-- Chart.js — admin page only --}}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+        <script>
+        (function () {
+            const labels   = @json($chartLabels);
+            const axisOpts = {
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { ticks: { maxTicksLimit: 16, maxRotation: 45 } }
+            };
+            const lineOpts = { tension: 0.3, fill: true, pointRadius: 2, borderWidth: 2 };
+
+            new Chart(document.getElementById('engagementChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { ...lineOpts, label: 'Unique Users', data: @json($userCumulative),
+                          borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)' },
+                        { ...lineOpts, label: 'Total Logins',  data: @json($loginCumulative),
+                          borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,0.08)' },
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: axisOpts }
+            });
+
+            new Chart(document.getElementById('contentChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { ...lineOpts, label: 'Official Plans', data: @json($officialCumulative),
+                          borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)' },
+                        { ...lineOpts, label: 'All Documents',  data: @json($allPlansCumulative),
+                          borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,0.08)' },
+                        { ...lineOpts, label: 'Downloads',      data: @json($downloadCumulative),
+                          borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)' },
+                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: axisOpts }
+            });
+        }());
+        </script>
+
+        {{-- ══════════════════════════════════════════════════════════
              LESSON PLANS TABLE
         ══════════════════════════════════════════════════════════ --}}
         <div class="mb-12">

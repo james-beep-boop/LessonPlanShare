@@ -414,7 +414,7 @@
     <footer class="border-t border-gray-200 mt-16">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-gray-400">
             @php
-                $appVersion = trim(@file_get_contents(storage_path('app/version.txt')) ?: 'dev');
+                $appVersion = \App\Services\VersionService::get();
             @endphp
             <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                 <span>Kenya Lesson Plan Repository version <span class="font-mono text-xs">{{ $appVersion }}</span> &copy; {{ date('Y') }} ARES Education</span>

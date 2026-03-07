@@ -47,7 +47,7 @@ cp /tmp/LPC/.env.example ~/LessonPlanShare/.env.example  2>/dev/null || true
 cp /tmp/LPC/DEPLOYMENT.md ~/LessonPlanShare/             2>/dev/null || true
 cp /tmp/LPC/TECHNICAL_DESIGN.md ~/LessonPlanShare/       2>/dev/null || true
 cp /tmp/LPC/UPDATE_SITE.sh ~/LessonPlanShare/            2>/dev/null || true
-cp /tmp/LPC/VERSION ~/LessonPlanShare/                   2>/dev/null || true
+cp -a /tmp/LPC/scripts/. ~/LessonPlanShare/scripts/     2>/dev/null || true
 
 # ── Stale file cleanup (explicit list) ──
 # When a file is removed from the repo, add it here so it gets cleaned up
@@ -77,17 +77,16 @@ remove_if_exists "resources/views/stats.blade.php"
 remove_if_exists "resources/views/components/vote-buttons.blade.php"
 remove_if_exists "resources/views/lesson-plans/my-plans.blade.php"
 
-# Write version string to storage so the page footer can display it.
-# Source of truth: the VERSION file in the repo (e.g. "0.61").
-# Falls back to git tag, then git hash, then "dev" if nothing else is available.
+# Write short commit hash to version.txt (displayed in the page footer).
+# Cache is cleared below so the footer picks it up on the next page load.
 echo "  Writing version info..."
-GIT_VERSION=$(cat /tmp/LPC/VERSION 2>/dev/null | tr -d '[:space:]')
-if [ -z "$GIT_VERSION" ]; then
-    GIT_VERSION=$(git -C /tmp/LPC describe --tags --abbrev=0 2>/dev/null \
-        || git -C /tmp/LPC rev-parse --short HEAD 2>/dev/null \
-        || echo "dev")
-fi
-echo "$GIT_VERSION" > ~/LessonPlanShare/storage/app/version.txt
+git -C /tmp/LPC rev-parse --short HEAD > ~/LessonPlanShare/storage/app/version.txt
+
+# Install post-merge hook so future git pulls auto-update version.txt.
+# Idempotent — safe to run on every deploy.
+echo "  Installing post-merge hook..."
+install -m 755 ~/LessonPlanShare/scripts/post-merge-hook.sh \
+    ~/LessonPlanShare/.git/hooks/post-merge
 
 # Clean up temp
 rm -rf /tmp/LPC
@@ -100,6 +99,7 @@ php artisan migrate --force 2>&1
 # Rebuild caches
 echo "  Rebuilding caches..."
 php artisan optimize:clear --quiet
+php artisan cache:forget app_version --quiet 2>/dev/null || true
 php artisan config:cache --quiet
 php artisan route:cache --quiet
 php artisan view:cache --quiet
