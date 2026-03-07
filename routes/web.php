@@ -87,7 +87,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | Require auth + verified + is_admin. AdminMiddleware enforces the flag.
 */
 
-Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', AdminMiddleware::class, 'throttle:30,1'])->prefix('admin')->group(function () {
 
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
 

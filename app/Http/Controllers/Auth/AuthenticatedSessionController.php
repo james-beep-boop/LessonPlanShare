@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
+use App\Models\UserLogin;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -76,6 +77,7 @@ class AuthenticatedSessionController extends Controller
             $user->sendEmailVerificationNotification();
 
             Auth::login($user);
+            UserLogin::create(['user_id' => $user->id]);
             $request->session()->regenerate();
             RateLimiter::clear($throttleKey);
 
@@ -91,6 +93,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         Auth::login($user);
+        UserLogin::create(['user_id' => $user->id]);
         $request->session()->regenerate();
         RateLimiter::clear($throttleKey);
 

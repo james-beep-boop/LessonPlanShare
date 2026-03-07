@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Mail\LessonPlanUploaded;
+use App\Models\Favorite;
 use App\Models\LessonPlan;
+use App\Models\LessonPlanDownload;
 use App\Models\LessonPlanEngagement;
 use App\Models\LessonPlanView;
 use App\Models\User;
@@ -166,7 +168,10 @@ class LessonPlanController extends Controller
     {
         $className    = $request->input('class_name', '');
         $lessonDay    = (int) $request->input('lesson_day', 0);
-        $revisionType = $request->input('revision_type', 'major');
+        // Clamp to valid values; any other input silently defaults to 'major'
+        $revisionType = in_array($request->input('revision_type'), ['major', 'minor'], true)
+            ? $request->input('revision_type')
+            : 'major';
 
         if (!$className || !$lessonDay) {
             return response()->json(['version' => '1.0.0']);
@@ -423,11 +428,15 @@ class LessonPlanController extends Controller
                 && LessonPlanEngagement::where('lesson_plan_id', $lessonPlan->id)
                     ->where('user_id', Auth::id())
                     ->exists();
+
+            $isFavorited = Favorite::where('lesson_plan_id', $lessonPlan->id)
+                ->where('user_id', Auth::id())
+                ->exists();
         }
 
         $isAuthorOfPlan = Auth::check() && $lessonPlan->author_id === Auth::id();
 
-        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged', 'isAuthorOfPlan'));
+        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged', 'isAuthorOfPlan', 'isFavorited'));
     }
 
     /**
@@ -618,6 +627,10 @@ class LessonPlanController extends Controller
                 'user_id'        => Auth::id(),
                 'lesson_plan_id' => $lessonPlan->id,
                 'type'           => LessonPlanEngagement::DOWNLOAD,
+            ]);
+            LessonPlanDownload::create([
+                'lesson_plan_id' => $lessonPlan->id,
+                'user_id'        => Auth::id(),
             ]);
         }
 

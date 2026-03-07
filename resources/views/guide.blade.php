@@ -1,7 +1,7 @@
 <x-layout>
     <x-slot:title>Teacher Guide — ARES Education</x-slot>
     <div class="max-w-2xl mx-auto" x-data="{ lang: 'en' }">
-        {{-- Language Toggle + Print --}}
+        {{-- Language Toggle + Back to Dashboard + Print --}}
         <div class="flex gap-2 mb-6 flex-wrap">
             <button @click="lang = 'en'"
                     :class="lang === 'en'
@@ -17,6 +17,10 @@
                     class="px-4 py-2 text-sm font-medium rounded-md transition-colors">
                 Kiswahili
             </button>
+            <a href="{{ route('dashboard') }}"
+               x-text="lang === 'sw' ? '\u2190 Rudi kwenye Dashibodi' : '\u2190 Back to Dashboard'"
+               class="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
+            </a>
             <button onclick="window.print()"
                     class="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
                 🖨 Print
@@ -27,13 +31,7 @@
              ══════════════════════════════════════════════════════ --}}
         <div x-show="lang === 'en'">
             {{-- Header --}}
-            <div class="flex items-center justify-between mb-6">
-                <h1 class="text-2xl font-bold text-gray-900">Teacher Guide</h1>
-                <a href="{{ route('dashboard') }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
-                    &larr; Back to Dashboard
-                </a>
-            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-6">Teacher Guide</h1>
             {{-- Welcome --}}
             <p class="text-gray-600 mb-8 leading-relaxed">
                 Welcome to the ARES Lesson Plan Library — a free shared library where Kenyan teachers can find, download, rate, and share lesson plans. This guide will show you how to use the site step by step, so you can get the most out of it.
@@ -172,13 +170,7 @@
              ══════════════════════════════════════════════════════ --}}
         <div x-show="lang === 'sw'">
             {{-- Header --}}
-            <div class="flex items-center justify-between mb-6">
-                <h1 class="text-2xl font-bold text-gray-900">Mwongozo wa Mwalimu</h1>
-                <a href="{{ route('dashboard') }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
-                    &larr; Rudi kwenye Dashibodi
-                </a>
-            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-6">Mwongozo wa Mwalimu</h1>
             {{-- Welcome --}}
             <p class="text-gray-600 mb-8 leading-relaxed">
                 Karibu katika Maktaba ya Mipango ya Masomo ya ARES — maktaba ya bure inayoshirikiwa ambapo walimu wa Kenya wanaweza kupata, kupakua, kukadiria na kushiriki mipango ya masomo. Mwongozo huu utakuonyesha jinsi ya kutumia tovuti hatua kwa hatua, ili uweze kuipata faida kubwa zaidi.

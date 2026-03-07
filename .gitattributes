@@ -1,2 +1,26 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Ensure shell scripts always use LF line endings in the repo and on checkout.
+# Without this, editing docker-entrypoint.sh on Windows produces CRLF,
+# which causes bash inside the Linux container to fail with "\r: command not found".
+docker-entrypoint.sh text eol=lf
+artisan text eol=lf
+*.sh text eol=lf
+
+# PHP and Blade files: normalise to LF
+*.php text eol=lf
+*.blade.php text eol=lf
+
+# Config and web files
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.env text eol=lf
+*.env.example text eol=lf
+
+# Binary files — never touch line endings
+*.docx binary
+*.doc binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary

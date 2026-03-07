@@ -130,7 +130,7 @@
             @endif
 
             {{-- Sort hint — at the end of the filter row --}}
-            <span class="text-xs text-gray-400 italic ml-auto">Sort by clicking blue column header</span>
+            <span class="text-xs text-gray-400 italic ml-auto">Sort by clicking blue column header; view lesson plan by clicking on row</span>
         </div>
     </form>
 
@@ -141,35 +141,27 @@
                 <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     @php
                         // Build column definitions once; used by both thead and tbody.
-                        // Contributor column is hidden for guests as a sign-in incentive.
-                        // Favorites (★) column is also hidden for guests.
-                        // View column is always present (first column) for all users —
-                        // guests are prompted to sign in when they click it.
+                        // Contributor and Favorites (★) columns hidden for guests as a sign-in incentive.
                         $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
 
-                        // Column order: Main, Class, Lesson, Description, Version, Update, [Contributor if verified], Rating
+                        // Column order: Class, Day, Official, Description, Rev., Date, [Contributor if verified], Rated
                         $cols = [
-                            'is_official'      => ['label' => 'Main',        'align' => 'center'],
                             'class_name'       => ['label' => 'Class',       'align' => 'left'],
-                            'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
+                            'lesson_day'       => ['label' => 'Day',         'align' => 'center'],
+                            'is_official'      => ['label' => 'Official',    'align' => 'center'],
                             'description'      => ['label' => 'Description', 'align' => 'left'],
-                            'semantic_version' => ['label' => 'Version',     'align' => 'center'],
-                            'updated_at'       => ['label' => 'Update',      'align' => 'left'],
+                            'semantic_version' => ['label' => 'Rev.',        'align' => 'center'],
+                            'updated_at'       => ['label' => 'Date',        'align' => 'left'],
                         ];
                         if ($isVerifiedUser) {
                             $cols['author_name'] = ['label' => 'Contributor', 'align' => 'left'];
                         }
-                        $cols['vote_score'] = ['label' => 'Rating', 'align' => 'center'];
+                        $cols['vote_score'] = ['label' => 'Rated', 'align' => 'center'];
                         if ($isVerifiedUser) {
                             $cols['is_favorited'] = ['label' => 'My Fave', 'align' => 'center'];
                         }
                     @endphp
                     <tr>
-                        {{-- "SORT →" label signals the blue column headers are clickable sort links --}}
-                        <th class="px-4 py-3 text-center text-xs uppercase tracking-wider">
-                            <span class="inline-flex items-center px-2 py-1 rounded font-bold text-blue-600">SORT&nbsp;&#8594;</span>
-                        </th>
-
                         @foreach ($cols as $field => $col)
                             @php
                                 $isActive  = ($sortField === $field);
@@ -205,41 +197,25 @@
                         <tr class="hover:bg-gray-50 cursor-pointer"
                             onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
 
-                            {{-- "View" button — first column, always visible --}}
-                            <td class="px-4 py-3 text-center whitespace-nowrap" onclick="event.stopPropagation()">
-                                @if($isVerifiedUser)
-                                    {{-- Verified users: direct link to the plan detail page --}}
-                                    <a href="{{ route('lesson-plans.show', $plan) }}"
-                                       class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
-                                        View
-                                    </a>
-                                @else
-                                    {{-- Guests: open Sign In dialog instead of navigating --}}
-                                    <button type="button"
-                                            x-data
-                                            @click="$dispatch('open-auth-modal', { mode: 'login' })"
-                                            class="inline-block px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer">
-                                        View
-                                    </button>
-                                @endif
-                            </td>
-
+                            <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             {{-- Official checkmark: large black ✓ for official plans, blank otherwise --}}
                             <td class="px-4 py-3 text-center text-xl font-bold text-gray-900">
                                 {{ $plan->is_official ? '✓' : '' }}
                             </td>
-                            <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
-                            <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs truncate max-w-[140px]">
                                 @php
-                                    $excerpt = $plan->description
-                                        ? mb_substr($plan->description, 0, 24)
+                                    $displayDesc = $plan->description
+                                        ? preg_replace('/^Introduction to\b/i', 'Intro to', $plan->description)
+                                        : null;
+                                    $excerpt = $displayDesc
+                                        ? mb_substr($displayDesc, 0, 24)
                                         : mb_substr($plan->file_name ?? '', 0, 24);
                                 @endphp
                                 {{ $excerpt ?: '—' }}
                             </td>
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
-                            <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('M j, Y') }}</td>
+                            <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('d/m/y') }}</td>
                             @if($isVerifiedUser)
                                 <td class="px-4 py-3 text-gray-700 text-xs">{{ $plan->author_name ? mb_substr($plan->author_name, 0, 16) : 'Anonymous' }}</td>
                             @endif
@@ -279,8 +255,7 @@
                         </tr>
                     @empty
                         <tr>
-                            {{-- +1 for View (always present); My Fave is included in $cols for verified users --}}
-                            <td colspan="{{ count($cols) + 1 }}" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="{{ count($cols) }}" class="px-4 py-8 text-center text-gray-500">
                                 No lesson plans found. {{ request('search') ? 'Try a different search.' : '' }}
                             </td>
                         </tr>

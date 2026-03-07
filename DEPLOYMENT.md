@@ -74,6 +74,8 @@ app/Models/LessonPlan.php            →  app/Models/LessonPlan.php (NEW)
 app/Models/Vote.php                  →  app/Models/Vote.php (NEW)
 app/Models/Favorite.php              →  app/Models/Favorite.php (NEW)
 app/Models/LessonPlanView.php        →  app/Models/LessonPlanView.php (NEW)
+app/Models/UserLogin.php             →  app/Models/UserLogin.php (NEW)
+app/Models/LessonPlanDownload.php    →  app/Models/LessonPlanDownload.php (NEW)
 
 app/Http/Controllers/Auth/AuthenticatedSessionController.php  →  (REPLACE Breeze's)
 app/Http/Controllers/Auth/RegisteredUserController.php        →  (REPLACE Breeze's)
@@ -97,6 +99,7 @@ resources/views/auth/confirm-password.blade.php         →  (REPLACE Breeze's �
 
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 
+app/Http/Requests/Auth/LoginRequest.php                 →  (NEW)
 app/Http/Requests/StoreLessonPlanRequest.php            →  (NEW)
 app/Http/Requests/StoreVersionRequest.php               →  (NEW)
 
@@ -106,6 +109,10 @@ app/Mail/LessonPlanUploaded.php                         →  (NEW)
 app/Mail/DuplicateContentRemoved.php                    →  (NEW)
 
 app/Console/Commands/DetectDuplicateContent.php         →  (NEW)
+
+app/Services/VersionService.php                         →  (NEW)
+
+scripts/post-merge-hook.sh                              →  (NEW)
 
 database/migrations/2024_01_01_000001_create_lesson_plans_table.php  →  (NEW)
 database/migrations/2024_01_01_000002_create_ratings_table.php       →  (NEW)
@@ -117,6 +124,8 @@ database/migrations/2026_02_27_000000_add_semantic_version_to_lesson_plans.php  
 database/migrations/2026_03_01_000001_create_lesson_plan_engagements_table.php    →  (NEW)
 database/migrations/2026_03_01_000002_add_is_official_to_lesson_plans_table.php   →  (NEW)
 database/migrations/2026_03_02_100000_backfill_anonymous_user_names.php           →  (NEW)
+database/migrations/2026_03_07_000001_create_user_logins_table.php                →  (NEW)
+database/migrations/2026_03_07_000002_create_lesson_plan_downloads_table.php      →  (NEW)
 
 database/factories/LessonPlanFactory.php                →  (NEW)
 
@@ -502,7 +511,9 @@ LessonPlanShare/
 │   ├── 2026_02_27_000000_add_semantic_version_to_lesson_plans.php
 │   ├── 2026_03_01_000001_create_lesson_plan_engagements_table.php
 │   ├── 2026_03_01_000002_add_is_official_to_lesson_plans_table.php
-│   └── 2026_03_02_100000_backfill_anonymous_user_names.php
+│   ├── 2026_03_02_100000_backfill_anonymous_user_names.php
+│   ├── 2026_03_07_000001_create_user_logins_table.php
+│   └── 2026_03_07_000002_create_lesson_plan_downloads_table.php
 │
 ├── database/factories/
 │   └── LessonPlanFactory.php
@@ -513,7 +524,9 @@ LessonPlanShare/
 │   ├── Vote.php
 │   ├── Favorite.php
 │   ├── LessonPlanView.php
-│   └── LessonPlanEngagement.php
+│   ├── LessonPlanEngagement.php
+│   ├── UserLogin.php                                     (login event log — one row per login)
+│   └── LessonPlanDownload.php                            (raw download log — one row per download)
 │
 ├── app/Http/Controllers/
 │   ├── Auth/AuthenticatedSessionController.php         (custom login — three-case + Teacher Name)
@@ -529,6 +542,8 @@ LessonPlanShare/
 │   └── AdminMiddleware.php                             (enforces is_admin flag)
 │
 ├── app/Http/Requests/
+│   ├── Auth/
+│   │   └── LoginRequest.php                            (Breeze login validation + rate limiting)
 │   ├── StoreLessonPlanRequest.php                      (new plan upload validation)
 │   └── StoreVersionRequest.php                         (new version upload validation)
 │
@@ -541,6 +556,12 @@ LessonPlanShare/
 │
 ├── app/Console/Commands/
 │   └── DetectDuplicateContent.php
+│
+├── app/Services/
+│   └── VersionService.php                                (cached footer version from version.txt)
+│
+├── scripts/
+│   └── post-merge-hook.sh                                (git hook: writes short hash to version.txt)
 │
 ├── resources/views/
 │   ├── auth/
