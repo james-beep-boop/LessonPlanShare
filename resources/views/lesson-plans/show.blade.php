@@ -121,7 +121,7 @@
         <label class="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
             <input type="checkbox" x-model="showDetails"
                    class="rounded border-gray-300 text-gray-900 shadow-sm focus:ring-gray-900">
-            Show Details
+            Show Details of this Lesson Plan
         </label>
 
         {{-- Details Box (conditional on checkbox) --}}
@@ -209,22 +209,17 @@
         {{-- Document Viewer and Actions --}}
         <div class="border border-gray-200 rounded-lg p-6 space-y-4">
 
+            {{-- Two viewer buttons — each sets the viewer preference and opens immediately --}}
             @if ($lessonPlan->file_path)
-                {{-- "I use" viewer preference toggle --}}
-                <div class="flex items-center gap-3">
-                    <span class="text-sm font-medium text-gray-700">I use:</span>
-                    <div class="inline-flex rounded-md border border-gray-300 overflow-hidden">
-                        <button type="button" @click="useGoogleDocs = false"
-                                :class="!useGoogleDocs ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-                                class="px-3 py-1.5 text-sm font-medium transition-colors">
-                            Microsoft Office
-                        </button>
-                        <button type="button" @click="useGoogleDocs = true"
-                                :class="useGoogleDocs ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-                                class="px-3 py-1.5 text-sm font-medium border-l border-gray-300 transition-colors">
-                            Google Docs
-                        </button>
-                    </div>
+                <div class="flex justify-center gap-3">
+                    <button type="button" @click="useGoogleDocs = false; openViewer()"
+                            class="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                        Use Microsoft Office
+                    </button>
+                    <button type="button" @click="useGoogleDocs = true; openViewer()"
+                            class="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                        Use Google Docs
+                    </button>
                 </div>
             @endif
 
@@ -232,14 +227,6 @@
             <div class="flex flex-col sm:flex-row flex-wrap gap-2">
 
                 @if ($lessonPlan->file_path)
-                    {{-- Unified viewer button --}}
-                    <button type="button" @click="openViewer()"
-                            class="flex flex-col items-center justify-center min-h-[3.5rem] flex-1 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                        <span>View/Download This Plan ↗</span>
-                        <span class="text-xs font-normal opacity-75"
-                              x-text="useGoogleDocs ? '(Google Docs)' : '(Microsoft Office)'"></span>
-                    </button>
-
                     {{-- Download --}}
                     <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
                        @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {

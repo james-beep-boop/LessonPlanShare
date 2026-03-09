@@ -26,4 +26,12 @@ Thumbs.db
 # Uploaded lesson plan files and runtime storage — never commit
 /storage/app/public/lessons/*
 !/storage/app/public/lessons/.gitkeep
+/storage/app/lessons/*
+!/storage/app/lessons/.gitkeep
 /storage/app/version.txt
+
+# Tailwind standalone CLI binary — platform-specific, not committed
+# Download from: https://github.com/tailwindlabs/tailwindcss/releases
+/tailwindcss
+/tailwindcss-*
+# public/css/app.css IS committed — it is the compiled output that DreamHost uses
