@@ -418,9 +418,11 @@ class LessonPlanController extends Controller
     /**
      * View a single lesson plan with its details, votes, and version history.
      *
+     * Accepts an optional ?compare_to={id} query parameter to render an inline
+     * diff against another version of the same lesson (same class/grade/day).
      * Requires authentication + verified email (per spec Section 3.5).
      */
-    public function show(LessonPlan $lessonPlan)
+    public function show(Request $request, LessonPlan $lessonPlan)
     {
         $lessonPlan->load(['author', 'votes']);
 
@@ -477,9 +479,41 @@ class LessonPlanController extends Controller
             )
             : null;
 
+        // Inline diff — computed when ?compare_to= is present in the request.
+        $targetPlan  = null;
+        $diffOps     = [];
+        $sideBySide  = [];
+        $diffSummary = null;
+        $diffWarning = null;
+
+        $compareToId = $request->query('compare_to');
+        if ($compareToId) {
+            $targetPlan = $versions->first(
+                fn ($v) => $v->id === (int) $compareToId && $v->id !== $lessonPlan->id
+            );
+
+            if ($targetPlan) {
+                [$newSupported, $newLines, $newError] = $this->readPlanLinesForDiff($lessonPlan);
+                [$oldSupported, $oldLines, $oldError] = $this->readPlanLinesForDiff($targetPlan);
+
+                if (! $newSupported || ! $oldSupported) {
+                    $diffWarning = $newError ?: $oldError;
+                } elseif (count($oldLines) > 500 || count($newLines) > 500) {
+                    $diffWarning = 'Files are too large for inline diff (limit: 500 lines). Please compare locally.';
+                } else {
+                    $diffOps     = $this->buildLineDiffOperations($oldLines, $newLines);
+                    $diffSummary = $this->buildDiffSummary($diffOps);
+                    $sideBySide  = $this->buildSideBySideDiff($diffOps);
+                }
+            } else {
+                $diffWarning = 'The selected version is not available to compare.';
+            }
+        }
+
         return view('lesson-plans.show', compact(
             'lessonPlan', 'versions', 'userVote', 'hasEngaged',
-            'isAuthorOfPlan', 'isFavorited', 'viewerUrl'
+            'isAuthorOfPlan', 'isFavorited', 'viewerUrl',
+            'targetPlan', 'diffOps', 'sideBySide', 'diffSummary', 'diffWarning'
         ));
     }
 

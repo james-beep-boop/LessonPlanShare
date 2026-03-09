@@ -29,7 +29,8 @@
     <div class="max-w-4xl mx-auto space-y-6"
          x-data="{
              showDetails:   false,
-             showCompare:   false,
+             showCompare:   {{ $targetPlan ? 'true' : 'false' }},
+             sideBySide:    false,
              useGoogleDocs: false,
              confirmOpen:   false,
              favorited:     {{ $isFavorited ? 'true' : 'false' }},
@@ -232,47 +233,14 @@
                 </div>
             </div>
 
-            {{-- 7. Compare with another revision --}}
-            @if ($versions->count() > 1)
-                <div>
-                    <button type="button" @click="showCompare = !showCompare"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
-                        <span x-text="showCompare ? 'Hide Comparison Table' : 'Compare This With Another Revision'">Compare This With Another Revision</span>
-                    </button>
-                    <div x-show="showCompare" x-cloak class="mt-3 rounded overflow-hidden border border-gray-200">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide border-b border-gray-200">
-                                <tr>
-                                    <th class="px-3 py-2">Version</th>
-                                    <th class="px-3 py-2">Official</th>
-                                    <th class="px-3 py-2">Contributor</th>
-                                    <th class="px-3 py-2">Updated</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($versions->where('id', '!=', $lessonPlan->id) as $compareVersion)
-                                    <tr class="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
-                                        onclick="window.location='{{ route('lesson-plans.compare', [$lessonPlan, 'compare_to' => $compareVersion->id]) }}'">
-                                        <td class="px-3 py-2 font-medium">v{{ $compareVersion->semantic_version }}</td>
-                                        <td class="px-3 py-2">{{ $compareVersion->is_official ? 'Yes' : 'No' }}</td>
-                                        <td class="px-3 py-2">{{ $compareVersion->author->name ?? 'Anonymous' }}</td>
-                                        <td class="px-3 py-2 text-gray-500">{{ $compareVersion->created_at->format('M j, Y') }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endif
-
         </div>
 
         {{-- Document Viewer and Actions --}}
         <div class="border border-gray-200 rounded-lg p-6 space-y-4">
 
-            {{-- Two viewer buttons — each sets the viewer preference and opens immediately --}}
+            {{-- Viewer buttons + optional Compare button in one row --}}
             @if ($lessonPlan->file_path)
-                <div class="flex justify-center gap-3">
+                <div class="flex flex-wrap justify-center gap-3">
                     <button type="button" @click="useGoogleDocs = false; openViewer()"
                             class="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                         View with Microsoft Office
@@ -281,6 +249,15 @@
                             class="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                         View with Google Docs
                     </button>
+                    @if ($versions->count() > 1)
+                        <button type="button" @click="showCompare = !showCompare"
+                                class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors border"
+                                :class="showCompare
+                                    ? 'bg-gray-200 text-gray-900 border-gray-400'
+                                    : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'">
+                            Compare With Another Revision
+                        </button>
+                    @endif
                 </div>
             @endif
 
@@ -353,6 +330,154 @@
 
         </div>
 
+        {{-- Inline compare panel — toggled by the Compare button above --}}
+        @if ($versions->count() > 1)
+            <div x-show="showCompare" x-cloak class="space-y-4">
+
+                {{-- Revision selector --}}
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <p class="text-sm font-semibold text-gray-900">Select a Revision to Compare Against</p>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Comparing from current: v{{ $lessonPlan->semantic_version }}.
+                            Click a row to load the diff below.
+                        </p>
+                    </div>
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-2">Version</th>
+                                <th class="px-4 py-2">Official</th>
+                                <th class="px-4 py-2">Contributor</th>
+                                <th class="px-4 py-2">Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($versions->where('id', '!=', $lessonPlan->id) as $cv)
+                                <tr class="border-t border-gray-100 cursor-pointer
+                                           {{ $targetPlan && $targetPlan->id === $cv->id ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
+                                    onclick="window.location='{{ route('lesson-plans.show', ['lessonPlan' => $lessonPlan, 'compare_to' => $cv->id]) }}'">
+                                    <td class="px-4 py-2 font-medium">
+                                        v{{ $cv->semantic_version }}
+                                        @if ($targetPlan && $targetPlan->id === $cv->id)
+                                            <span class="ml-1 text-xs font-normal text-blue-600">(selected)</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-2">{{ $cv->is_official ? 'Yes' : 'No' }}</td>
+                                    <td class="px-4 py-2">{{ $cv->author->name ?? 'Anonymous' }}</td>
+                                    <td class="px-4 py-2 text-gray-500">{{ $cv->created_at->format('M j, Y') }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if ($diffWarning)
+                    <div class="border border-amber-200 bg-amber-50 rounded-lg p-4 text-sm text-amber-800">
+                        {{ $diffWarning }}
+                    </div>
+                @endif
+
+                @if (!empty($diffOps))
+
+                    {{-- Summary stats --}}
+                    @if ($diffSummary)
+                        <div class="grid grid-cols-3 gap-3 text-center text-sm">
+                            <div class="border border-green-200 bg-green-50 rounded-lg p-3">
+                                <p class="text-xl font-bold text-green-700">+{{ $diffSummary['added'] }}</p>
+                                <p class="text-xs text-green-700 uppercase tracking-wider mt-0.5">Lines Added</p>
+                            </div>
+                            <div class="border border-red-200 bg-red-50 rounded-lg p-3">
+                                <p class="text-xl font-bold text-red-700">-{{ $diffSummary['removed'] }}</p>
+                                <p class="text-xs text-red-700 uppercase tracking-wider mt-0.5">Lines Removed</p>
+                            </div>
+                            <div class="border border-gray-200 bg-gray-50 rounded-lg p-3">
+                                <p class="text-xl font-bold text-gray-700">{{ $diffSummary['changed'] }}</p>
+                                <p class="text-xs text-gray-700 uppercase tracking-wider mt-0.5">Lines Changed</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- View toggle --}}
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-600">View:</span>
+                        <button type="button" @click="sideBySide = false"
+                                :class="!sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
+                            Inline
+                        </button>
+                        <button type="button" @click="sideBySide = true"
+                                :class="sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
+                            Side by Side
+                        </button>
+                    </div>
+
+                    {{-- Inline diff --}}
+                    <div x-show="!sideBySide" class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
+                            Baseline: v{{ $targetPlan->semantic_version }} ({{ $targetPlan->author->name ?? 'Anonymous' }})
+                            &rarr; Current: v{{ $lessonPlan->semantic_version }}
+                        </div>
+                        <div class="overflow-x-auto">
+                            <div class="font-mono text-xs">
+                                @foreach ($diffOps as $op)
+                                    @php
+                                        $prefix = $op['type'] === 'add' ? '+' : ($op['type'] === 'remove' ? '−' : ' ');
+                                        $rowClass = $op['type'] === 'add'
+                                            ? 'bg-green-50 text-green-900'
+                                            : ($op['type'] === 'remove'
+                                                ? 'bg-red-50 text-red-900'
+                                                : 'text-gray-600');
+                                    @endphp
+                                    <div class="flex gap-3 px-4 py-0.5 {{ $rowClass }}">
+                                        <span class="select-none w-4 shrink-0 font-bold">{{ $prefix }}</span>
+                                        <span class="whitespace-pre-wrap break-all">{{ $op['line'] }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Side-by-side diff --}}
+                    <div x-show="sideBySide" x-cloak class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
+                            Left: v{{ $targetPlan->semantic_version }} (baseline)
+                            &nbsp;|&nbsp;
+                            Right: v{{ $lessonPlan->semantic_version }} (current)
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full font-mono text-xs border-collapse">
+                                <tbody>
+                                    @foreach ($sideBySide as $row)
+                                        @php
+                                            $leftClass = match($row['type']) {
+                                                'remove', 'change' => 'bg-red-50 text-red-900',
+                                                default => 'text-gray-600',
+                                            };
+                                            $rightClass = match($row['type']) {
+                                                'add', 'change' => 'bg-green-50 text-green-900',
+                                                default => 'text-gray-600',
+                                            };
+                                        @endphp
+                                        <tr class="border-t border-gray-100">
+                                            <td class="px-3 py-0.5 w-1/2 border-r border-gray-200 whitespace-pre-wrap break-all {{ $leftClass }}">{{ $row['left'] }}</td>
+                                            <td class="px-3 py-0.5 w-1/2 whitespace-pre-wrap break-all {{ $rightClass }}">{{ $row['right'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                @elseif ($targetPlan && !$diffWarning)
+                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-sm text-gray-500 italic">
+                        No differences found between the selected versions.
+                    </div>
+                @endif
+
+            </div>
+        @endif
 
     </div>
 
