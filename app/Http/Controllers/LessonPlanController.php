@@ -399,7 +399,8 @@ class LessonPlanController extends Controller
                 ->exists();
             $plan = LessonPlan::create($attrs);
         } catch (\Illuminate\Database\QueryException $e) {
-            Storage::disk('public')->delete($upload['filePath']);
+            // Files are now stored on the local (private) disk — use local, not public.
+            Storage::disk('local')->delete($upload['filePath']);
             if ($e->getCode() === '23000') {
                 return back()->withInput()->with('error',
                     'A version conflict occurred (another upload happened simultaneously). Please try again.');
@@ -600,7 +601,8 @@ class LessonPlanController extends Controller
                     $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch)
                 );
             } catch (\Illuminate\Database\QueryException $e) {
-                Storage::disk('public')->delete($upload['filePath']);
+                // Files are now stored on the local (private) disk — use local, not public.
+                Storage::disk('local')->delete($upload['filePath']);
                 if ($e->getCode() === '23000') {
                     return back()->withInput()->with('error',
                         'A version conflict occurred. Please try again.');
@@ -632,7 +634,8 @@ class LessonPlanController extends Controller
                 'version_patch' => $patch,
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
-            Storage::disk('public')->delete($upload['filePath']);
+            // Files are now stored on the local (private) disk — use local, not public.
+            Storage::disk('local')->delete($upload['filePath']);
             if ($e->getCode() === '23000') {
                 return back()->withInput()->with('error',
                     'A version conflict occurred. Please try again.');

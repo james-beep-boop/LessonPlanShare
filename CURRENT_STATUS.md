@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-08 (Grade column, footer branding, dashboard refactor, My Contributions page. Previous: Analytics charts + VersionService 2026-03-07.)
+**Last updated:** 2026-03-09 (Gemini security audit fixes: private file storage, signed viewer URLs, atomic vote score, orphaned-file catch blocks, OOM fix in migration command, deadlock fix in user deletion. Previous: Grade column, footer branding, dashboard refactor, My Contributions page 2026-03-08.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -94,12 +94,12 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - **Admin system:**
   - `is_admin` boolean column on `users` table (migration `2026_02_26_210000_add_is_admin_to_users_table.php`)
   - `AdminMiddleware` enforces the flag; 403 if not admin
-  - `AdminController` with per-row delete and bulk-delete for both plans and users; `destroyUser()`/`bulkDestroyUsers()` lock ALL user plans (not just official ones), delete files after DB commit (not inside transaction)
+  - `AdminController` with per-row delete and bulk-delete for both plans and users; `destroyUser()`/`bulkDestroyUsers()` check official-plan count with a simple `count()` query (no `lockForUpdate()` — see docblock for rationale), delete files after DB commit (not inside transaction)
   - `/admin` page: 3 counter boxes (Unique Classes, Total Plans, Contributors) + two searchable/sortable tables (lesson plans + registered users) paginated at 20, with checkboxes, bulk-delete, Verify AJAX button; default sort: Lesson Plans by Class name asc, Users by Teacher Name asc; fallback sort aligned with defaults
   - Admin link in header (visible to admins only, left of username)
   - Sub-navigation links removed from layout; Upload button moved to below the dashboard table
   - Stats page fully removed (route, view, controller method all deleted)
-  - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` constant in `AdminController`
+  - **Admin privilege toggle:** "Make Admin" button (any admin can promote); "Revoke Admin" button (only `priority2@protonmail.ch` super-admin can demote); both blocked for self; `SUPER_ADMIN_EMAIL` moved from `AdminController` constant to `config('app.super_admin_email')` backed by `env('SUPER_ADMIN_EMAIL', ...)`
 - **Dashboard:** 4-box counters (Lesson Plans, Contributors, Top Rated, Top Contributor); Upload New Lesson button below table (verified users only)
 - **Show page (lesson-plans.show):** 3-row action button layout; author name displays fall back to "No Teacher Name" if user deleted; `AdminController` uses `deletePlanFile()` private method (DRY) for all 4 delete paths
 - **Route `lesson-plans.store-version`:** `POST /lesson-plans/{id}/versions` → `LessonPlanController::storeVersion()`. Replaces old `PUT /lesson-plans/{id}` (`lesson-plans.update`). Validated by `StoreVersionRequest` (always requires file + revision_type; no `isMethod()` branching).
@@ -119,7 +119,17 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - **`lesson_plan_downloads` table:** Append-only raw download log (`LessonPlanDownload` model); no unique constraint; one row per download click. Recorded in `LessonPlanController::download()` alongside the existing `LessonPlanEngagement` record.
 - **`VersionService`:** `Cache::rememberForever('app_version')` reads `storage/app/version.txt` once and caches indefinitely. Footer uses `\App\Services\VersionService::get()`. Clear with `php artisan cache:forget app_version`.
 - **`scripts/post-merge-hook.sh`:** Git hook installed by `UPDATE_SITE.sh` to `~/LessonPlanShare/.git/hooks/post-merge`; writes `git rev-parse --short HEAD` to `storage/app/version.txt` after every `git pull`. `UPDATE_SITE.sh` also clears `app_version` cache key on each deploy.
-- **Super-admin restriction:** Already implemented in `AdminController::toggleAdmin()` — `SUPER_ADMIN_EMAIL = 'priority2@protonmail.ch'`; any admin can promote; only super-admin can demote; self-modification blocked. No changes needed.
+- **Super-admin restriction:** Implemented in `AdminController::toggleAdmin()`; config value `config('app.super_admin_email')` (env: `SUPER_ADMIN_EMAIL`, default `priority2@protonmail.ch`); any admin can promote; only super-admin can demote; self-modification blocked.
+- **Private file storage:** All new uploads go to `Storage::disk('local')` (`storage/app/lessons/`), not the public disk. External viewers (Google Docs, Office Online) receive a 4-hour temporary signed URL via `URL::temporarySignedRoute('lesson-plans.serve', ...)`. The `resolveFileDisk()` helper in `LessonPlanController` tries local first, falls back to public for legacy files. One-time migration command: `php artisan lessons:migrate-to-private-storage`.
+- **Gemini audit fixes (2026-03-09):**
+  - LCS guard lowered from 2000 → 300 lines (OOM prevention on shared hosting)
+  - Duplicate detector ordering: `_deleted_` plans sorted last (active plans preferred as canonical copy)
+  - Atomic vote score: `adjustVoteScore(int $delta)` on `LessonPlan` model uses `DB::increment/decrement` (no read-then-write race)
+  - Upload catch blocks: all three SQLSTATE 23000 handlers in `store()`/`storeVersion()` now use `Storage::disk('local')` (was `public`) — fixes orphaned-file bug
+  - `MigrateFilesToPrivateStorage` uses `chunkById(50)` instead of `->get()` — prevents OOM on large tables
+  - `destroyUser()`/`bulkDestroyUsers()` use a simple `count()` query instead of `lockForUpdate()` — eliminates InnoDB Next-Key Lock deadlock risk
+  - `UPDATE_SITE.sh`: added Composer note (no auto-install on shared hosting)
+  - Tailwind CDN limitation documented in `CLAUDE.md` and `DEPLOYMENT.md`; future plan: standalone Tailwind CLI binary
 - **Grade column:** `grade` tinyint unsigned default 10, values 10/11/12. Migration `2026_03_08_000001_add_grade_to_lesson_plans_table.php`. Added to `LessonPlan::$fillable` + `$casts`, `StoreLessonPlanRequest`, `StoreVersionRequest`, `buildPlanAttributes()` + `createNewVersion()` in `LessonPlanController`, `$allowedSorts` in both `DashboardController` and `AdminController`. Grade `<select>` on create/edit forms (locked/unlocked pattern on edit). Grade column visible between Class and Day in dashboard, admin, and My Contributions tables.
 - **Footer branding second line:** "ARES Education is a registered NGO in Kenya — Afretech is a registered nonprofit in the US and Canada" added below the existing version/copyright/CC line in `layout.blade.php`.
 - **Dashboard refactor:** "Upload New Lesson" button removed from `dashboard.blade.php` (now lives on `/my-contributions`). User name link in header now conditional: admins → `/admin`, non-admins → `/my-contributions` (both desktop and mobile nav in `layout.blade.php`).

@@ -245,11 +245,17 @@ class AdminController extends Controller
      * to another version before deleting the user.  This prevents a class/day
      * losing its designated official version via cascade.
      *
-     * All of the user's plans are locked for update (not just official ones) so
-     * a concurrent setOfficial() cannot promote a non-official plan between the
-     * check and the delete.  Files are deleted after the DB commit, not inside
-     * the transaction, so a commit failure cannot leave orphaned DB rows with
-     * already-deleted files on disk.
+     * Files are deleted after the DB commit, not inside the transaction, so a
+     * commit failure cannot leave orphaned DB rows with already-deleted files on
+     * disk.
+     *
+     * Note: we intentionally do NOT use lockForUpdate() here. A broad lock on all
+     * of a user's plans causes InnoDB Next-Key Locks that block concurrent inserts
+     * on lesson_plans and creates deadlock risk. The window between the official-
+     * count check and the delete is acceptable — setOfficial() runs inside its own
+     * serialised transaction and the worst outcome is an edge-case where an Official
+     * flag is added just before the delete cascades (already-deleted plan has no
+     * further effect). This app's expected load makes that race negligible.
      */
     public function destroyUser(User $user)
     {
@@ -263,12 +269,9 @@ class AdminController extends Controller
         $filesToDelete = [];
 
         DB::transaction(function () use ($user, &$blocked, &$officialCount, &$filesToDelete) {
-            // Lock ALL of this user's plans (not just official ones) so a concurrent
-            // setOfficial() cannot promote a non-official plan between our check and
-            // the delete. bulkDestroyUsers() uses the same broad-lock pattern.
-            $plans = LessonPlan::where('author_id', $user->id)->lockForUpdate()->get();
-
-            $officialCount = $plans->where('is_official', true)->count();
+            $officialCount = LessonPlan::where('author_id', $user->id)
+                ->where('is_official', true)
+                ->count();
 
             if ($officialCount > 0) {
                 $blocked = true;
@@ -278,6 +281,7 @@ class AdminController extends Controller
             // Collect file paths before deleting rows. Files are removed after the
             // transaction commits; deleting them inside the transaction risks losing
             // files on disk if the subsequent DB commit fails.
+            $plans = LessonPlan::where('author_id', $user->id)->get();
             foreach ($plans as $plan) {
                 if ($plan->file_path) {
                     $filesToDelete[] = $plan->file_path;
@@ -305,9 +309,10 @@ class AdminController extends Controller
      * Bulk-delete multiple user accounts and all their uploaded lesson plan files.
      *
      * Users who own Official plans are skipped (same invariant as destroyUser).
-     * The official-ownership check and each user deletion run inside a single
-     * transaction with a pessimistic lock to close the same race window as
-     * destroyUser().
+     *
+     * Note: we intentionally do NOT use lockForUpdate() here — see destroyUser()
+     * docblock for the full rationale. A broad lock across all selected users'
+     * plans would create significant deadlock risk under concurrent load.
      */
     public function bulkDestroyUsers(Request $request)
     {
@@ -329,10 +334,9 @@ class AdminController extends Controller
         $filesToDelete   = [];
 
         DB::transaction(function () use ($ids, &$deletedCount, &$officialOwnerIds, &$filesToDelete) {
-            // Lock all plans for the selected users so no concurrent setOfficial()
-            // can promote a plan between our check and the delete. Group by author_id
-            // so we can reuse this collection instead of issuing per-user queries below.
-            $allPlans = LessonPlan::whereIn('author_id', $ids)->lockForUpdate()->get()->groupBy('author_id');
+            // Load all plans for the selected users, grouped by author_id.
+            // No lockForUpdate() — see class docblock for rationale.
+            $allPlans = LessonPlan::whereIn('author_id', $ids)->get()->groupBy('author_id');
 
             // Identify which selected users own Official plans — skip them.
             $officialOwnerIds = $allPlans

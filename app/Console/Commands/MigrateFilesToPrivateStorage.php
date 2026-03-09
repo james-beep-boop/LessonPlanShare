@@ -40,46 +40,45 @@ class MigrateFilesToPrivateStorage extends Command
             $this->warn('DRY RUN — no files will be moved.');
         }
 
-        $plans = LessonPlan::whereNotNull('file_path')->orderBy('id')->get();
-
-        if ($plans->isEmpty()) {
-            $this->info('No lesson plans with file paths found.');
-            return 0;
-        }
-
         $moved   = 0;
         $skipped = 0;
         $errors  = 0;
 
-        foreach ($plans as $plan) {
-            $path = $plan->file_path;  // e.g. lessons/ClassName_Grade10_Day1_...docx
+        // Use chunkById to avoid loading all plans into memory at once.
+        // On shared hosting with limited RAM, ->get() on a large table would OOM.
+        LessonPlan::whereNotNull('file_path')
+            ->orderBy('id')
+            ->chunkById(50, function ($plans) use ($dryRun, &$moved, &$skipped, &$errors) {
+                foreach ($plans as $plan) {
+                    $path = $plan->file_path;  // e.g. lessons/ClassName_Grade10_Day1_...docx
 
-            // Already on the local (private) disk — nothing to do.
-            if (Storage::disk('local')->exists($path)) {
-                $skipped++;
-                continue;
-            }
+                    // Already on the local (private) disk — nothing to do.
+                    if (Storage::disk('local')->exists($path)) {
+                        $skipped++;
+                        continue;
+                    }
 
-            // Not on public disk either — file is missing entirely.
-            if (!Storage::disk('public')->exists($path)) {
-                $this->warn("  MISSING [{$plan->id}] {$path}");
-                $errors++;
-                continue;
-            }
+                    // Not on public disk either — file is missing entirely.
+                    if (!Storage::disk('public')->exists($path)) {
+                        $this->warn("  MISSING [{$plan->id}] {$path}");
+                        $errors++;
+                        continue;
+                    }
 
-            $this->line("  MOVE [{$plan->id}] {$path}");
+                    $this->line("  MOVE [{$plan->id}] {$path}");
 
-            if ($dryRun) {
-                $moved++;
-                continue;
-            }
+                    if ($dryRun) {
+                        $moved++;
+                        continue;
+                    }
 
-            // Read from public disk, write to local disk, then remove from public.
-            $contents = Storage::disk('public')->get($path);
-            Storage::disk('local')->put($path, $contents);
-            Storage::disk('public')->delete($path);
-            $moved++;
-        }
+                    // Read from public disk, write to local disk, then remove from public.
+                    $contents = Storage::disk('public')->get($path);
+                    Storage::disk('local')->put($path, $contents);
+                    Storage::disk('public')->delete($path);
+                    $moved++;
+                }
+            });
 
         $this->newLine();
         if ($dryRun) {
