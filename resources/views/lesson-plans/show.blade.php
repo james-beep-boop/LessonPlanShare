@@ -145,11 +145,48 @@
                 Lesson {{ $lessonPlan->lesson_day }}, Version {{ $lessonPlan->semantic_version }}
             </p>
 
-            {{-- 3. Favorites (reactive display only) --}}
-            <p class="text-sm text-gray-700">
-                Is one of your favorites:
-                <span class="font-medium" x-text="favorited ? 'Yes' : 'No'"></span>
-            </p>
+            {{-- 3. Rating tally + inline vote buttons (buttons only when engaged, non-authors only) --}}
+            <div class="flex items-center gap-3 text-sm text-gray-700 flex-wrap">
+                <span>Rating:
+                    <span class="font-medium tabular-nums"
+                          :class="score > 0 ? 'text-green-600' : (score < 0 ? 'text-red-600' : 'text-gray-500')"
+                          x-text="(score > 0 ? '+' : '') + score"></span>
+                </span>
+                @if (!$isAuthorOfPlan)
+                    <div x-show="engaged" x-cloak class="flex gap-1.5">
+                        <button @click="castVote(1)" type="button" :disabled="voteLoading"
+                                :class="userVote === 1
+                                    ? 'bg-green-100 border-green-400 text-green-700'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-green-50 hover:border-green-300'"
+                                class="px-2.5 py-1 border rounded text-xs font-medium transition-colors disabled:opacity-60">
+                            Upvote
+                        </button>
+                        <button @click="castVote(-1)" type="button" :disabled="voteLoading"
+                                :class="userVote === -1
+                                    ? 'bg-red-100 border-red-400 text-red-700'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-red-50 hover:border-red-300'"
+                                class="px-2.5 py-1 border rounded text-xs font-medium transition-colors disabled:opacity-60">
+                            Downvote
+                        </button>
+                    </div>
+                @endif
+            </div>
+
+            {{-- 4. Favorites status + inline toggle (button only when engaged) --}}
+            <div class="flex items-center gap-3 text-sm text-gray-700">
+                <span>Is one of your favorites:
+                    <span class="font-medium" x-text="favorited ? 'Yes' : 'No'"></span>
+                </span>
+                <div x-show="engaged" x-cloak>
+                    <button @click="toggleFavorite()" type="button" :disabled="favLoading"
+                            :class="favorited
+                                ? 'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-yellow-50 hover:border-yellow-300'"
+                            class="px-2.5 py-1 border rounded text-xs font-medium transition-colors disabled:opacity-60"
+                            x-text="favorited ? 'Unfavorite' : 'Favorite'">
+                    </button>
+                </div>
+            </div>
 
             {{-- 4. Original Credits --}}
             @if ($originalVersion)
@@ -191,44 +228,6 @@
                             @endif
                         </div>
                     @endforeach
-                </div>
-            </div>
-
-            {{-- Engaged-only action buttons: Upvote / Download / Favorite --}}
-            <div x-show="engaged" x-cloak class="pt-3 border-t border-gray-100">
-                <div class="flex flex-col sm:flex-row gap-2">
-
-                    @if (!$isAuthorOfPlan)
-                        {{-- Upvote --}}
-                        <button @click="castVote(1)" type="button" :disabled="voteLoading"
-                                :class="userVote === 1
-                                    ? 'bg-green-100 border-green-400 text-green-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-green-50 hover:border-green-300'"
-                                class="flex-1 px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
-                            Upvote This Lesson Plan
-                        </button>
-                    @endif
-
-                    @if (!$isAuthorOfPlan)
-                        {{-- Downvote --}}
-                        <button @click="castVote(-1)" type="button" :disabled="voteLoading"
-                                :class="userVote === -1
-                                    ? 'bg-red-100 border-red-400 text-red-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-red-50 hover:border-red-300'"
-                                class="flex-1 px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
-                            Downvote This Lesson Plan
-                        </button>
-                    @endif
-
-                    {{-- Favorite --}}
-                    <button @click="toggleFavorite()" type="button" :disabled="favLoading"
-                            :class="favorited
-                                ? 'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-yellow-50 hover:border-yellow-300'"
-                            class="flex-1 px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60"
-                            x-text="favorited ? 'Unfavorite This Lesson Plan' : 'Favorite This Lesson Plan'">
-                    </button>
-
                 </div>
             </div>
 
