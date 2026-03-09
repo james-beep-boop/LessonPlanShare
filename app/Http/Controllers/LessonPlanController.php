@@ -424,8 +424,17 @@ class LessonPlanController extends Controller
     {
         $lessonPlan->load(['author', 'votes']);
 
-        $versions = $lessonPlan->familyVersions()
+        // Show ALL plans for this class/grade/day regardless of family linkage.
+        // familyVersions() only returns same-author chains (via original_id), so
+        // standalone uploads by other contributors never appeared in the history.
+        // Grouping by class+grade+day gives a complete picture across all authors.
+        $versions = LessonPlan::where('class_name', $lessonPlan->class_name)
+            ->where('grade', $lessonPlan->grade)
+            ->where('lesson_day', $lessonPlan->lesson_day)
             ->with('author')
+            ->orderBy('version_major', 'asc')
+            ->orderBy('version_minor', 'asc')
+            ->orderBy('version_patch', 'asc')
             ->get();
 
         $userVote   = null;
