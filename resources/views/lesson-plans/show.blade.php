@@ -2,12 +2,16 @@
     <x-slot:title>{{ $lessonPlan->class_name }} Grade {{ $lessonPlan->grade }} Lesson {{ $lessonPlan->lesson_day }} — ARES Education</x-slot>
 
     @php
-        // Pre-compute viewer URLs (server-generated, not user input)
-        $googleViewUrl = $lessonPlan->file_path
-            ? 'https://docs.google.com/gview?url=' . urlencode(asset('storage/' . $lessonPlan->file_path))
+        // Pre-compute viewer URLs using the controller-supplied signed URL.
+        // The signed URL points to the private-disk serve route (4-hour expiry).
+        // External viewer services (Google Docs, Office Online) fetch the file via
+        // a server-to-server request — they cannot use session cookies, but the
+        // signed URL acts as a short-lived token that authorises the single fetch.
+        $googleViewUrl = $viewerUrl
+            ? 'https://docs.google.com/gview?url=' . urlencode($viewerUrl)
             : '';
-        $officeViewUrl = $lessonPlan->file_path
-            ? 'https://view.officeapps.live.com/op/view.aspx?src=' . urlencode(asset('storage/' . $lessonPlan->file_path))
+        $officeViewUrl = $viewerUrl
+            ? 'https://view.officeapps.live.com/op/view.aspx?src=' . urlencode($viewerUrl)
             : '';
 
         // Sort once; reuse for $latestVersion and the version history loop

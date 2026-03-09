@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Super-Administrator Email
+    |--------------------------------------------------------------------------
+    |
+    | The email address of the account that can revoke admin privileges.
+    | All other admins can grant privileges but only this account can revoke.
+    | Set SUPER_ADMIN_EMAIL in your .env file to change this without code edits.
+    |
+    */
+
+    'super_admin_email' => env('SUPER_ADMIN_EMAIL', 'priority2@protonmail.ch'),
+
 ];

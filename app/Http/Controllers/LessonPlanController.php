@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -145,7 +146,10 @@ class LessonPlanController extends Controller
         }
 
         $diskName = $canonicalName . '.' . $extension;
-        $filePath = $file->storeAs('lessons', $diskName, 'public');
+        // Store on the private local disk — not publicly accessible via URL.
+        // Files are served through authenticated download routes or temporary
+        // signed URLs (see serveForViewer) so external viewers can also access them.
+        $filePath = $file->storeAs('lessons', $diskName, 'local');
 
         return [
             'diskName' => $diskName,
@@ -290,8 +294,9 @@ class LessonPlanController extends Controller
 
             if ($plan->file_path) {
                 try {
-                    if (Storage::disk('public')->exists($plan->file_path)) {
-                        Storage::disk('public')->move($plan->file_path, $newPath);
+                    $disk = $this->resolveFileDisk($plan->file_path);
+                    if ($disk) {
+                        $disk->move($plan->file_path, $newPath);
                         // Only update file_path/file_name when the move actually succeeded —
                         // writing a new path to the DB when no rename happened would desync
                         // the DB from the filesystem.
@@ -450,7 +455,22 @@ class LessonPlanController extends Controller
 
         $isAuthorOfPlan = Auth::check() && $lessonPlan->author_id === Auth::id();
 
-        return view('lesson-plans.show', compact('lessonPlan', 'versions', 'userVote', 'hasEngaged', 'isAuthorOfPlan', 'isFavorited'));
+        // Generate a 4-hour temporary signed URL for external viewers (Google Docs,
+        // Office Online). These services make unauthenticated server-to-server requests,
+        // so they cannot use session cookies. The signed URL acts as a short-lived token
+        // that lets the viewer fetch the file without exposing a permanent public URL.
+        $viewerUrl = $lessonPlan->file_path
+            ? URL::temporarySignedRoute(
+                'lesson-plans.serve',
+                now()->addHours(4),
+                ['lessonPlan' => $lessonPlan->id]
+            )
+            : null;
+
+        return view('lesson-plans.show', compact(
+            'lessonPlan', 'versions', 'userVote', 'hasEngaged',
+            'isAuthorOfPlan', 'isFavorited', 'viewerUrl'
+        ));
     }
 
     /**
@@ -482,8 +502,8 @@ class LessonPlanController extends Controller
             if (! $newSupported || ! $oldSupported) {
                 $warning = $newError ?: $oldError;
             } else {
-                if (count($oldLines) > 2000 || count($newLines) > 2000) {
-                    $warning = 'Comparison unavailable: selected text files are too large for inline diff. Please compare these files locally.';
+                if (count($oldLines) > 300 || count($newLines) > 300) {
+                    $warning = 'Comparison unavailable: selected text files are too large for inline diff (limit: 300 lines). Please compare these files locally.';
                 } else {
                     $diffOps     = $this->buildLineDiffOperations($oldLines, $newLines);
                     $diffSummary = $this->buildDiffSummary($diffOps);
@@ -628,6 +648,30 @@ class LessonPlanController extends Controller
     }
 
     /**
+     * Serve a lesson plan file to an external viewer (Google Docs, Office Online).
+     *
+     * This route is NOT behind auth middleware — external viewer services make
+     * server-to-server HTTP requests and cannot pass session cookies.
+     * Access is protected by a temporary signed URL (4-hour expiry) generated in show().
+     * Laravel's 'signed' route middleware validates the HMAC signature and expiry
+     * before this method is called; an invalid or expired URL returns 403/401.
+     *
+     * Does NOT record engagement — that's fired client-side by the viewer button.
+     */
+    public function serveForViewer(LessonPlan $lessonPlan)
+    {
+        $disk = $this->resolveFileDisk($lessonPlan->file_path ?? '');
+        if (!$disk) {
+            abort(404, 'File not found.');
+        }
+
+        return $disk->download(
+            $lessonPlan->file_path,
+            $lessonPlan->file_name ?? basename($lessonPlan->file_path)
+        );
+    }
+
+    /**
      * Download the file attached to a lesson plan.
      *
      * Records a download engagement record for the authenticated user,
@@ -635,7 +679,8 @@ class LessonPlanController extends Controller
      */
     public function download(LessonPlan $lessonPlan)
     {
-        if (!$lessonPlan->file_path || !Storage::disk('public')->exists($lessonPlan->file_path)) {
+        $disk = $this->resolveFileDisk($lessonPlan->file_path ?? '');
+        if (!$lessonPlan->file_path || !$disk) {
             return back()->with('error', 'File not found.');
         }
 
@@ -652,7 +697,7 @@ class LessonPlanController extends Controller
             ]);
         }
 
-        return Storage::disk('public')->download(
+        return $disk->download(
             $lessonPlan->file_path,
             $lessonPlan->file_name ?? basename($lessonPlan->file_path)
         );
@@ -717,8 +762,9 @@ class LessonPlanController extends Controller
                     . 'Please delete those newer versions first.');
             }
 
-            if ($lessonPlan->file_path && Storage::disk('public')->exists($lessonPlan->file_path)) {
-                Storage::disk('public')->delete($lessonPlan->file_path);
+            if ($lessonPlan->file_path) {
+                $disk = $this->resolveFileDisk($lessonPlan->file_path);
+                $disk?->delete($lessonPlan->file_path);
             }
 
             // votes, favorites, lesson_plan_views, lesson_plan_engagements all CASCADE on delete.
@@ -839,7 +885,8 @@ class LessonPlanController extends Controller
             return [false, [], 'Comparison unavailable: one of the selected versions has no file path.'];
         }
 
-        if (! Storage::disk('public')->exists($plan->file_path)) {
+        $disk = $this->resolveFileDisk($plan->file_path);
+        if (!$disk) {
             return [false, [], 'Comparison unavailable: one of the selected files is missing from storage.'];
         }
 
@@ -848,7 +895,7 @@ class LessonPlanController extends Controller
             return [false, [], 'Comparison currently supports .txt files only. DOC/DOCX/RTF/ODT support is planned next.'];
         }
 
-        $absolutePath = Storage::disk('public')->path($plan->file_path);
+        $absolutePath = $disk->path($plan->file_path);
         $content = @file_get_contents($absolutePath);
         if ($content === false) {
             return [false, [], 'Comparison failed: could not read one of the selected files.'];
@@ -915,6 +962,35 @@ class LessonPlanController extends Controller
         }
 
         return $ops;
+    }
+
+    /**
+     * Resolve which disk holds a lesson plan file.
+     *
+     * New uploads are stored on the local (private) disk. Legacy files uploaded
+     * before the MigrateFilesToPrivateStorage command was run may still be on the
+     * public disk. This helper checks local first, then public, so the transition
+     * is transparent to callers — no DB column change is needed.
+     *
+     * After running `php artisan lessons:migrate-to-private-storage` all files will
+     * be on the local disk and the public fallback will never trigger.
+     *
+     * Returns null if the file is not found on either disk.
+     *
+     * @return \Illuminate\Contracts\Filesystem\Filesystem|null
+     */
+    private function resolveFileDisk(string $path): ?\Illuminate\Contracts\Filesystem\Filesystem
+    {
+        if ($path === '') {
+            return null;
+        }
+        if (Storage::disk('local')->exists($path)) {
+            return Storage::disk('local');
+        }
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public');
+        }
+        return null;
     }
 
     /**

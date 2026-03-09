@@ -21,6 +21,19 @@ Route::get('/guide', fn () => view('guide'))->name('guide');
 
 /*
 |--------------------------------------------------------------------------
+| Signed Viewer Route (no auth required)
+|--------------------------------------------------------------------------
+| External viewer services (Google Docs, Office Online) make server-to-server
+| requests and cannot pass session cookies. Access is protected by a 4-hour
+| temporary signed URL generated in LessonPlanController::show().
+| Laravel's 'signed' middleware validates the HMAC and expiry automatically.
+*/
+Route::get('/lesson-plans/{lessonPlan}/serve', [LessonPlanController::class, 'serveForViewer'])
+    ->name('lesson-plans.serve')
+    ->middleware('signed');
+
+/*
+|--------------------------------------------------------------------------
 | Authenticated + Email-Verified Routes
 |--------------------------------------------------------------------------
 | These require the user to be logged in AND to have verified their email.

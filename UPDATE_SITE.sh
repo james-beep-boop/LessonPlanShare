@@ -93,6 +93,17 @@ fi
 # Clean up temp
 rm -rf /tmp/LPC
 
+# ── Composer packages ──
+# This overlay repo does NOT track composer.json/composer.lock, so Composer
+# is NOT run automatically. If you have added new PHP packages to composer.json
+# (e.g. a new Laravel package), run the following MANUALLY before this script:
+#
+#   cd ~/LessonPlanShare && composer install --no-dev --optimize-autoloader
+#
+# The current project has no non-framework dependencies, so this is only needed
+# when you deliberately add a package. Framework packages (Laravel, Breeze) are
+# already installed in the full Laravel install on the server.
+
 # Run any new migrations
 echo "  Running migrations..."
 cd ~/LessonPlanShare

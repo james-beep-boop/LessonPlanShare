@@ -361,17 +361,50 @@ class LessonPlan extends Model
     }
 
     /**
+     * Atomically adjust the cached vote_score by a signed delta.
+     *
+     * Uses DB increment/decrement rather than the read-then-write pattern of
+     * recalculateVoteScore(), which is vulnerable to a race condition when two
+     * concurrent requests both read the same score and then both write back
+     * a value computed from that stale read.
+     *
+     * VoteController computes the exact delta for each action:
+     *   - New vote:      delta = vote value (+1 or -1)
+     *   - Toggle off:    delta = -existingVote
+     *   - Switch dir:    delta = newValue - existingVote  (e.g. +1 - (-1) = +2)
+     *   - Remove vote:   delta = -vote.value
+     *
+     * Does NOT touch updated_at (raw DB call) — voted-on plans must not float
+     * to the top of "Updated" sort.
+     */
+    public function adjustVoteScore(int $delta): void
+    {
+        if ($delta === 0) {
+            return;
+        }
+
+        if ($delta > 0) {
+            DB::table('lesson_plans')->where('id', $this->id)->increment('vote_score', $delta);
+        } else {
+            DB::table('lesson_plans')->where('id', $this->id)->decrement('vote_score', abs($delta));
+        }
+
+        $this->vote_score = ($this->vote_score ?? 0) + $delta;
+    }
+
+    /**
      * Recalculate and store the cached vote_score from the votes table.
      *
-     * Called by VoteController::store() after every vote action (create,
-     * toggle off, or switch direction). Uses a raw DB update to suppress
-     * model events and avoid touching updated_at (which would cause
-     * voted-on plans to float to the top of the "Updated" sort).
+     * Kept for one-off correction runs (e.g. after a data import or manual DB fix).
+     * VoteController uses adjustVoteScore() for the normal vote path to avoid a
+     * read-then-write race condition.
+     *
+     * @internal Use adjustVoteScore() for routine vote actions.
      */
     public function recalculateVoteScore(): void
     {
         $score = $this->votes()->sum('value');
         DB::table('lesson_plans')->where('id', $this->id)->update(['vote_score' => $score]);
-        $this->vote_score = $score; // keep local attribute in sync
+        $this->vote_score = $score;
     }
 }

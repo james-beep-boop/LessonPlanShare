@@ -342,6 +342,8 @@ MAIL_PASSWORD=your_email_password_here
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS="david@sheql.com"
 MAIL_FROM_NAME="ARES Education"
+
+SUPER_ADMIN_EMAIL=priority2@protonmail.ch
 ```
 
 Generate the app key:
@@ -395,9 +397,14 @@ chmod -R 775 ~/LessonPlanShare/storage
 chmod -R 775 ~/LessonPlanShare/bootstrap/cache
 ```
 
-### Step 14: Create the lessons upload directory
+### Step 14: Create the lessons upload directories
+
+Files are stored on the private disk (not publicly accessible via URL).
+Create both directories — private for new uploads, public kept for legacy compatibility:
 
 ```bash
+mkdir -p ~/LessonPlanShare/storage/app/lessons
+chmod 775 ~/LessonPlanShare/storage/app/lessons
 mkdir -p ~/LessonPlanShare/storage/app/public/lessons
 chmod 775 ~/LessonPlanShare/storage/app/public/lessons
 ```
@@ -465,9 +472,32 @@ The GitHub repository must be **public** for the script to work without
 authentication. If the repo is private, the script will fail on the
 `git clone` step.
 
+### One-time: Migrate lesson plan files to private storage
+
+After deploying the commit that introduced private file storage, run this command
+**once** to move existing files from the public disk to the private local disk:
+
+```bash
+# Preview first:
+php artisan lessons:migrate-to-private-storage --dry-run
+
+# Then run for real:
+php artisan lessons:migrate-to-private-storage
+```
+
+This moves files from `storage/app/public/lessons/` to `storage/app/lessons/`.
+The database records do not change (file_path stays as `lessons/FILENAME`).
+New uploads always go to the private disk automatically.
+
+After migration, lesson plans are only accessible through:
+- The authenticated download route (`/lesson-plans/{id}/download`)
+- Temporary signed URLs (4-hour expiry) for Google Docs / Office Online viewers
+
 ### Monitoring disk usage
 
 ```bash
+du -sh ~/LessonPlanShare/storage/app/lessons/
+# (Legacy files not yet migrated:)
 du -sh ~/LessonPlanShare/storage/app/public/lessons/
 ```
 
@@ -563,7 +593,8 @@ LessonPlanShare/
 │
 ├── app/Console/Commands/
 │   ├── DetectDuplicateContent.php
-│   └── BackfillGradeInFilenames.php
+│   ├── BackfillGradeInFilenames.php
+│   └── MigrateFilesToPrivateStorage.php               (one-time migration to private disk)
 │
 ├── app/Services/
 │   └── VersionService.php                                (cached footer version from version.txt)
@@ -644,6 +675,10 @@ domain pointing to the correct directory. Check:
 - Verify the storage symlink: `ls -la ~/sheql.com/storage`
 - File limit is 1 MB (enforced by both client-side JS and server-side validation)
 
+**External viewer (Google Docs / Office Online) shows "Unable to open" or 403:**
+- The signed viewer URL expires after 4 hours. Refresh the lesson plan page to get a fresh URL.
+- If expired URLs are being seen immediately, check that `APP_KEY` is set correctly in `.env` and that `php artisan config:cache` has been run.
+
 **"Class not found" errors:**
 - Run `composer dump-autoload` on the server
 
@@ -711,6 +746,8 @@ This repository only contains custom overlay files, not a complete Laravel insta
 
 **7. No Node.js / no build step**
 DreamHost shared hosting does not have Node.js. The `npm install && npm run build` step from Breeze installation will fail — this is expected. All frontend assets (Tailwind CSS, Alpine.js) are loaded via CDN. Remove any `@vite(...)` references from Breeze layout files.
+
+The Tailwind CDN is a known limitation. The future plan is to use the standalone Tailwind CLI (a single binary, no Node.js) to compile a static `public/css/app.css` locally and commit it to the repo. See CLAUDE.md "Tailwind CDN — Known Limitation & Future Plan" for the steps.
 
 **8. Config cache masks .env changes**
 After running `php artisan config:cache`, Laravel reads from the cache and ignores `.env` entirely. If you change `.env` values, you MUST clear and rebuild: `php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache`.

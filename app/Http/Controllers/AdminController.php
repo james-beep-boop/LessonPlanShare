@@ -23,8 +23,6 @@ use Illuminate\Support\Facades\Storage;
  */
 class AdminController extends Controller
 {
-    /** The email address of the super-administrator (only account that can revoke admin). */
-    private const SUPER_ADMIN_EMAIL = 'priority2@protonmail.ch';
     /** Display the admin panel with searchable/sortable tables and counters. */
     public function index(Request $request)
     {
@@ -227,8 +225,8 @@ class AdminController extends Controller
             return back()->with('error', 'You cannot change your own admin status.');
         }
 
-        // Revoking admin is restricted to the super-admin
-        if ($user->is_admin && Auth::user()->email !== self::SUPER_ADMIN_EMAIL) {
+        // Revoking admin is restricted to the super-admin (configured in config/app.php or SUPER_ADMIN_EMAIL env)
+        if ($user->is_admin && Auth::user()->email !== config('app.super_admin_email')) {
             return back()->with('error', 'Only the super-administrator can revoke admin privileges.');
         }
 
@@ -430,15 +428,25 @@ class AdminController extends Controller
     private function deletePlanFile(LessonPlan $plan): void
     {
         if ($plan->file_path) {
-            Storage::disk('public')->delete($plan->file_path);
+            // Try local (private) disk first; fall back to public for legacy files.
+            if (Storage::disk('local')->exists($plan->file_path)) {
+                Storage::disk('local')->delete($plan->file_path);
+            } elseif (Storage::disk('public')->exists($plan->file_path)) {
+                Storage::disk('public')->delete($plan->file_path);
+            }
         }
     }
 
-    /** Delete a batch of file paths from the public disk (used after DB transactions commit). */
+    /** Delete a batch of file paths (used after DB transactions commit). */
     private function deleteFiles(array $paths): void
     {
-        if ($paths) {
-            Storage::disk('public')->delete($paths);
+        foreach ($paths as $path) {
+            // Try local (private) disk first; fall back to public for legacy files.
+            if (Storage::disk('local')->exists($path)) {
+                Storage::disk('local')->delete($path);
+            } elseif (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
         }
     }
 }

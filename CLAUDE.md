@@ -17,7 +17,20 @@ A Laravel 12 web app for Kenyan high school teachers (ARES Education) to upload,
 - Database: MySQL 8.0 on remote host (mysql.sheql.com)
 - Session/Cache: File driver (no Redis on shared hosting)
 - Email: SMTP via smtp.dreamhost.com (port 587, TLS)
+- File storage: Private local disk (`storage/app/lessons/`). Served via authenticated download routes + temporary signed URLs for external viewers (Google Docs, Office Online).
 - Key constraint: This is an **overlay repo** — the git repo only contains custom files, NOT a full Laravel installation. Breeze and Laravel core live on the server but are NOT in git.
+
+### Tailwind CDN — Known Limitation & Future Plan
+Current: Tailwind CSS loaded via CDN (`https://cdn.tailwindcss.com`). Acceptable for now, not production-grade (no tree-shaking, extra page-load latency).
+
+**Planned fix (separate task):**
+1. Download [standalone Tailwind CLI](https://tailwindcss.com/blog/standalone-cli) binary (no Node.js/npm needed).
+2. Compile: `tailwindcss -i resources/css/app.css -o public/css/app.css --minify`
+3. Commit `public/css/app.css` to git (overlay already tracks `public/`).
+4. Replace CDN `<script>` in `layout.blade.php` with `<link rel="stylesheet" href="{{ asset('css/app.css') }}">`.
+5. Re-run compile whenever Tailwind classes change.
+
+Until then: CDN is intentional. Do NOT add npm, Vite, or Webpack.
 
 ## Local Development Commands
 - Start dev server: `php artisan serve` (or `php -S localhost:8000 -t public`)

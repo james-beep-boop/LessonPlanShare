@@ -91,15 +91,21 @@ class BackfillGradeInFilenames extends Command
                 continue;
             }
 
-            // Rename on disk
-            if (!Storage::disk('public')->exists($oldFilePath)) {
+            // Rename on disk — try local (private) disk first, then public (legacy)
+            $disk = Storage::disk('local')->exists($oldFilePath)
+                ? Storage::disk('local')
+                : (Storage::disk('public')->exists($oldFilePath)
+                    ? Storage::disk('public')
+                    : null);
+
+            if (!$disk) {
                 $this->warn("    SKIP (file not found on disk): {$oldFilePath}");
                 $skipped++;
                 continue;
             }
 
             try {
-                Storage::disk('public')->move($oldFilePath, $newFilePath);
+                $disk->move($oldFilePath, $newFilePath);
             } catch (\Exception $e) {
                 $this->error("    ERROR renaming file: " . $e->getMessage());
                 $errors++;

@@ -62,13 +62,18 @@ class VoteController extends Controller
             ->where('user_id', Auth::id())
             ->first();
 
+        $newValue = (int) $data['value'];
+        $delta    = 0;
+
         if ($existingVote) {
-            if ($existingVote->value === (int) $data['value']) {
-                // Same vote direction again — toggle it off (remove the vote)
+            if ($existingVote->value === $newValue) {
+                // Same direction — toggle off (remove the vote)
+                $delta = -$existingVote->value;
                 $existingVote->delete();
             } else {
-                // Switching direction (upvote ↔ downvote)
-                $existingVote->update(['value' => $data['value']]);
+                // Switching direction (upvote ↔ downvote): delta spans both sides
+                $delta = $newValue - $existingVote->value;  // e.g. +1 - (-1) = +2
+                $existingVote->update(['value' => $newValue]);
             }
         } else {
             // No existing vote — create a new one.
@@ -79,20 +84,21 @@ class VoteController extends Controller
                 Vote::create([
                     'lesson_plan_id' => $lessonPlan->id,
                     'user_id'        => Auth::id(),
-                    'value'          => $data['value'],
+                    'value'          => $newValue,
                 ]);
+                $delta = $newValue;
             } catch (\Illuminate\Database\QueryException $e) {
                 // SQLSTATE 23000 = integrity constraint violation (duplicate key).
-                // The other request already inserted — treat as a no-op.
+                // The other request already inserted — treat as a no-op (delta stays 0).
                 if ($e->getCode() !== '23000') {
                     throw $e;
                 }
             }
         }
 
-        // Recalculate the cached vote_score column on the lesson plan
-        // (avoids expensive SUM() queries on every page load)
-        $lessonPlan->recalculateVoteScore();
+        // Atomically adjust the cached vote_score by the exact delta.
+        // Using increment/decrement avoids the read-then-write race condition.
+        $lessonPlan->adjustVoteScore($delta);
         $lessonPlan->refresh();
 
         if ($request->expectsJson()) {
@@ -121,8 +127,9 @@ class VoteController extends Controller
             ->first();
 
         if ($vote) {
+            $delta = -$vote->value;  // removing a +1 vote → -1 delta; removing a -1 → +1 delta
             $vote->delete();
-            $lessonPlan->recalculateVoteScore();
+            $lessonPlan->adjustVoteScore($delta);
             $lessonPlan->refresh();
         }
 

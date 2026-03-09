@@ -53,9 +53,14 @@ class DetectDuplicateContent extends Command
         $totalRemoved = 0;
 
         foreach ($duplicates as $hash) {
-            // Get all plans with this hash, ordered by id (earliest first)
+            // Get all plans with this hash.
+            // Prefer non-retired plans over retired ones (names containing _deleted_);
+            // within each group, prefer the earliest upload (lowest id).
+            // This prevents a retired/archived plan from being kept as the "canonical"
+            // copy when an active plan exists with identical content.
             $plans = LessonPlan::where('file_hash', $hash)
                 ->with('author')
+                ->orderByRaw("CASE WHEN name LIKE '%\_deleted\_%' THEN 1 ELSE 0 END ASC")
                 ->orderBy('id', 'asc')
                 ->get();
 
@@ -99,9 +104,13 @@ class DetectDuplicateContent extends Command
                     continue;
                 }
 
-                // Delete the stored file
-                if ($dupe->file_path && Storage::disk('public')->exists($dupe->file_path)) {
-                    Storage::disk('public')->delete($dupe->file_path);
+                // Delete the stored file (try local/private disk first, fall back to public)
+                if ($dupe->file_path) {
+                    if (Storage::disk('local')->exists($dupe->file_path)) {
+                        Storage::disk('local')->delete($dupe->file_path);
+                    } elseif (Storage::disk('public')->exists($dupe->file_path)) {
+                        Storage::disk('public')->delete($dupe->file_path);
+                    }
                 }
 
                 // Send notification email to the author of the duplicate
@@ -150,9 +159,15 @@ class DetectDuplicateContent extends Command
             ->whereNotNull('file_path')
             ->chunkById(50, function ($chunk) {
                 foreach ($chunk as $plan) {
-                    $fullPath = Storage::disk('public')->path($plan->file_path);
-                    if (file_exists($fullPath)) {
-                        $plan->file_hash = hash_file('sha256', $fullPath);
+                    // Try local (private) disk first; fall back to public for legacy files.
+                    $disk = Storage::disk('local')->exists($plan->file_path)
+                        ? Storage::disk('local')
+                        : (Storage::disk('public')->exists($plan->file_path)
+                            ? Storage::disk('public')
+                            : null);
+
+                    if ($disk) {
+                        $plan->file_hash = hash_file('sha256', $disk->path($plan->file_path));
                         $plan->saveQuietly();
                     }
                 }
