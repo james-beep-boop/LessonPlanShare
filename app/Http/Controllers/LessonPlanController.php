@@ -484,26 +484,33 @@ class LessonPlanController extends Controller
     }
 
     /**
-     * Compare the currently viewed version against another version in the same family.
+     * Compare the currently viewed version against another version of the same lesson.
      *
-     * This MVP supports line-level diffs for .txt files only.
-     * Other formats return a clear "not yet supported" message instead of failing.
+     * Accessible to all authenticated + verified users (not admin-only).
+     * Supports .txt and .docx files; other formats return a clear warning.
      */
     public function compare(Request $request, LessonPlan $lessonPlan)
     {
         $lessonPlan->load('author');
 
-        $versions = $lessonPlan->familyVersions()
+        // All versions for this class/grade/day — same scope as the show page version history.
+        $versions = LessonPlan::where('class_name', $lessonPlan->class_name)
+            ->where('grade', $lessonPlan->grade)
+            ->where('lesson_day', $lessonPlan->lesson_day)
             ->with('author')
-            ->get()
-            ->sortBy('created_at')
-            ->values();
+            ->orderBy('version_major', 'asc')
+            ->orderBy('version_minor', 'asc')
+            ->orderBy('version_patch', 'asc')
+            ->get();
+
+        $otherVersions = $versions->filter(fn ($v) => $v->id !== $lessonPlan->id)->values();
 
         $targetPlan = $this->resolveCompareTarget($lessonPlan, $versions, $request->query('compare_to'));
 
         $diffSummary = null;
-        $diffOps = [];
-        $warning = null;
+        $diffOps     = [];
+        $sideBySide  = [];
+        $warning     = null;
 
         if ($targetPlan) {
             [$newSupported, $newLines, $newError] = $this->readPlanLinesForDiff($lessonPlan);
@@ -511,25 +518,26 @@ class LessonPlanController extends Controller
 
             if (! $newSupported || ! $oldSupported) {
                 $warning = $newError ?: $oldError;
+            } elseif (count($oldLines) > 500 || count($newLines) > 500) {
+                $warning = 'Comparison unavailable: files are too large for inline diff (limit: 500 lines). Please compare locally.';
             } else {
-                if (count($oldLines) > 300 || count($newLines) > 300) {
-                    $warning = 'Comparison unavailable: selected text files are too large for inline diff (limit: 300 lines). Please compare these files locally.';
-                } else {
-                    $diffOps     = $this->buildLineDiffOperations($oldLines, $newLines);
-                    $diffSummary = $this->buildDiffSummary($diffOps);
-                }
+                $diffOps     = $this->buildLineDiffOperations($oldLines, $newLines);
+                $diffSummary = $this->buildDiffSummary($diffOps);
+                $sideBySide  = $this->buildSideBySideDiff($diffOps);
             }
-        } else {
-            $warning = 'No previous version is available to compare against yet.';
+        } elseif ($request->query('compare_to')) {
+            $warning = 'The selected version is not available to compare.';
         }
 
         return view('lesson-plans.compare', [
-            'lessonPlan'   => $lessonPlan,
-            'versions'     => $versions,
-            'targetPlan'   => $targetPlan,
-            'diffSummary'  => $diffSummary,
-            'diffOps'      => $diffOps,
-            'warning'      => $warning,
+            'lessonPlan'    => $lessonPlan,
+            'versions'      => $versions,
+            'otherVersions' => $otherVersions,
+            'targetPlan'    => $targetPlan,
+            'diffSummary'   => $diffSummary,
+            'diffOps'       => $diffOps,
+            'sideBySide'    => $sideBySide,
+            'warning'       => $warning,
         ]);
     }
 
@@ -886,7 +894,8 @@ class LessonPlanController extends Controller
     /**
      * Read a lesson plan into comparable lines.
      *
-     * Supports only .txt files in this MVP. Other extensions return a warning reason.
+     * Supports .txt (raw) and .docx (text extracted via ZipArchive).
+     * Other extensions return a warning reason.
      * Line endings are normalised to \n before splitting.
      *
      * @return array{0: bool, 1: array<int, string>, 2: string|null}
@@ -898,23 +907,80 @@ class LessonPlanController extends Controller
         }
 
         $disk = $this->resolveFileDisk($plan->file_path);
-        if (!$disk) {
+        if (! $disk) {
             return [false, [], 'Comparison unavailable: one of the selected files is missing from storage.'];
         }
 
-        $extension = strtolower(pathinfo($plan->file_name ?? $plan->file_path, PATHINFO_EXTENSION));
-        if ($extension !== 'txt') {
-            return [false, [], 'Comparison currently supports .txt files only. DOC/DOCX/RTF/ODT support is planned next.'];
-        }
-
+        $extension    = strtolower(pathinfo($plan->file_name ?? $plan->file_path, PATHINFO_EXTENSION));
         $absolutePath = $disk->path($plan->file_path);
-        $content = @file_get_contents($absolutePath);
-        if ($content === false) {
-            return [false, [], 'Comparison failed: could not read one of the selected files.'];
+
+        if ($extension === 'docx') {
+            $lines = $this->extractTextLinesFromDocx($absolutePath);
+            if ($lines === null) {
+                return [false, [], 'Comparison failed: could not extract text from one of the DOCX files.'];
+            }
+            return [true, $lines, null];
         }
 
-        $normalized = str_replace(["\r\n", "\r"], "\n", $content);
-        return [true, explode("\n", $normalized), null];
+        if ($extension === 'txt') {
+            $content = @file_get_contents($absolutePath);
+            if ($content === false) {
+                return [false, [], 'Comparison failed: could not read one of the selected files.'];
+            }
+            $normalized = str_replace(["\r\n", "\r"], "\n", $content);
+            return [true, explode("\n", $normalized), null];
+        }
+
+        return [false, [], "Comparison supports .txt and .docx files. The '{$extension}' format cannot be compared as text."];
+    }
+
+    /**
+     * Extract plain-text lines from a .docx file using PHP's ZipArchive.
+     *
+     * A .docx is a ZIP archive; the text lives in word/document.xml.
+     * We replace closing paragraph tags with newlines before stripping all XML,
+     * so each Word paragraph becomes a separate line.
+     *
+     * Returns null on any failure (missing extension, bad ZIP, missing entry).
+     *
+     * @return array<int, string>|null
+     */
+    private function extractTextLinesFromDocx(string $absolutePath): ?array
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            return null;
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($absolutePath) !== true) {
+            return null;
+        }
+
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        if ($xml === false) {
+            return null;
+        }
+
+        // Each </w:p> closes a paragraph → newline; <w:br/> is a line break.
+        $xml  = preg_replace('/<\/w:p>/', "\n", $xml) ?? $xml;
+        $xml  = preg_replace('/<w:br[^>]*\/>/', "\n", $xml) ?? $xml;
+        $text = strip_tags($xml);
+
+        $lines = explode("\n", $text);
+        // Collapse runs of whitespace within each line, trim edges.
+        $lines = array_map(fn ($l) => trim((string) preg_replace('/\s+/', ' ', $l)), $lines);
+
+        // Strip leading and trailing blank lines only.
+        while (count($lines) && $lines[0] === '') {
+            array_shift($lines);
+        }
+        while (count($lines) && end($lines) === '') {
+            array_pop($lines);
+        }
+
+        return $lines;
     }
 
     /**
@@ -1033,5 +1099,44 @@ class LessonPlanController extends Controller
             // Approximation: paired adds/removes typically represent modified lines.
             'changed' => min($added, $removed),
         ];
+    }
+
+    /**
+     * Reformat flat inline diff operations into side-by-side row pairs.
+     *
+     * Consecutive remove+add pairs are treated as modified lines (shown on the
+     * same row). Solo removes appear only on the left; solo adds only on the right.
+     * Equal lines are shown in both columns.
+     *
+     * @param array<int, array{type: string, line: string}> $ops
+     * @return array<int, array{left: string, right: string, type: string}>
+     */
+    private function buildSideBySideDiff(array $ops): array
+    {
+        $rows  = [];
+        $count = count($ops);
+        $i     = 0;
+
+        while ($i < $count) {
+            $op = $ops[$i];
+
+            if ($op['type'] === 'equal') {
+                $rows[] = ['left' => $op['line'], 'right' => $op['line'], 'type' => 'equal'];
+                $i++;
+            } elseif ($op['type'] === 'remove' && isset($ops[$i + 1]) && $ops[$i + 1]['type'] === 'add') {
+                // Paired remove+add → treat as a modified line
+                $rows[] = ['left' => $ops[$i]['line'], 'right' => $ops[$i + 1]['line'], 'type' => 'change'];
+                $i += 2;
+            } elseif ($op['type'] === 'remove') {
+                $rows[] = ['left' => $op['line'], 'right' => '', 'type' => 'remove'];
+                $i++;
+            } else {
+                // 'add'
+                $rows[] = ['left' => '', 'right' => $op['line'], 'type' => 'add'];
+                $i++;
+            }
+        }
+
+        return $rows;
     }
 }

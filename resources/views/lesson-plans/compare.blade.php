@@ -1,122 +1,194 @@
 <x-layout>
-    <x-slot:title>Compare Versions — {{ $lessonPlan->class_name }} Lesson {{ $lessonPlan->lesson_day }}</x-slot>
+    <x-slot:title>Compare Versions — {{ $lessonPlan->class_name }} Grade {{ $lessonPlan->grade }} Lesson {{ $lessonPlan->lesson_day }} — ARES Education</x-slot>
 
-    <div class="max-w-5xl mx-auto space-y-6">
+    <div class="max-w-5xl mx-auto space-y-6"
+         x-data="{ sideBySide: false }">
+
+        {{-- Page header --}}
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Compare Versions</h1>
                 <p class="text-sm text-gray-500 mt-1">
-                    {{ $lessonPlan->class_name }} Lesson {{ $lessonPlan->lesson_day }}
+                    {{ $lessonPlan->class_name }}, Grade {{ $lessonPlan->grade }}, Lesson {{ $lessonPlan->lesson_day }}
                 </p>
             </div>
-            <div class="flex gap-2">
-                <button type="button" onclick="window.print()"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                    Print / Save PDF
-                </button>
-                <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                    &larr; Back to Details
-                </a>
-            </div>
+            <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors shrink-0">
+                &larr; Back to Lesson Plan
+            </a>
         </div>
 
-        {{-- Version selector form --}}
-        <div class="border border-gray-200 rounded-lg p-4 sm:p-5">
-            <form method="GET" action="{{ route('admin.lesson-plans.compare', $lessonPlan) }}" class="flex flex-wrap items-end gap-3">
-                <div class="flex-1 min-w-[220px]">
-                    <label for="compare_to" class="block text-xs font-medium text-gray-500 mb-1">Compare Current Version To</label>
-                    <select id="compare_to" name="compare_to"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
-                        <option value="">Auto: previous version</option>
-                        @foreach ($versions as $version)
-                            @if ($version->id !== $lessonPlan->id)
-                                <option value="{{ $version->id }}" {{ $targetPlan && $targetPlan->id === $version->id ? 'selected' : '' }}>
-                                    v{{ $version->semantic_version }} — {{ $version->created_at->format('M j, Y') }} — {{ $version->author->name ?? 'Anonymous' }}
-                                </option>
-                            @endif
+        {{-- Current version info card --}}
+        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50 text-sm">
+            <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Comparing from (current)</p>
+            <p class="font-medium text-gray-900">
+                v{{ $lessonPlan->semantic_version }}
+                — {{ $lessonPlan->author->name ?? 'Anonymous' }}
+                — {{ $lessonPlan->created_at->format('M j, Y') }}
+            </p>
+        </div>
+
+        {{-- Revision selector table --}}
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <p class="text-sm font-semibold text-gray-900">Select a Revision to Compare Against</p>
+                <p class="text-xs text-gray-500 mt-0.5">Click a row to load the diff below</p>
+            </div>
+            @if ($otherVersions->isEmpty())
+                <p class="px-4 py-4 text-sm text-gray-500 italic">No other revisions exist for this lesson plan yet.</p>
+            @else
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                        <tr>
+                            <th class="px-4 py-2">Version</th>
+                            <th class="px-4 py-2">Official</th>
+                            <th class="px-4 py-2">Contributor</th>
+                            <th class="px-4 py-2">Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($otherVersions as $v)
+                            <tr class="border-t border-gray-100 cursor-pointer
+                                       {{ $targetPlan && $targetPlan->id === $v->id ? 'bg-blue-50' : 'hover:bg-gray-50' }}"
+                                onclick="window.location='{{ route('lesson-plans.compare', [$lessonPlan, 'compare_to' => $v->id]) }}'">
+                                <td class="px-4 py-2 font-medium">
+                                    v{{ $v->semantic_version }}
+                                    @if ($targetPlan && $targetPlan->id === $v->id)
+                                        <span class="ml-1.5 text-xs font-normal text-blue-600">(selected)</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2">{{ $v->is_official ? 'Yes' : 'No' }}</td>
+                                <td class="px-4 py-2">{{ $v->author->name ?? 'Anonymous' }}</td>
+                                <td class="px-4 py-2 text-gray-500">{{ $v->created_at->format('M j, Y') }}</td>
+                            </tr>
                         @endforeach
-                    </select>
-                </div>
-                <button type="submit"
-                        class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                    Compare
-                </button>
-            </form>
+                    </tbody>
+                </table>
+            @endif
         </div>
 
-        {{-- Current vs baseline version cards --}}
-        <div class="border border-gray-200 rounded-lg p-4 sm:p-5">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div class="rounded-md border border-gray-200 bg-gray-50 p-3">
-                    <p class="text-xs text-gray-500 uppercase tracking-wider">Current</p>
-                    <p class="font-medium text-gray-900 mt-1">v{{ $lessonPlan->semantic_version }}</p>
-                    <p class="text-xs text-gray-500 mt-1">
-                        {{ $lessonPlan->author->name ?? 'Anonymous' }} · {{ $lessonPlan->created_at->format('M j, Y g:ia') }} UTC
-                    </p>
-                </div>
-                <div class="rounded-md border border-gray-200 bg-gray-50 p-3">
-                    <p class="text-xs text-gray-500 uppercase tracking-wider">Baseline</p>
-                    @if ($targetPlan)
-                        <p class="font-medium text-gray-900 mt-1">v{{ $targetPlan->semantic_version }}</p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            {{ $targetPlan->author->name ?? 'Anonymous' }} · {{ $targetPlan->created_at->format('M j, Y g:ia') }} UTC
-                        </p>
-                    @else
-                        <p class="font-medium text-gray-500 mt-1">No baseline selected</p>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        {{-- Warning banner (unsupported type, missing file, too large, no predecessor) --}}
+        {{-- Warning banner --}}
         @if ($warning)
             <div class="border border-amber-200 bg-amber-50 rounded-lg p-4 text-sm text-amber-800">
                 {{ $warning }}
             </div>
         @endif
 
-        {{-- Diff summary stats --}}
-        @if ($diffSummary)
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="border border-green-200 bg-green-50 rounded-lg p-4 text-center">
-                    <p class="text-2xl font-bold text-green-700">+{{ $diffSummary['added'] }}</p>
-                    <p class="text-xs text-green-700 uppercase tracking-wider mt-1">Lines Added</p>
-                </div>
-                <div class="border border-red-200 bg-red-50 rounded-lg p-4 text-center">
-                    <p class="text-2xl font-bold text-red-700">-{{ $diffSummary['removed'] }}</p>
-                    <p class="text-xs text-red-700 uppercase tracking-wider mt-1">Lines Removed</p>
-                </div>
-                <div class="border border-blue-200 bg-blue-50 rounded-lg p-4 text-center">
-                    <p class="text-2xl font-bold text-blue-700">{{ $diffSummary['changed'] }}</p>
-                    <p class="text-xs text-blue-700 uppercase tracking-wider mt-1">Lines Changed (Est.)</p>
-                </div>
-            </div>
-        @endif
-
-        {{-- Line-level diff output --}}
+        {{-- Diff output (only when a comparison is ready) --}}
         @if (!empty($diffOps))
-            <div class="border border-gray-200 rounded-lg overflow-hidden">
+
+            {{-- Summary stats --}}
+            @if ($diffSummary)
+                <div class="grid grid-cols-3 gap-3 text-center text-sm">
+                    <div class="border border-green-200 bg-green-50 rounded-lg p-3">
+                        <p class="text-xl font-bold text-green-700">+{{ $diffSummary['added'] }}</p>
+                        <p class="text-xs text-green-700 uppercase tracking-wider mt-0.5">Lines Added</p>
+                    </div>
+                    <div class="border border-red-200 bg-red-50 rounded-lg p-3">
+                        <p class="text-xl font-bold text-red-700">-{{ $diffSummary['removed'] }}</p>
+                        <p class="text-xs text-red-700 uppercase tracking-wider mt-0.5">Lines Removed</p>
+                    </div>
+                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-3">
+                        <p class="text-xl font-bold text-gray-700">{{ $diffSummary['changed'] }}</p>
+                        <p class="text-xs text-gray-700 uppercase tracking-wider mt-0.5">Lines Changed</p>
+                    </div>
+                </div>
+            @endif
+
+            {{-- View toggle --}}
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600">View:</span>
+                <button type="button" @click="sideBySide = false"
+                        :class="!sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
+                    Inline
+                </button>
+                <button type="button" @click="sideBySide = true"
+                        :class="sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
+                    Side by Side
+                </button>
+            </div>
+
+            {{-- Inline diff --}}
+            <div x-show="!sideBySide" class="border border-gray-200 rounded-lg overflow-hidden">
                 <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                    <h2 class="text-sm font-semibold text-gray-900">Line-Level Diff</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Equal lines are shown in neutral color; additions/removals are highlighted.</p>
+                    <p class="text-sm font-semibold text-gray-900">Inline Diff</p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Baseline: v{{ $targetPlan->semantic_version }} ({{ $targetPlan->author->name ?? 'Anonymous' }})
+                        &rarr; Current: v{{ $lessonPlan->semantic_version }}
+                    </p>
                 </div>
                 <div class="overflow-x-auto">
-                    <div class="font-mono text-xs whitespace-pre">
+                    <div class="font-mono text-xs">
                         @foreach ($diffOps as $op)
                             @php
-                                $prefix = $op['type'] === 'add' ? '+' : ($op['type'] === 'remove' ? '-' : ' ');
-                                $lineClass = $op['type'] === 'add'
+                                $prefix = $op['type'] === 'add' ? '+' : ($op['type'] === 'remove' ? '−' : ' ');
+                                $rowClass = $op['type'] === 'add'
                                     ? 'bg-green-50 text-green-900'
                                     : ($op['type'] === 'remove'
                                         ? 'bg-red-50 text-red-900'
                                         : 'text-gray-600');
                             @endphp
-                            <div class="px-4 py-1 {{ $lineClass }}">{{ $prefix }} {{ $op['line'] }}</div>
+                            <div class="flex gap-3 px-4 py-0.5 {{ $rowClass }}">
+                                <span class="select-none w-4 shrink-0 font-bold">{{ $prefix }}</span>
+                                <span class="whitespace-pre-wrap break-all">{{ $op['line'] }}</span>
+                            </div>
                         @endforeach
                     </div>
                 </div>
             </div>
+
+            {{-- Side-by-side diff --}}
+            <div x-show="sideBySide" x-cloak class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                    <p class="text-sm font-semibold text-gray-900">Side-by-Side Diff</p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Left: v{{ $targetPlan->semantic_version }} (baseline) &nbsp;|&nbsp;
+                        Right: v{{ $lessonPlan->semantic_version }} (current)
+                    </p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full font-mono text-xs border-collapse">
+                        <thead class="bg-gray-100 text-gray-500 text-left">
+                            <tr>
+                                <th class="px-3 py-1.5 w-1/2 border-r border-gray-200 font-medium">
+                                    v{{ $targetPlan->semantic_version }} — Baseline
+                                </th>
+                                <th class="px-3 py-1.5 w-1/2 font-medium">
+                                    v{{ $lessonPlan->semantic_version }} — Current
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($sideBySide as $row)
+                                @php
+                                    $leftClass = match($row['type']) {
+                                        'remove' => 'bg-red-50 text-red-900',
+                                        'change' => 'bg-red-50 text-red-900',
+                                        default  => 'text-gray-600',
+                                    };
+                                    $rightClass = match($row['type']) {
+                                        'add'    => 'bg-green-50 text-green-900',
+                                        'change' => 'bg-green-50 text-green-900',
+                                        default  => 'text-gray-600',
+                                    };
+                                @endphp
+                                <tr class="border-t border-gray-100">
+                                    <td class="px-3 py-0.5 w-1/2 border-r border-gray-200 whitespace-pre-wrap break-all {{ $leftClass }}">{{ $row['left'] }}</td>
+                                    <td class="px-3 py-0.5 w-1/2 whitespace-pre-wrap break-all {{ $rightClass }}">{{ $row['right'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        @elseif ($targetPlan && !$warning)
+            <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-sm text-gray-500 italic">
+                No differences found between the selected versions.
+            </div>
         @endif
+
     </div>
 </x-layout>

@@ -92,6 +92,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/lesson-plans/{lessonPlan}/favorite', [FavoriteController::class, 'toggle'])
         ->name('favorites.toggle');
 
+    // Compare two versions of the same lesson (same class/grade/day)
+    Route::get('/lesson-plans/{lessonPlan}/compare', [LessonPlanController::class, 'compare'])
+        ->name('lesson-plans.compare')
+        ->middleware('throttle:60,1');
+
     // My Contributions — shows only the current user's own lesson plans
     Route::get('/my-contributions', [MyContributionsController::class, 'index'])
         ->name('my-contributions');

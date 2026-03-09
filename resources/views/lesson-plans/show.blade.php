@@ -29,6 +29,7 @@
     <div class="max-w-4xl mx-auto space-y-6"
          x-data="{
              showDetails:   false,
+             showCompare:   false,
              useGoogleDocs: false,
              confirmOpen:   false,
              favorited:     {{ $isFavorited ? 'true' : 'false' }},
@@ -230,6 +231,39 @@
                     @endforeach
                 </div>
             </div>
+
+            {{-- 7. Compare with another revision --}}
+            @if ($versions->count() > 1)
+                <div>
+                    <button type="button" @click="showCompare = !showCompare"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
+                        <span x-text="showCompare ? 'Hide Comparison Table' : 'Compare This With Another Revision'">Compare This With Another Revision</span>
+                    </button>
+                    <div x-show="showCompare" x-cloak class="mt-3 rounded overflow-hidden border border-gray-200">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                                <tr>
+                                    <th class="px-3 py-2">Version</th>
+                                    <th class="px-3 py-2">Official</th>
+                                    <th class="px-3 py-2">Contributor</th>
+                                    <th class="px-3 py-2">Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($versions->where('id', '!=', $lessonPlan->id) as $compareVersion)
+                                    <tr class="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                        onclick="window.location='{{ route('lesson-plans.compare', [$lessonPlan, 'compare_to' => $compareVersion->id]) }}'">
+                                        <td class="px-3 py-2 font-medium">v{{ $compareVersion->semantic_version }}</td>
+                                        <td class="px-3 py-2">{{ $compareVersion->is_official ? 'Yes' : 'No' }}</td>
+                                        <td class="px-3 py-2">{{ $compareVersion->author->name ?? 'Anonymous' }}</td>
+                                        <td class="px-3 py-2 text-gray-500">{{ $compareVersion->created_at->format('M j, Y') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
 
         </div>
 
