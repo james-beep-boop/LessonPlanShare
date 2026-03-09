@@ -33,6 +33,9 @@
                 dayUnlocked: false,
                 lessonDay:   '{{ old('lesson_day', $lessonPlan->lesson_day) }}',
 
+                gradeUnlocked: false,
+                grade: '{{ old('grade', $lessonPlan->grade ?? 10) }}',
+
                 descUnlocked: false,
                 description:  @js(old('description', $lessonPlan->description ?? '')),
 
@@ -151,6 +154,38 @@
                         </div>
                         <input type="hidden" name="lesson_day" :value="lessonDay">
                         @error('lesson_day') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Grade Level --}}
+                    <div>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                                <input type="checkbox" x-model="gradeUnlocked"
+                                       class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-400">
+                                <span class="text-sm font-medium text-gray-700">Grade</span>
+                                <span class="text-xs text-gray-400 italic">(check to change)</span>
+                            </label>
+
+                            {{-- Locked: read-only pill --}}
+                            <p x-show="!gradeUnlocked"
+                               class="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-sm text-gray-700"
+                               x-text="grade">
+                            </p>
+
+                            {{-- Unlocked: select --}}
+                            <div x-show="gradeUnlocked" x-cloak>
+                                <select x-model="grade"
+                                        @change="$dispatch('lesson-meta-changed')"
+                                        class="w-24 border border-gray-300 rounded-md px-3 py-1.5 text-sm
+                                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="grade" :value="grade">
+                        @error('grade') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Description --}}
@@ -326,13 +361,15 @@
                 loading: false,
                 parentClassName: @js($lessonPlan->class_name),
                 parentLessonDay: {{ $lessonPlan->lesson_day }},
+                parentGrade:     {{ $lessonPlan->grade ?? 10 }},
 
-                // Use server-precomputed values when class/day match the parent plan;
-                // fetch from server when the user has unlocked and changed them.
+                // Use server-precomputed values when class/grade/day match the parent plan;
+                // fetch from server when the user has unlocked and changed any of them.
                 setFromPrecomputed() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = parseInt(document.querySelector('[name="lesson_day"]')?.value || '0');
-                    if (className === this.parentClassName && lessonDay === this.parentLessonDay) {
+                    const grade     = parseInt(document.querySelector('[name="grade"]')?.value || '10');
+                    if (className === this.parentClassName && lessonDay === this.parentLessonDay && grade === this.parentGrade) {
                         this.version = this.revisionType === 'minor'
                             ? this.precomputedMinor
                             : this.precomputedMajor;
@@ -344,12 +381,14 @@
                 async refresh() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = document.querySelector('[name="lesson_day"]')?.value || '';
+                    const grade     = document.querySelector('[name="grade"]')?.value || '10';
                     if (!className || !lessonDay) { this.version = '—'; return; }
                     this.loading = true;
                     try {
                         const params = new URLSearchParams({
                             class_name:    className,
                             lesson_day:    lessonDay,
+                            grade:         grade,
                             revision_type: this.revisionType
                         });
                         const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {

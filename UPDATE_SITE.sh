@@ -82,9 +82,8 @@ remove_if_exists "resources/views/lesson-plans/my-plans.blade.php"
 echo "  Writing version info..."
 git -C /tmp/LPC rev-parse --short HEAD > ~/LessonPlanShare/storage/app/version.txt
 
-# Install post-merge hook if this directory is a git repo (i.e. managed via
-# git pull rather than the overlay copy method). No-op on the standard DreamHost
-# deploy where ~/LessonPlanShare is not a git clone.
+# Install post-merge hook so future git pulls auto-update version.txt.
+# Guarded: DreamHost server has no .git directory (overlay repo, not a git clone).
 if [ -d ~/LessonPlanShare/.git/hooks ]; then
     echo "  Installing post-merge hook..."
     install -m 755 ~/LessonPlanShare/scripts/post-merge-hook.sh \

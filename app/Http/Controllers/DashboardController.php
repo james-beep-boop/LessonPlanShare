@@ -76,7 +76,8 @@ class DashboardController extends Controller
                   ->orWhere('lesson_plans.description', 'like', "%{$search}%")
                   ->orWhere('users.name', 'like', "%{$search}%")
                   ->orWhereRaw("CONCAT(lesson_plans.version_major, '.', lesson_plans.version_minor, '.', lesson_plans.version_patch) LIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("CAST(lesson_plans.lesson_day AS CHAR) LIKE ?", ["%{$search}%"]);
+                  ->orWhereRaw("CAST(lesson_plans.lesson_day AS CHAR) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CAST(lesson_plans.grade AS CHAR) LIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -89,16 +90,15 @@ class DashboardController extends Controller
         // Validate sort direction to prevent SQL injection / 500 errors.
         // Only 'asc' and 'desc' are accepted; anything else defaults to 'desc'.
         $sortField = $request->input('sort', 'class_name');
-        $sortOrder = in_array(strtolower($request->input('order', 'asc')), ['asc', 'desc'])
-            ? strtolower($request->input('order', 'asc'))
-            : 'asc';
+        $rawOrder  = strtolower($request->input('order', 'asc'));
+        $sortOrder = in_array($rawOrder, ['asc', 'desc']) ? $rawOrder : 'asc';
 
         // Whitelist of allowed sort columns — must match visible dashboard columns.
         // author_name sorts by users.name via the LEFT JOIN.
         // is_favorited sorts by a transient LEFT JOIN on favorites (auth users only).
         // All other columns are prefixed with lesson_plans. to avoid JOIN ambiguity.
         $allowedSorts = [
-            'is_official', 'class_name', 'lesson_day', 'description', 'author_name',
+            'is_official', 'class_name', 'grade', 'lesson_day', 'description', 'author_name',
             'semantic_version', 'vote_score', 'updated_at', 'is_favorited',
         ];
 

@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  *   (class_name, lesson_day) pair. A unique DB index enforces uniqueness.
  *
  * Database columns:
- * - id, class_name, lesson_day, description, name (canonical), original_id (FK),
+ * - id, class_name, grade, lesson_day, description, name (canonical), original_id (FK),
  *   parent_id (FK), version_number, version_major, version_minor, version_patch,
  *   author_id (FK), file_path, file_name, file_size, file_hash, vote_score,
  *   created_at, updated_at.
@@ -36,6 +36,7 @@ class LessonPlan extends Model
 
     protected $casts = [
         'is_official' => 'boolean',
+        'grade'       => 'integer',
     ];
 
     /**
@@ -46,6 +47,7 @@ class LessonPlan extends Model
      */
     protected $fillable = [
         'class_name',      // Subject name (e.g., 'English', 'Mathematics', 'Science')
+        'grade',           // Grade level: 10, 11, or 12
         'lesson_day',      // Lesson number (1–20)
         'description',     // Optional description of changes or content
         'name',            // Canonical filename (without extension)
@@ -259,6 +261,7 @@ class LessonPlan extends Model
             $sub->selectRaw('1')
                 ->from('lesson_plans as lp2')
                 ->whereColumn('lp2.class_name', 'lesson_plans.class_name')
+                ->whereColumn('lp2.grade',      'lesson_plans.grade')
                 ->whereColumn('lp2.lesson_day',  'lesson_plans.lesson_day')
                 ->whereRaw(
                     '(lp2.version_minor > lesson_plans.version_minor
@@ -275,9 +278,9 @@ class LessonPlan extends Model
     /**
      * Generate a canonical name from the structured fields.
      *
-     * Format: "{ClassName}_Day{N}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC_v{major}-{minor}-{patch}"
+     * Format: "{ClassName}_Grade{N}_{Day}_{AuthorName}_{YYYYMMDD_HHMMSS}UTC_v{major}-{minor}-{patch}"
      *
-     * Example: "Mathematics_Day5_davidsheqlcom_20260227_143022UTC_v1-2-16"
+     * Example: "Mathematics_Grade10_Day5_davidsheqlcom_20260227_143022UTC_v1-2-16"
      *
      * Sanitization:
      * - Spaces are replaced with hyphens
@@ -290,6 +293,7 @@ class LessonPlan extends Model
      * so the filename reflects the exact version it contains.
      *
      * @param  string       $className       Subject name (e.g., 'Mathematics')
+     * @param  int          $grade           Grade level (10, 11, or 12)
      * @param  int          $lessonDay       Lesson number (1–20)
      * @param  string       $authorName      Author's display name
      * @param  Carbon|null  $timestamp       Optional UTC timestamp override
@@ -298,6 +302,7 @@ class LessonPlan extends Model
      */
     public static function generateCanonicalName(
         string $className,
+        int $grade,
         int $lessonDay,
         string $authorName,
         ?Carbon $timestamp = null,
@@ -310,7 +315,7 @@ class LessonPlan extends Model
         $cleanAuthor = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', $authorName));
         $cleanClass  = $cleanClass  !== '' ? $cleanClass  : 'Unknown';
         $cleanAuthor = $cleanAuthor !== '' ? $cleanAuthor : 'Unknown';
-        $name = "{$cleanClass}_Day{$lessonDay}_{$cleanAuthor}_{$ts}UTC";
+        $name = "{$cleanClass}_Grade{$grade}_Day{$lessonDay}_{$cleanAuthor}_{$ts}UTC";
         if ($semanticVersion !== null) {
             [$major, $minor, $patch] = $semanticVersion;
             $name .= "_v{$major}-{$minor}-{$patch}";
@@ -346,6 +351,7 @@ class LessonPlan extends Model
 
         return LessonPlan::create(array_merge([
             'class_name'     => $this->class_name,
+            'grade'          => $this->grade,
             'lesson_day'     => $this->lesson_day,
             'description'    => $this->description,
             'original_id'    => $rootId,

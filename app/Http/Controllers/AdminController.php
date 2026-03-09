@@ -34,7 +34,7 @@ class AdminController extends Controller
         $planOrder  = in_array(strtolower($request->input('plan_order', 'asc')), ['asc', 'desc'])
             ? strtolower($request->input('plan_order', 'asc'))
             : 'asc';
-        $allowedPlanSorts = ['is_official', 'class_name', 'lesson_day', 'description', 'author_name', 'semantic_version', 'updated_at'];
+        $allowedPlanSorts = ['is_official', 'class_name', 'grade', 'lesson_day', 'description', 'author_name', 'semantic_version', 'updated_at'];
 
         $plansQuery = LessonPlan::query()
             ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
@@ -390,27 +390,29 @@ class AdminController extends Controller
     }
 
     /**
-     * Set a lesson plan as the Official version for its (class_name, lesson_day).
+     * Set a lesson plan as the Official version for its (class_name, grade, lesson_day).
      *
-     * Clears is_official on all other plans in the same class/day, then marks
+     * Clears is_official on all other plans in the same class/grade/day, then marks
      * the target plan. This is an admin-only action.
      */
     public function setOfficial(LessonPlan $lessonPlan): RedirectResponse
     {
         // Wrap in a transaction with a pessimistic lock so two simultaneous
-        // setOfficial requests for the same class/day cannot both commit,
+        // setOfficial requests for the same class/grade/day cannot both commit,
         // preventing a window where zero or two plans are marked official.
         DB::transaction(function () use ($lessonPlan) {
-            // Acquire a write lock on all rows for this class/day before updating.
+            // Acquire a write lock on all rows for this class/grade/day before updating.
             DB::table('lesson_plans')
                 ->where('class_name', $lessonPlan->class_name)
+                ->where('grade',      $lessonPlan->grade)
                 ->where('lesson_day', $lessonPlan->lesson_day)
                 ->lockForUpdate()
                 ->get(); // fetch to acquire the lock; result is not used
 
-            // Clear existing official designation for this class/day combination.
+            // Clear existing official designation for this class/grade/day combination.
             DB::table('lesson_plans')
                 ->where('class_name', $lessonPlan->class_name)
+                ->where('grade',      $lessonPlan->grade)
                 ->where('lesson_day', $lessonPlan->lesson_day)
                 ->update(['is_official' => false]);
 

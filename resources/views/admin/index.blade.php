@@ -150,6 +150,7 @@
                                     $planCols = [
                                         'is_official'      => ['label' => 'Main',        'align' => 'center'],
                                         'class_name'       => ['label' => 'Class',       'align' => 'left'],
+                                        'grade'            => ['label' => 'Grade',       'align' => 'center'],
                                         'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
                                         'description'      => ['label' => 'Description', 'align' => 'left'],
                                         'author_name'      => ['label' => 'Contributor', 'align' => 'left'],
@@ -227,17 +228,10 @@
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 text-gray-700">{{ $plan->class_name }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->grade }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
-                                        @php
-                                            $displayDesc = $plan->description
-                                                ? preg_replace('/^Introduction to\b/i', 'Intro to', $plan->description)
-                                                : null;
-                                            $excerpt = $displayDesc
-                                                ? mb_substr($displayDesc, 0, 24)
-                                                : mb_substr($plan->file_name ?? '', 0, 24);
-                                        @endphp
-                                        {{ $excerpt ?: '—' }}
+                                        <x-lesson-description-excerpt :plan="$plan" />
                                     </td>
                                     <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
@@ -482,6 +476,7 @@
                             <tr>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Official</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Grade</th>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lesson</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contributor</th>
@@ -495,17 +490,10 @@
                                 <tr class="hover:bg-blue-50">
                                     <td class="px-3 py-2 text-center text-xl font-bold text-gray-900">✓</td>
                                     <td class="px-3 py-2 text-gray-700">{{ $plan->class_name }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->grade }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                                     <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]">
-                                        @php
-                                            $displayDesc = $plan->description
-                                                ? preg_replace('/^Introduction to\b/i', 'Intro to', $plan->description)
-                                                : null;
-                                            $excerpt = $displayDesc
-                                                ? mb_substr($displayDesc, 0, 24)
-                                                : mb_substr($plan->file_name ?? '', 0, 24);
-                                        @endphp
-                                        {{ $excerpt ?: '—' }}
+                                        <x-lesson-description-excerpt :plan="$plan" />
                                     </td>
                                     <td class="px-3 py-2 text-gray-700 text-xs">{{ $plan->author_name ?? 'Anonymous' }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>

@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\LessonPlanController;
+use App\Http\Controllers\MyContributionsController;
 use App\Http\Controllers\VoteController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +78,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Favorites (toggle on/off)
     Route::post('/lesson-plans/{lessonPlan}/favorite', [FavoriteController::class, 'toggle'])
         ->name('favorites.toggle');
+
+    // My Contributions — shows only the current user's own lesson plans
+    Route::get('/my-contributions', [MyContributionsController::class, 'index'])
+        ->name('my-contributions');
 
 });
 

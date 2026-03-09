@@ -144,9 +144,10 @@
                         // Contributor and Favorites (★) columns hidden for guests as a sign-in incentive.
                         $isVerifiedUser = auth()->check() && auth()->user()->hasVerifiedEmail();
 
-                        // Column order: Class, Day, Official, Description, Rev., Date, [Contributor if verified], Rated
+                        // Column order: Class, Grade, Day, Official, Description, Rev., Date, [Contributor if verified], Rated
                         $cols = [
                             'class_name'       => ['label' => 'Class',       'align' => 'left'],
+                            'grade'            => ['label' => 'Grade',       'align' => 'center'],
                             'lesson_day'       => ['label' => 'Day',         'align' => 'center'],
                             'is_official'      => ['label' => 'Official',    'align' => 'center'],
                             'description'      => ['label' => 'Description', 'align' => 'left'],
@@ -198,21 +199,14 @@
                             onclick="window.location.href='{{ route('lesson-plans.show', $plan) }}'">
 
                             <td class="px-4 py-3 text-gray-700">{{ $plan->class_name }}</td>
+                            <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->grade }}</td>
                             <td class="px-4 py-3 text-gray-700 text-center">{{ $plan->lesson_day }}</td>
                             {{-- Official checkmark: large black ✓ for official plans, blank otherwise --}}
                             <td class="px-4 py-3 text-center text-xl font-bold text-gray-900">
                                 {{ $plan->is_official ? '✓' : '' }}
                             </td>
                             <td class="px-4 py-3 text-gray-500 text-xs truncate max-w-[140px]">
-                                @php
-                                    $displayDesc = $plan->description
-                                        ? preg_replace('/^Introduction to\b/i', 'Intro to', $plan->description)
-                                        : null;
-                                    $excerpt = $displayDesc
-                                        ? mb_substr($displayDesc, 0, 24)
-                                        : mb_substr($plan->file_name ?? '', 0, 24);
-                                @endphp
-                                {{ $excerpt ?: '—' }}
+                                <x-lesson-description-excerpt :plan="$plan" />
                             </td>
                             <td class="px-4 py-3 text-gray-700 text-center font-mono text-xs">{{ $plan->semantic_version }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs">{{ $plan->updated_at->format('d/m/y') }}</td>
@@ -231,25 +225,7 @@
                             {{-- Favorites: AJAX toggle for verified users; hidden for guests --}}
                             @if($isVerifiedUser)
                                 <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
-                                    <div x-data="{
-                                        fav: {{ in_array($plan->id, $favoritedIds) ? 'true' : 'false' }},
-                                        toggle() {
-                                            fetch('{{ route('favorites.toggle', $plan) }}', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                                    'Accept': 'application/json'
-                                                }
-                                            }).then(r => {
-                                                if (!r.ok) return;
-                                                r.json().then(d => { this.fav = d.favorited; }).catch(() => {});
-                                            }).catch(() => {});
-                                        }
-                                    }">
-                                        <button @click="toggle" title="Toggle favorite"
-                                                :class="fav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'"
-                                                class="text-lg leading-none transition-colors">★</button>
-                                    </div>
+                                    <x-favorite-toggle :plan="$plan" :is-favorited="in_array($plan->id, $favoritedIds)" />
                                 </td>
                             @endif
                         </tr>
@@ -278,14 +254,6 @@
         {{ $plans->count() }} of {{ $plans->total() }} {{ Str::plural('plan', $plans->total()) }} shown
     </div>
 
-    {{-- Upload button — only for verified users; prominent below the table --}}
-    @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-        <div class="mt-6 flex justify-center">
-            <a href="{{ route('lesson-plans.create') }}"
-               class="w-full sm:w-auto sm:min-w-[260px] text-center px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                Upload New Lesson
-            </a>
-        </div>
-    @endif
+    {{-- Upload button removed from main dashboard; now on /my-contributions page --}}
 
 </x-layout>
