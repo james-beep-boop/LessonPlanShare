@@ -91,12 +91,14 @@ class LessonPlanController extends Controller
     private function computeNextSemanticVersion(
         string $className,
         int $lessonDay,
+        int $grade,
         string $revisionType = 'major'
     ): array {
-        // Find the row with the highest semantic version for this class/day.
+        // Find the row with the highest semantic version for this class/grade/day.
         // ORDER BY minor DESC, patch DESC gives the "latest" version row.
         $latest = DB::table('lesson_plans')
             ->where('class_name', $className)
+            ->where('grade', $grade)
             ->where('lesson_day', $lessonDay)
             ->orderByDesc('version_minor')
             ->orderByDesc('version_patch')
@@ -168,6 +170,7 @@ class LessonPlanController extends Controller
     {
         $className    = $request->input('class_name', '');
         $lessonDay    = (int) $request->input('lesson_day', 0);
+        $grade        = (int) $request->input('grade', 10);
         // Clamp to valid values; any other input silently defaults to 'major'
         $revisionType = in_array($request->input('revision_type'), ['major', 'minor'], true)
             ? $request->input('revision_type')
@@ -178,7 +181,7 @@ class LessonPlanController extends Controller
         }
 
         [$major, $minor, $patch] = $this->computeNextSemanticVersion(
-            $className, $lessonDay, $revisionType
+            $className, $lessonDay, $grade, $revisionType
         );
 
         return response()->json(['version' => "{$major}.{$minor}.{$patch}"]);
@@ -193,16 +196,19 @@ class LessonPlanController extends Controller
      *
      * Query parameters:
      * - class_name: Subject name
+     * - grade:      Grade level (10, 11, or 12; defaults to 10)
      */
     public function nextAvailableDay(Request $request): JsonResponse
     {
         $className = $request->input('class_name', '');
+        $grade     = (int) $request->input('grade', 10);
         if (!$className) {
             return response()->json(['next_day' => 1]);
         }
 
         $existingDays = DB::table('lesson_plans')
             ->where('class_name', $className)
+            ->where('grade', $grade)
             ->distinct()
             ->orderBy('lesson_day')
             ->pluck('lesson_day')
@@ -236,16 +242,19 @@ class LessonPlanController extends Controller
     {
         $request->validate([
             'class_name' => ['required', 'string', 'max:255'],
+            'grade'      => ['required', 'integer', 'in:10,11,12'],
             'lesson_day' => ['required', 'integer', 'min:1'],
         ]);
 
         $className = $request->input('class_name');
+        $grade     = (int) $request->input('grade');
         $lessonDay = (int) $request->input('lesson_day');
 
         $currentUserId = Auth::id();
         $isAdmin       = Auth::user()->is_admin ?? false;
 
         $allPlans = LessonPlan::where('class_name', $className)
+            ->where('grade', $grade)
             ->where('lesson_day', $lessonDay)
             ->get();
 
@@ -345,16 +354,20 @@ class LessonPlanController extends Controller
 
         $author = Auth::user();
 
-        // Compute next semantic version globally for this class/day.
+        $grade = (int) $data['grade'];
+
+        // Compute next semantic version globally for this class/grade/day.
         // New uploads always use 'major' (first upload = 1.0.0).
         [$major, $minor, $patch] = $this->computeNextSemanticVersion(
             $data['class_name'],
             $data['lesson_day'],
+            $grade,
             'major'
         );
 
         $canonicalName = LessonPlan::generateCanonicalName(
             $data['class_name'],
+            $grade,
             $data['lesson_day'],
             $author->name,
             null,
@@ -376,6 +389,7 @@ class LessonPlanController extends Controller
             // If plans already exist (another teacher uploaded first), the existing
             // Official designation is preserved — admin must manually reassign if needed.
             $attrs['is_official'] = !LessonPlan::where('class_name', $data['class_name'])
+                ->where('grade', $grade)
                 ->where('lesson_day', $data['lesson_day'])
                 ->exists();
             $plan = LessonPlan::create($attrs);
@@ -501,12 +515,12 @@ class LessonPlanController extends Controller
         $lessonNumbers = range(1, 20);
 
         [$mj, $mn, $mp] = $this->computeNextSemanticVersion(
-            $lessonPlan->class_name, $lessonPlan->lesson_day, 'major'
+            $lessonPlan->class_name, $lessonPlan->lesson_day, $lessonPlan->grade, 'major'
         );
         $nextMajorVersion = "{$mj}.{$mn}.{$mp}";
 
         [$mj, $mn, $mp] = $this->computeNextSemanticVersion(
-            $lessonPlan->class_name, $lessonPlan->lesson_day, 'minor'
+            $lessonPlan->class_name, $lessonPlan->lesson_day, $lessonPlan->grade, 'minor'
         );
         $nextMinorVersion = "{$mj}.{$mn}.{$mp}";
 
@@ -533,15 +547,18 @@ class LessonPlanController extends Controller
 
         $author = Auth::user();
 
+        $grade        = (int) $data['grade'];
         $revisionType = $data['revision_type'];
         [$major, $minor, $patch] = $this->computeNextSemanticVersion(
             $data['class_name'],
             $data['lesson_day'],
+            $grade,
             $revisionType
         );
 
         $canonicalName = LessonPlan::generateCanonicalName(
             $data['class_name'],
+            $grade,
             $data['lesson_day'],
             $author->name,
             null,
@@ -581,7 +598,7 @@ class LessonPlanController extends Controller
         try {
             $newVersion = $lessonPlan->createNewVersion([
                 'class_name'    => $data['class_name'],
-                'grade'         => $data['grade'],
+                'grade'         => $grade,
                 'lesson_day'    => $data['lesson_day'],
                 'description'   => $data['description'] ?? null,
                 'name'          => $canonicalName,

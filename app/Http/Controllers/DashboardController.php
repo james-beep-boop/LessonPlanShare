@@ -76,7 +76,8 @@ class DashboardController extends Controller
                   ->orWhere('lesson_plans.description', 'like', "%{$search}%")
                   ->orWhere('users.name', 'like', "%{$search}%")
                   ->orWhereRaw("CONCAT(lesson_plans.version_major, '.', lesson_plans.version_minor, '.', lesson_plans.version_patch) LIKE ?", ["%{$search}%"])
-                  ->orWhereRaw("CAST(lesson_plans.lesson_day AS CHAR) LIKE ?", ["%{$search}%"]);
+                  ->orWhereRaw("CAST(lesson_plans.lesson_day AS CHAR) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CAST(lesson_plans.grade AS CHAR) LIKE ?", ["%{$search}%"]);
             });
         }
 

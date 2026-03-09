@@ -128,6 +128,7 @@ database/migrations/2026_03_02_100000_backfill_anonymous_user_names.php         
 database/migrations/2026_03_07_000001_create_user_logins_table.php                →  (NEW)
 database/migrations/2026_03_07_000002_create_lesson_plan_downloads_table.php      →  (NEW)
 database/migrations/2026_03_08_000001_add_grade_to_lesson_plans_table.php         →  (NEW)
+database/migrations/2026_03_08_000002_add_grade_to_lesson_plans_version_unique.php →  (NEW)
 
 database/factories/LessonPlanFactory.php                →  (NEW)
 
@@ -516,7 +517,8 @@ LessonPlanShare/
 │   ├── 2026_03_02_100000_backfill_anonymous_user_names.php
 │   ├── 2026_03_07_000001_create_user_logins_table.php
 │   ├── 2026_03_07_000002_create_lesson_plan_downloads_table.php
-│   └── 2026_03_08_000001_add_grade_to_lesson_plans_table.php
+│   ├── 2026_03_08_000001_add_grade_to_lesson_plans_table.php
+│   └── 2026_03_08_000002_add_grade_to_lesson_plans_version_unique.php
 │
 ├── database/factories/
 │   └── LessonPlanFactory.php

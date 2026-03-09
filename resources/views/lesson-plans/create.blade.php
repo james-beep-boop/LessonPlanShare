@@ -52,6 +52,7 @@
             <div>
                 <label for="grade" class="block text-sm font-medium text-gray-700 mb-1">Grade *</label>
                 <select name="grade" id="grade" required
+                        @change="$dispatch('lesson-meta-changed')"
                         class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     @foreach ([10, 11, 12] as $g)
@@ -198,12 +199,14 @@
                 async refresh() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = document.querySelector('[name="lesson_day"]')?.value || '';
+                    const grade     = document.querySelector('[name="grade"]')?.value || '10';
                     if (!className || !lessonDay) { this.version = '1.0.0'; return; }
                     this.loading = true;
                     try {
                         const params = new URLSearchParams({
                             class_name: className,
                             lesson_day: lessonDay,
+                            grade:      grade,
                             revision_type: 'major'
                         });
                         const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {
@@ -236,25 +239,24 @@
          */
         function duplicateChecker() {
             return {
-                showWarning:       false,
-                nextDay:           null,
-                retireLoading:     false,
-                // Suppress re-warning for a class+day that was just archived this session
-                justArchivedClass: null,
-                justArchivedDay:   null,
+                showWarning:        false,
+                nextDay:            null,
+                retireLoading:      false,
+                // Suppress re-warning for a class+grade+day that was just archived this session
+                justArchivedKey:    null,
 
                 async checkDuplicate() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = document.querySelector('[name="lesson_day"]')?.value  || '';
+                    const grade     = document.querySelector('[name="grade"]')?.value || '10';
                     if (!className || !lessonDay) return;
 
                     // Don't re-warn if the user just archived this exact combo
-                    if (className === this.justArchivedClass &&
-                        lessonDay  === String(this.justArchivedDay)) return;
+                    if ((className + '|' + grade + '|' + lessonDay) === this.justArchivedKey) return;
 
                     try {
                         const params = new URLSearchParams({
-                            class_name: className, lesson_day: lessonDay, revision_type: 'major'
+                            class_name: className, lesson_day: lessonDay, grade: grade, revision_type: 'major'
                         });
                         const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {
                             headers: { 'Accept': 'application/json' }
@@ -262,16 +264,17 @@
                         if (!r.ok) return;
                         const d = await r.json();
                         if (d.version !== '1.0.0') {
-                            await this.fetchNextDay(className);
+                            await this.fetchNextDay(className, grade);
                             this.showWarning = true;
                         }
                     } catch (e) {}
                 },
 
-                async fetchNextDay(className) {
+                async fetchNextDay(className, grade) {
                     try {
+                        const params = new URLSearchParams({ class_name: className, grade: grade });
                         const r = await fetch(
-                            '{{ route('lesson-plans.next-day') }}?class_name=' + encodeURIComponent(className),
+                            '{{ route('lesson-plans.next-day') }}?' + params,
                             { headers: { 'Accept': 'application/json' } }
                         );
                         if (!r.ok) return;
@@ -301,6 +304,7 @@
                 async chooseC() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = document.querySelector('[name="lesson_day"]')?.value  || '';
+                    const grade     = document.querySelector('[name="grade"]')?.value || '10';
                     if (!className || !lessonDay) { this.showWarning = false; return; }
                     this.retireLoading = true;
                     try {
@@ -311,12 +315,11 @@
                                 'Accept':        'application/json',
                                 'X-CSRF-TOKEN':  document.querySelector('meta[name=csrf-token]').content
                             },
-                            body: JSON.stringify({ class_name: className, lesson_day: parseInt(lessonDay) })
+                            body: JSON.stringify({ class_name: className, grade: parseInt(grade), lesson_day: parseInt(lessonDay) })
                         });
                         if (r.ok) {
                             // Remember this combo so we don't re-warn on the same session
-                            this.justArchivedClass = className;
-                            this.justArchivedDay   = lessonDay;
+                            this.justArchivedKey = className + '|' + grade + '|' + lessonDay;
                             this.showWarning = false;
                         }
                     } catch (e) {}

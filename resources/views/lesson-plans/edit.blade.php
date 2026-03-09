@@ -175,6 +175,7 @@
                             {{-- Unlocked: select --}}
                             <div x-show="gradeUnlocked" x-cloak>
                                 <select x-model="grade"
+                                        @change="$dispatch('lesson-meta-changed')"
                                         class="w-24 border border-gray-300 rounded-md px-3 py-1.5 text-sm
                                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                                     <option value="10">10</option>
@@ -360,13 +361,15 @@
                 loading: false,
                 parentClassName: @js($lessonPlan->class_name),
                 parentLessonDay: {{ $lessonPlan->lesson_day }},
+                parentGrade:     {{ $lessonPlan->grade ?? 10 }},
 
-                // Use server-precomputed values when class/day match the parent plan;
-                // fetch from server when the user has unlocked and changed them.
+                // Use server-precomputed values when class/grade/day match the parent plan;
+                // fetch from server when the user has unlocked and changed any of them.
                 setFromPrecomputed() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = parseInt(document.querySelector('[name="lesson_day"]')?.value || '0');
-                    if (className === this.parentClassName && lessonDay === this.parentLessonDay) {
+                    const grade     = parseInt(document.querySelector('[name="grade"]')?.value || '10');
+                    if (className === this.parentClassName && lessonDay === this.parentLessonDay && grade === this.parentGrade) {
                         this.version = this.revisionType === 'minor'
                             ? this.precomputedMinor
                             : this.precomputedMajor;
@@ -378,12 +381,14 @@
                 async refresh() {
                     const className = document.querySelector('[name="class_name"]')?.value || '';
                     const lessonDay = document.querySelector('[name="lesson_day"]')?.value || '';
+                    const grade     = document.querySelector('[name="grade"]')?.value || '10';
                     if (!className || !lessonDay) { this.version = '—'; return; }
                     this.loading = true;
                     try {
                         const params = new URLSearchParams({
                             class_name:    className,
                             lesson_day:    lessonDay,
+                            grade:         grade,
                             revision_type: this.revisionType
                         });
                         const r = await fetch('{{ route('lesson-plans.next-version') }}?' + params, {
