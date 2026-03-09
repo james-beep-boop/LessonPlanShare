@@ -53,14 +53,25 @@ When Breeze asks about options, choose the defaults (Blade with Tailwind).
 Breeze will try to run `npm install && npm run build`. This will fail if you
 don't have Node.js — that's OK. We replace the Vite/Tailwind setup with CDN.
 
-### Step 3: Replace Vite with Tailwind CDN
+### Step 3: Replace Vite with compiled Tailwind CSS
 
 Breeze generates layout files that use `@vite`. Remove those lines from
 `resources/views/layouts/app.blade.php` and `guest.blade.php`.
 
-Our custom `components/layout.blade.php` already includes Tailwind via CDN
-and Alpine.js via CDN, so all custom views use `<x-layout>` instead of
-Breeze's `<x-app-layout>`.
+Our custom `components/layout.blade.php` loads `public/css/app.css` (a
+pre-compiled, committed Tailwind stylesheet) and Alpine.js via CDN. All
+custom views use `<x-layout>` instead of Breeze's `<x-app-layout>`.
+
+The compiled CSS (`public/css/app.css`) is committed to the repo and
+deployed automatically by `UPDATE_SITE.sh`. No build step is needed on
+the server. If you change Tailwind classes locally, recompile with:
+
+```bash
+./tailwindcss -i resources/css/app.css -o public/css/app.css --minify
+```
+
+Download the standalone Tailwind CLI binary (no Node.js required) from:
+https://github.com/tailwindlabs/tailwindcss/releases
 
 ### Step 4: Copy in the custom files
 
@@ -276,7 +287,8 @@ php artisan breeze:install blade
 ```
 
 Breeze may try to run `npm install` — that will fail on DreamHost (no Node.js).
-This is fine. We use Tailwind CDN and don't need a build step.
+This is fine. We use pre-compiled Tailwind CSS (committed as `public/css/app.css`)
+and Alpine.js via CDN — no build step is needed on the server.
 
 ### Step 8: Clone the custom files and overlay them
 
@@ -533,6 +545,7 @@ LessonPlanShare/
 ├── DEPLOYMENT.md                                       (this file)
 ├── TECHNICAL_DESIGN.md
 ├── UPDATE_SITE.sh                                      (one-command deploy script)
+├── tailwind.config.js                                  (Tailwind content paths for standalone CLI)
 ├── storage/app/public/lessons/.gitkeep
 │
 ├── database/migrations/
@@ -602,6 +615,12 @@ LessonPlanShare/
 ├── scripts/
 │   └── post-merge-hook.sh                                (git hook: writes short hash to version.txt)
 │
+├── resources/css/
+│   └── app.css                                         (Tailwind input: @tailwind directives + [x-cloak])
+│
+├── public/css/
+│   └── app.css                                         (compiled Tailwind output — committed, deployed by UPDATE_SITE.sh)
+│
 ├── resources/views/
 │   ├── auth/
 │   │   ├── login.blade.php                             (standalone login fallback)
@@ -668,7 +687,8 @@ domain pointing to the correct directory. Check:
 
 **CSS not loading / page looks broken:**
 - Make sure you removed all `@vite(...)` references from Breeze layout files
-- Our layout uses Tailwind CDN — no build step needed
+- Our layout loads `public/css/app.css` (pre-compiled, committed to repo) — verify the file exists
+- If classes are missing, recompile locally: `./tailwindcss -i resources/css/app.css -o public/css/app.css --minify` then commit and redeploy
 
 **File uploads not working:**
 - Check that the directory exists: `ls -la ~/LessonPlanShare/storage/app/public/lessons/`
@@ -744,10 +764,15 @@ DreamHost shared hosting has limited memory. A full git clone may fail with "una
 **6. Overlay repo — NEVER use automatic stale file detection**
 This repository only contains custom overlay files, not a complete Laravel installation. The `UPDATE_SITE.sh` script uses an explicit removal list for stale files. Automatic file comparison (e.g., "delete any file on server not in repo") would catastrophically delete all Laravel core files, Breeze files, Composer dependencies, and more. Any stale file cleanup must be done by manually adding filenames to the removal list in the script.
 
-**7. No Node.js / no build step**
-DreamHost shared hosting does not have Node.js. The `npm install && npm run build` step from Breeze installation will fail — this is expected. All frontend assets (Tailwind CSS, Alpine.js) are loaded via CDN. Remove any `@vite(...)` references from Breeze layout files.
+**7. No Node.js / no build step on the server**
+DreamHost shared hosting does not have Node.js. The `npm install && npm run build` step from Breeze installation will fail — this is expected. Remove any `@vite(...)` references from Breeze layout files.
 
-The Tailwind CDN is a known limitation. The future plan is to use the standalone Tailwind CLI (a single binary, no Node.js) to compile a static `public/css/app.css` locally and commit it to the repo. See CLAUDE.md "Tailwind CDN — Known Limitation & Future Plan" for the steps.
+We use the **standalone Tailwind CLI** (a single binary, no Node.js required) to compile Tailwind locally. The output (`public/css/app.css`) is committed to the repo and deployed by `UPDATE_SITE.sh` — no build step is needed on the server. Alpine.js is still loaded via CDN.
+
+If you update Tailwind classes locally, recompile before committing:
+```bash
+./tailwindcss -i resources/css/app.css -o public/css/app.css --minify
+```
 
 **8. Config cache masks .env changes**
 After running `php artisan config:cache`, Laravel reads from the cache and ignores `.env` entirely. If you change `.env` values, you MUST clear and rebuild: `php artisan optimize:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache`.

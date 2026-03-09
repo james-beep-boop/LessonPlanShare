@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-09 (Gemini security audit fixes: private file storage, signed viewer URLs, atomic vote score, orphaned-file catch blocks, OOM fix in migration command, deadlock fix in user deletion. Previous: Grade column, footer branding, dashboard refactor, My Contributions page 2026-03-08.)
+**Last updated:** 2026-03-09 (Tailwind standalone CLI replaces CDN. Gemini security audit fixes: private file storage, signed viewer URLs, atomic vote score, orphaned-file catch blocks, OOM fix in migration command, deadlock fix in user deletion. Previous: Grade column, footer branding, dashboard refactor, My Contributions page 2026-03-08.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -129,7 +129,7 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
   - `MigrateFilesToPrivateStorage` uses `chunkById(50)` instead of `->get()` — prevents OOM on large tables
   - `destroyUser()`/`bulkDestroyUsers()` use a simple `count()` query instead of `lockForUpdate()` — eliminates InnoDB Next-Key Lock deadlock risk
   - `UPDATE_SITE.sh`: added Composer note (no auto-install on shared hosting)
-  - Tailwind CDN limitation documented in `CLAUDE.md` and `DEPLOYMENT.md`; future plan: standalone Tailwind CLI binary
+- **Tailwind standalone CLI (2026-03-09):** Replaced CDN `<script>` with pre-compiled `public/css/app.css` (standalone CLI, no Node.js). `[x-cloak]` moved from inline `<style>` to `resources/css/app.css`. `tailwind.config.js` and `resources/css/app.css` committed. Recompile command: `./tailwindcss -i resources/css/app.css -o public/css/app.css --minify`
 - **Grade column:** `grade` tinyint unsigned default 10, values 10/11/12. Migration `2026_03_08_000001_add_grade_to_lesson_plans_table.php`. Added to `LessonPlan::$fillable` + `$casts`, `StoreLessonPlanRequest`, `StoreVersionRequest`, `buildPlanAttributes()` + `createNewVersion()` in `LessonPlanController`, `$allowedSorts` in both `DashboardController` and `AdminController`. Grade `<select>` on create/edit forms (locked/unlocked pattern on edit). Grade column visible between Class and Day in dashboard, admin, and My Contributions tables.
 - **Footer branding second line:** "ARES Education is a registered NGO in Kenya — Afretech is a registered nonprofit in the US and Canada" added below the existing version/copyright/CC line in `layout.blade.php`.
 - **Dashboard refactor:** "Upload New Lesson" button removed from `dashboard.blade.php` (now lives on `/my-contributions`). User name link in header now conditional: admins → `/admin`, non-admins → `/my-contributions` (both desktop and mobile nav in `layout.blade.php`).
