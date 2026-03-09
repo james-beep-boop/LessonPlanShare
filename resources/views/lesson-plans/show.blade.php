@@ -130,6 +130,11 @@
                 <p class="text-gray-400 text-sm italic font-semibold">No description provided.</p>
             @endif
 
+            {{-- Canonical filename --}}
+            @if ($lessonPlan->file_name)
+                <p class="text-xs text-gray-400 font-mono break-all">{{ $lessonPlan->file_name }}</p>
+            @endif
+
             {{-- 2. Meta string --}}
             <p class="text-sm text-gray-700">
                 {{ $lessonPlan->class_name }}, Grade {{ $lessonPlan->grade }},
@@ -226,7 +231,7 @@
                     {{-- Unified viewer button --}}
                     <button type="button" @click="openViewer()"
                             class="flex flex-col items-center justify-center min-h-[3.5rem] flex-1 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-                        <span>View Lesson Plan ↗</span>
+                        <span>View/Download This Plan ↗</span>
                         <span class="text-xs font-normal opacity-75"
                               x-text="useGoogleDocs ? '(Google Docs)' : '(Microsoft Office)'"></span>
                     </button>
@@ -243,7 +248,7 @@
                            body: JSON.stringify({ type: 'download' })
                        }).then(r => { if (r.ok) engaged = true; }).catch(() => {})"
                        class="flex flex-col items-center justify-center min-h-[3.5rem] flex-1 px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300 text-center">
-                        <span>Download This Document</span>
+                        <span>Download This Lesson Plan</span>
                         <span class="text-xs font-normal text-gray-500">(DOC/DOCX)</span>
                     </a>
                 @endif
@@ -252,7 +257,7 @@
                 <a href="{{ route('lesson-plans.new-version', $lessonPlan) }}"
                    class="flex flex-col items-center justify-center min-h-[3.5rem] flex-1 px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300">
                     <span>Upload Your Revision</span>
-                    <span class="text-xs font-normal text-gray-500">of This Document</span>
+                    <span class="text-xs font-normal text-gray-500">Of This Lesson Plan</span>
                 </a>
 
                 @if ($isAuthorOfPlan)
@@ -297,28 +302,9 @@
         </div>
 
         {{-- Rate This Document --}}
-        {{-- Authors: self-votes blocked server-side (B1); show only favorite toggle here. --}}
+        {{-- Authors cannot vote on their own plans (B1 server-side block). --}}
         {{-- Non-authors: engagement-gated voting. --}}
-        @if ($isAuthorOfPlan)
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <div class="flex flex-col sm:flex-row gap-2 justify-center">
-                    <button @click="toggleFavorite()" type="button" :disabled="favLoading || favorited"
-                            :class="favorited
-                                ? 'bg-yellow-100 border-yellow-400 text-yellow-700 cursor-default'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-yellow-50 hover:border-yellow-300'"
-                            class="px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
-                        Favorite
-                    </button>
-                    <button @click="toggleFavorite()" type="button" :disabled="favLoading || !favorited"
-                            :class="!favorited
-                                ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'"
-                            class="px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
-                        Unfavorite
-                    </button>
-                </div>
-            </div>
-        @else
+        @if (!$isAuthorOfPlan)
             <div class="border border-gray-200 rounded-lg">
 
                 {{-- Nudge: shown until the user opens or downloads the plan --}}

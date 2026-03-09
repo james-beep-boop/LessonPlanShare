@@ -110,6 +110,7 @@ app/Mail/LessonPlanUploaded.php                         →  (NEW)
 app/Mail/DuplicateContentRemoved.php                    →  (NEW)
 
 app/Console/Commands/DetectDuplicateContent.php         →  (NEW)
+app/Console/Commands/BackfillGradeInFilenames.php       →  (NEW)
 
 app/Services/VersionService.php                         →  (NEW)
 
@@ -561,7 +562,8 @@ LessonPlanShare/
 │   └── DuplicateContentRemoved.php
 │
 ├── app/Console/Commands/
-│   └── DetectDuplicateContent.php
+│   ├── DetectDuplicateContent.php
+│   └── BackfillGradeInFilenames.php
 │
 ├── app/Services/
 │   └── VersionService.php                                (cached footer version from version.txt)
