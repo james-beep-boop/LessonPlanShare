@@ -117,6 +117,13 @@
             </a>
         </div>
 
+        {{-- Description (always visible, between header and checkbox) --}}
+        @if ($lessonPlan->description)
+            <p class="text-gray-900 font-semibold text-sm">{{ $lessonPlan->description }}</p>
+        @else
+            <p class="text-gray-400 text-sm italic font-semibold">No description provided.</p>
+        @endif
+
         {{-- Show Details checkbox --}}
         <label class="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
             <input type="checkbox" x-model="showDetails"
@@ -126,13 +133,6 @@
 
         {{-- Details Box (conditional on checkbox) --}}
         <div x-show="showDetails" x-cloak class="border border-gray-200 rounded-lg p-6 space-y-4">
-
-            {{-- 1. Description --}}
-            @if ($lessonPlan->description)
-                <p class="text-gray-900 font-semibold text-sm">{{ $lessonPlan->description }}</p>
-            @else
-                <p class="text-gray-400 text-sm italic font-semibold">No description provided.</p>
-            @endif
 
             {{-- Canonical filename --}}
             @if ($lessonPlan->file_name)
@@ -209,21 +209,15 @@
                         </button>
                     @endif
 
-                    @if ($lessonPlan->file_path)
-                        {{-- Download --}}
-                        <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                           @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
-                               method: 'POST',
-                               headers: {
-                                   'Content-Type': 'application/json',
-                                   'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                   'Accept': 'application/json'
-                               },
-                               body: JSON.stringify({ type: 'download' })
-                           }).then(r => { if (r.ok) engaged = true; }).catch(() => {})"
-                           class="flex-1 flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
-                            Download This Lesson Plan
-                        </a>
+                    @if (!$isAuthorOfPlan)
+                        {{-- Downvote --}}
+                        <button @click="castVote(-1)" type="button" :disabled="voteLoading"
+                                :class="userVote === -1
+                                    ? 'bg-red-100 border-red-400 text-red-700'
+                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-red-50 hover:border-red-300'"
+                                class="flex-1 px-4 py-2.5 border rounded-md text-sm font-medium transition-colors disabled:opacity-60">
+                            Downvote This Lesson Plan
+                        </button>
                     @endif
 
                     {{-- Favorite --}}
