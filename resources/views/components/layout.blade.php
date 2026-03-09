@@ -55,10 +55,10 @@
                     {{-- ── Desktop nav — hidden on mobile, horizontal row on md+ ── --}}
                     <div class="hidden md:flex items-center gap-5">
                         @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                            {{-- Clicking teacher name filters dashboard to show only their plans --}}
-                            <a href="{{ route('dashboard', ['my_plans_only' => 1]) }}"
+                            {{-- Admin users go to admin panel; others go to My Contributions --}}
+                            <a href="{{ auth()->user()->is_admin ? route('admin.index') : route('my-contributions') }}"
                                class="text-lg text-gray-600 hover:text-gray-900 underline underline-offset-2"
-                               title="Click to see only your plans">{{ auth()->user()->name }}</a>
+                               title="{{ auth()->user()->is_admin ? 'Admin panel' : 'My Contributions' }}">{{ auth()->user()->name }}</a>
                         @endif
 
                         @if(auth()->check() && auth()->user()->is_admin)
@@ -101,9 +101,9 @@
                          class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200
                                 rounded-lg shadow-lg py-2 z-20 md:hidden">
 
-                        {{-- Teacher name header — tapping navigates to "my plans" filtered dashboard --}}
+                        {{-- Teacher name header — admins go to admin panel; others go to My Contributions --}}
                         @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                            <a href="{{ route('dashboard', ['my_plans_only' => 1]) }}"
+                            <a href="{{ auth()->user()->is_admin ? route('admin.index') : route('my-contributions') }}"
                                class="block px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100 mb-1 hover:text-gray-600"
                                @click="menuOpen = false">
                                 {{ auth()->user()->name }}
@@ -443,6 +443,9 @@
                               font-size="6.5" font-weight="bold" fill="currentColor">SA</text>
                     </svg>
                 </span>
+            </div>
+            <div class="mt-1 text-xs text-gray-400">
+                ARES Education is a registered NGO in Kenya &mdash; Afretech is a registered nonprofit in the US and Canada
             </div>
         </div>
     </footer>

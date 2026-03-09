@@ -48,6 +48,19 @@
                 @error('class_name') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
+            {{-- Grade Level (10, 11, or 12) --}}
+            <div>
+                <label for="grade" class="block text-sm font-medium text-gray-700 mb-1">Grade *</label>
+                <select name="grade" id="grade" required
+                        class="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
+                    @foreach ([10, 11, 12] as $g)
+                        <option value="{{ $g }}" {{ (int) old('grade', 10) === $g ? 'selected' : '' }}>{{ $g }}</option>
+                    @endforeach
+                </select>
+                @error('grade') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
             {{-- Lesson Number (dropdown 1–20) --}}
             <div>
                 <label for="lesson_day" class="block text-sm font-medium text-gray-700 mb-1">Lesson Number *</label>

@@ -581,6 +581,7 @@ class LessonPlanController extends Controller
         try {
             $newVersion = $lessonPlan->createNewVersion([
                 'class_name'    => $data['class_name'],
+                'grade'         => $data['grade'],
                 'lesson_day'    => $data['lesson_day'],
                 'description'   => $data['description'] ?? null,
                 'name'          => $canonicalName,
@@ -740,6 +741,7 @@ class LessonPlanController extends Controller
     ): array {
         return [
             'class_name'     => $data['class_name'],
+            'grade'          => $data['grade'],
             'lesson_day'     => $data['lesson_day'],
             'description'    => $data['description'] ?? null,
             'name'           => $canonicalName,

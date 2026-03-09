@@ -34,7 +34,7 @@ class AdminController extends Controller
         $planOrder  = in_array(strtolower($request->input('plan_order', 'asc')), ['asc', 'desc'])
             ? strtolower($request->input('plan_order', 'asc'))
             : 'asc';
-        $allowedPlanSorts = ['is_official', 'class_name', 'lesson_day', 'description', 'author_name', 'semantic_version', 'updated_at'];
+        $allowedPlanSorts = ['is_official', 'class_name', 'grade', 'lesson_day', 'description', 'author_name', 'semantic_version', 'updated_at'];
 
         $plansQuery = LessonPlan::query()
             ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')

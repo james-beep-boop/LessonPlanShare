@@ -84,6 +84,7 @@ app/Http/Controllers/AdminController.php                →  (NEW)
 app/Http/Controllers/DashboardController.php            →  (NEW)
 app/Http/Controllers/FavoriteController.php             →  (NEW)
 app/Http/Controllers/LessonPlanController.php           →  (NEW)
+app/Http/Controllers/MyContributionsController.php      →  (NEW)
 app/Http/Controllers/VoteController.php                 →  (NEW)
 
 tests/Feature/SemanticVersionTest.php                   →  (NEW)
@@ -126,6 +127,7 @@ database/migrations/2026_03_01_000002_add_is_official_to_lesson_plans_table.php 
 database/migrations/2026_03_02_100000_backfill_anonymous_user_names.php           →  (NEW)
 database/migrations/2026_03_07_000001_create_user_logins_table.php                →  (NEW)
 database/migrations/2026_03_07_000002_create_lesson_plan_downloads_table.php      →  (NEW)
+database/migrations/2026_03_08_000001_add_grade_to_lesson_plans_table.php         →  (NEW)
 
 database/factories/LessonPlanFactory.php                →  (NEW)
 
@@ -513,7 +515,8 @@ LessonPlanShare/
 │   ├── 2026_03_01_000002_add_is_official_to_lesson_plans_table.php
 │   ├── 2026_03_02_100000_backfill_anonymous_user_names.php
 │   ├── 2026_03_07_000001_create_user_logins_table.php
-│   └── 2026_03_07_000002_create_lesson_plan_downloads_table.php
+│   ├── 2026_03_07_000002_create_lesson_plan_downloads_table.php
+│   └── 2026_03_08_000001_add_grade_to_lesson_plans_table.php
 │
 ├── database/factories/
 │   └── LessonPlanFactory.php
@@ -536,6 +539,7 @@ LessonPlanShare/
 │   ├── DashboardController.php                         (index page)
 │   ├── FavoriteController.php                          (AJAX favorite toggle)
 │   ├── LessonPlanController.php                        (CRUD + preview + download + versioning)
+│   ├── MyContributionsController.php                   (per-user plan management page)
 │   └── VoteController.php
 │
 ├── app/Http/Middleware/
@@ -575,6 +579,7 @@ LessonPlanShare/
 │   ├── components/
 │   │   └── layout.blade.php                            (master layout with auth modal)
 │   ├── dashboard.blade.php                             (main page with 4-box counters)
+│   ├── my-contributions.blade.php                      (per-user plan management + delete + upload)
 │   ├── emails/
 │   │   ├── lesson-plan-uploaded.blade.php
 │   │   └── duplicate-content-removed.blade.php

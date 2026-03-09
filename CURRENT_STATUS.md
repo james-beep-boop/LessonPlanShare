@@ -1,6 +1,6 @@
 # CURRENT_STATUS.md — What's Done vs What's Left
 
-**Last updated:** 2026-03-07 (Analytics charts + VersionService: two cumulative line graphs on admin panel (Engagement: unique users + total logins; Content: official plans + all docs + downloads); weekly granularity via DB bucketing; `user_logins` and `lesson_plan_downloads` event tables; `VersionService` caches footer version via `Cache::rememberForever`; git `post-merge-hook.sh` writes short hash to `version.txt` on every pull; `UPDATE_SITE.sh` updated. Previous: UI pass 2026-03-03.)
+**Last updated:** 2026-03-08 (Grade column, footer branding, dashboard refactor, My Contributions page. Previous: Analytics charts + VersionService 2026-03-07.)
 
 This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual codebase. Check this before every task.
 
@@ -120,6 +120,10 @@ This file tracks the gap between TECHNICAL_DESIGN.md (the spec) and the actual c
 - **`VersionService`:** `Cache::rememberForever('app_version')` reads `storage/app/version.txt` once and caches indefinitely. Footer uses `\App\Services\VersionService::get()`. Clear with `php artisan cache:forget app_version`.
 - **`scripts/post-merge-hook.sh`:** Git hook installed by `UPDATE_SITE.sh` to `~/LessonPlanShare/.git/hooks/post-merge`; writes `git rev-parse --short HEAD` to `storage/app/version.txt` after every `git pull`. `UPDATE_SITE.sh` also clears `app_version` cache key on each deploy.
 - **Super-admin restriction:** Already implemented in `AdminController::toggleAdmin()` — `SUPER_ADMIN_EMAIL = 'priority2@protonmail.ch'`; any admin can promote; only super-admin can demote; self-modification blocked. No changes needed.
+- **Grade column:** `grade` tinyint unsigned default 10, values 10/11/12. Migration `2026_03_08_000001_add_grade_to_lesson_plans_table.php`. Added to `LessonPlan::$fillable` + `$casts`, `StoreLessonPlanRequest`, `StoreVersionRequest`, `buildPlanAttributes()` + `createNewVersion()` in `LessonPlanController`, `$allowedSorts` in both `DashboardController` and `AdminController`. Grade `<select>` on create/edit forms (locked/unlocked pattern on edit). Grade column visible between Class and Day in dashboard, admin, and My Contributions tables.
+- **Footer branding second line:** "ARES Education is a registered NGO in Kenya — Afretech is a registered nonprofit in the US and Canada" added below the existing version/copyright/CC line in `layout.blade.php`.
+- **Dashboard refactor:** "Upload New Lesson" button removed from `dashboard.blade.php` (now lives on `/my-contributions`). User name link in header now conditional: admins → `/admin`, non-admins → `/my-contributions` (both desktop and mobile nav in `layout.blade.php`).
+- **My Contributions page (`/my-contributions`):** Auth+verified only. `MyContributionsController` always filters to `Auth::id()`. View has search + class filter, sortable table (Class, Grade, Day, Official, Description, Rev., Date, Rated, My Fave, Delete), Delete column visible only for non-official plans (author can delete their own non-official plans), Upload New Lesson button at bottom. Route: `GET /my-contributions` → `my-contributions` (named).
 
 ---
 
@@ -142,6 +146,7 @@ No major features remain. All spec items are implemented.
 | `app/Http/Controllers/LessonPlanController.php` | CRUD + preview + download + view recording |
 | `app/Http/Controllers/VoteController.php` | Vote toggle; returns JSON for AJAX requests |
 | `app/Http/Controllers/AdminController.php` | Admin delete (plans + users), bulk-delete, toggleAdmin, sendVerification |
+| `app/Http/Controllers/MyContributionsController.php` | Per-user plan management page; always filtered to Auth::id() |
 | `app/Http/Requests/StoreVersionRequest.php` | Validation for Upload New Version form (always requires file + revision_type) |
 | `app/Policies/LessonPlanPolicy.php` | `delete`: author only; `before`: admin bypass |
 | `app/Http/Middleware/AdminMiddleware.php` | Enforces `is_admin` flag on admin routes |

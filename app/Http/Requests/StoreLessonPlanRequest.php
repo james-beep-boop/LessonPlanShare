@@ -22,6 +22,7 @@ class StoreLessonPlanRequest extends FormRequest
     {
         return [
             'class_name'  => 'required|string|max:100',
+            'grade'       => 'required|integer|in:10,11,12',
             'lesson_day'  => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:2000',
             'file'        => [

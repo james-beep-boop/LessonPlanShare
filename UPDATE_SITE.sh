@@ -83,10 +83,12 @@ echo "  Writing version info..."
 git -C /tmp/LPC rev-parse --short HEAD > ~/LessonPlanShare/storage/app/version.txt
 
 # Install post-merge hook so future git pulls auto-update version.txt.
-# Idempotent — safe to run on every deploy.
-echo "  Installing post-merge hook..."
-install -m 755 ~/LessonPlanShare/scripts/post-merge-hook.sh \
-    ~/LessonPlanShare/.git/hooks/post-merge
+# Guarded: DreamHost server has no .git directory (overlay repo, not a git clone).
+if [ -d ~/LessonPlanShare/.git/hooks ]; then
+    echo "  Installing post-merge hook..."
+    install -m 755 ~/LessonPlanShare/scripts/post-merge-hook.sh \
+        ~/LessonPlanShare/.git/hooks/post-merge
+fi
 
 # Clean up temp
 rm -rf /tmp/LPC

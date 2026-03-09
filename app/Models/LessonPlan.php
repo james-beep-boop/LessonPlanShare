@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  *   (class_name, lesson_day) pair. A unique DB index enforces uniqueness.
  *
  * Database columns:
- * - id, class_name, lesson_day, description, name (canonical), original_id (FK),
+ * - id, class_name, grade, lesson_day, description, name (canonical), original_id (FK),
  *   parent_id (FK), version_number, version_major, version_minor, version_patch,
  *   author_id (FK), file_path, file_name, file_size, file_hash, vote_score,
  *   created_at, updated_at.
@@ -36,6 +36,7 @@ class LessonPlan extends Model
 
     protected $casts = [
         'is_official' => 'boolean',
+        'grade'       => 'integer',
     ];
 
     /**
@@ -46,6 +47,7 @@ class LessonPlan extends Model
      */
     protected $fillable = [
         'class_name',      // Subject name (e.g., 'English', 'Mathematics', 'Science')
+        'grade',           // Grade level: 10, 11, or 12
         'lesson_day',      // Lesson number (1–20)
         'description',     // Optional description of changes or content
         'name',            // Canonical filename (without extension)
