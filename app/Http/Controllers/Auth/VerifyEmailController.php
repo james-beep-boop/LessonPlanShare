@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserLogin;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class VerifyEmailController extends Controller
 
         // Log the user in so they land on the dashboard ready to go
         Auth::login($user);
+        UserLogin::create(['user_id' => $user->id]);
         $request->session()->regenerate();
 
         return redirect()->route('dashboard')->with('success', 'Email verified! Welcome to ARES Education.');

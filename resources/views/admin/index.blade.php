@@ -474,7 +474,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
                                         No users{{ $userSearch ? ' matching "' . e($userSearch) . '"' : '' }}.
                                     </td>
                                 </tr>
