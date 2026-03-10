@@ -147,45 +147,71 @@
                 Lesson {{ $lessonPlan->lesson_day }}, Version {{ $lessonPlan->semantic_version }}
             </p>
 
-            {{-- 3. Rating tally + inline vote buttons (buttons only when engaged, non-authors only) --}}
-            <div class="flex items-center gap-3 text-sm text-gray-700 flex-wrap">
-                <span>Rating:
-                    <span class="font-medium tabular-nums"
-                          :class="score > 0 ? 'text-green-600' : (score < 0 ? 'text-red-600' : 'text-gray-500')"
-                          x-text="(score > 0 ? '+' : '') + score"></span>
-                </span>
+            {{-- 3. Rating tally + three vote buttons (Upvote / Neutral / Downvote) --}}
+            {{-- "Your vote" shows +1/-1/— (em-dash = no vote yet, not zero).        --}}
+            {{-- Already-voted button is natively disabled (accessibility) + styled   --}}
+            {{-- with the opposite pale colour to signal the locked state visually.   --}}
+            {{-- Neutral is disabled when userVote is null (nothing to clear).        --}}
+            <div class="space-y-2 text-sm text-gray-700">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span>Rating:
+                        <span class="font-bold tabular-nums"
+                              :class="score > 0 ? 'text-green-600' : (score < 0 ? 'text-red-600' : 'text-gray-500')"
+                              x-text="(score > 0 ? '+' : '') + score"></span>.
+                    </span>
+                    <span>Your vote:
+                        <span class="font-bold tabular-nums"
+                              :class="userVote === 1 ? 'text-green-600' : (userVote === -1 ? 'text-red-600' : 'text-gray-400')"
+                              x-text="userVote === 1 ? '+1' : (userVote === -1 ? '-1' : '—')"></span>.
+                    </span>
+                </div>
                 @if (!$isAuthorOfPlan)
                     <div x-show="engaged" x-cloak class="flex gap-1.5">
-                        <button @click="castVote(1)" type="button" :disabled="voteLoading"
+                        {{-- Upvote: bold green when available; pale red + disabled when already upvoted --}}
+                        <button type="button"
+                                @click="castVote(1)"
+                                :disabled="userVote === 1 || voteLoading"
                                 :class="userVote === 1
-                                    ? 'bg-green-100 border-green-400 text-green-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-green-50 hover:border-green-300'"
-                                class="px-2.5 py-1 border rounded text-xs font-medium transition-colors disabled:opacity-60">
+                                    ? 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'
+                                    : 'bg-green-600 border-green-700 text-white hover:bg-green-700 font-bold'"
+                                class="px-3 py-1 border rounded text-xs transition-colors">
                             Upvote
                         </button>
-                        <button @click="castVote(-1)" type="button" :disabled="voteLoading"
+                        {{-- Neutral: clears vote; disabled when there is no vote to clear --}}
+                        <button type="button"
+                                @click="resetVote()"
+                                :disabled="userVote === null || voteLoading"
+                                :class="userVote === null
+                                    ? 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed'
+                                    : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'"
+                                class="px-3 py-1 border rounded text-xs transition-colors">
+                            Neutral
+                        </button>
+                        {{-- Downvote: bold red when available; pale green + disabled when already downvoted --}}
+                        <button type="button"
+                                @click="castVote(-1)"
+                                :disabled="userVote === -1 || voteLoading"
                                 :class="userVote === -1
-                                    ? 'bg-red-100 border-red-400 text-red-700'
-                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-red-50 hover:border-red-300'"
-                                class="px-2.5 py-1 border rounded text-xs font-medium transition-colors disabled:opacity-60">
+                                    ? 'bg-green-50 border-green-200 text-green-300 cursor-not-allowed'
+                                    : 'bg-red-600 border-red-700 text-white hover:bg-red-700 font-bold'"
+                                class="px-3 py-1 border rounded text-xs transition-colors">
                             Downvote
                         </button>
                     </div>
                 @endif
             </div>
 
-            {{-- 4. Favorites status + inline toggle (button only when engaged) --}}
-            <div class="flex items-center gap-3 text-sm text-gray-700">
-                <span>Is one of your favorites:
-                    <span class="font-medium" x-text="favorited ? 'Yes' : 'No'"></span>
-                </span>
+            {{-- 4. Favorites status + Change button --}}
+            <div class="flex items-center gap-2 text-sm text-gray-700">
+                <span class="font-medium">Your Favorite?</span>
+                {{-- Star: yellow ★ when favorited, white/outline ☆ when not --}}
+                <span class="text-2xl leading-none select-none"
+                      :class="favorited ? 'text-yellow-400' : 'text-gray-300'"
+                      x-text="favorited ? '★' : '☆'"></span>
                 <div x-show="engaged" x-cloak>
                     <button @click="toggleFavorite()" type="button" :disabled="favLoading"
-                            :class="favorited
-                                ? 'bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100'
-                                : 'bg-white border-gray-300 text-gray-700 hover:bg-yellow-50 hover:border-yellow-300'"
-                            class="px-2.5 py-1 border rounded text-xs font-medium transition-colors disabled:opacity-60"
-                            x-text="favorited ? 'Unfavorite' : 'Favorite'">
+                            class="px-2.5 py-1 border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 rounded text-xs font-medium transition-colors disabled:opacity-60">
+                        Change
                     </button>
                 </div>
             </div>
@@ -251,11 +277,11 @@
                     </button>
                     @if ($versions->count() > 1)
                         <button type="button" @click="showCompare = !showCompare"
-                                class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors border"
+                                class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors"
                                 :class="showCompare
-                                    ? 'bg-gray-200 text-gray-900 border-gray-400'
-                                    : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'">
-                            Compare With Another Revision
+                                    ? 'bg-gray-600 text-white'
+                                    : 'bg-gray-900 text-white hover:bg-gray-700'">
+                            Compare Two Versions
                         </button>
                     @endif
                 </div>
