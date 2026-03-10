@@ -112,6 +112,9 @@ tests/Feature/Auth/PasswordConfirmationTest.php         →  (REPLACE Breeze's)
 resources/views/auth/confirm-password.blade.php         →  (REPLACE Breeze's — use <x-layout>, no Vite)
 
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
+app/Http/Middleware/VerifyCsrfToken.php                 →  (NEW — excludes logout from CSRF to fix double-logout 419)
+
+app/Notifications/PasswordChangedByAdminNotification.php →  (NEW)
 
 app/Http/Requests/Auth/LoginRequest.php                 →  (NEW)
 app/Http/Requests/StoreLessonPlanRequest.php            →  (NEW)
@@ -121,6 +124,8 @@ app/Policies/LessonPlanPolicy.php                       →  (NEW)
 
 app/Mail/LessonPlanUploaded.php                         →  (NEW)
 app/Mail/DuplicateContentRemoved.php                    →  (NEW)
+
+app/Notifications/PasswordChangedByAdminNotification.php →  (NEW)
 
 app/Console/Commands/DetectDuplicateContent.php         →  (NEW)
 app/Console/Commands/BackfillGradeInFilenames.php       →  (NEW)
@@ -591,7 +596,8 @@ LessonPlanShare/
 │   └── VoteController.php
 │
 ├── app/Http/Middleware/
-│   └── AdminMiddleware.php                             (enforces is_admin flag)
+│   ├── AdminMiddleware.php                             (enforces is_admin flag)
+│   └── VerifyCsrfToken.php                            (excludes logout — fixes double-logout 419)
 │
 ├── app/Http/Requests/
 │   ├── Auth/
@@ -605,6 +611,9 @@ LessonPlanShare/
 ├── app/Mail/
 │   ├── LessonPlanUploaded.php
 │   └── DuplicateContentRemoved.php
+│
+├── app/Notifications/
+│   └── PasswordChangedByAdminNotification.php          (sent when admin changes a user's password)
 │
 ├── app/Console/Commands/
 │   ├── DetectDuplicateContent.php

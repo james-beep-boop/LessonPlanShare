@@ -61,6 +61,9 @@
              openViewer() {
                  const url  = this.useGoogleDocs ? this.googleUrl : this.officeUrl;
                  const type = this.useGoogleDocs ? 'google_docs' : 'ms_office';
+                 // Mark engaged immediately so vote buttons appear without waiting for server
+                 this.engaged = true;
+                 this.showDetails = true;
                  fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
                      method: 'POST',
                      headers: {
@@ -69,7 +72,7 @@
                          'Accept': 'application/json'
                      },
                      body: JSON.stringify({ type: type })
-                 }).then(r => { if (r.ok) this.engaged = true; }).catch(() => {});
+                 }).catch(() => {});
                  window.open(url, '_blank', 'noopener,noreferrer');
              },
 
@@ -259,25 +262,21 @@
 
         </div>
 
-        {{-- Compare Two Versions toggle — always visible so user can open/close the panel --}}
-        @if ($versions->count() > 1)
-            <div>
-                <button type="button" @click="showCompare = !showCompare"
-                        class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors"
-                        :class="showCompare
-                            ? 'bg-gray-600 text-white'
-                            : 'bg-gray-900 text-white hover:bg-gray-700'">
-                    Compare Two Versions
-                </button>
-            </div>
-        @endif
+        {{-- Document Viewer and Actions --}}
+        <div class="border border-gray-200 rounded-lg p-6 space-y-4">
 
-        {{-- Document Viewer and Actions (hidden while compare panel is open) --}}
-        <div x-show="!showCompare" x-cloak class="border border-gray-200 rounded-lg p-6 space-y-4">
-
-            {{-- Viewer buttons --}}
+            {{-- Viewer buttons (Compare + View options all same size) --}}
             @if ($lessonPlan->file_path)
                 <div class="flex flex-wrap justify-center gap-3">
+                    @if ($versions->count() > 1)
+                        <button type="button" @click="showCompare = !showCompare"
+                                class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors"
+                                :class="showCompare
+                                    ? 'bg-gray-600 text-white'
+                                    : 'bg-gray-900 text-white hover:bg-gray-700'">
+                            Compare Two Versions
+                        </button>
+                    @endif
                     <button type="button" @click="useGoogleDocs = false; openViewer()"
                             class="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                         View with Microsoft Office
@@ -295,7 +294,7 @@
                 @if ($lessonPlan->file_path)
                     {{-- Download --}}
                     <a href="{{ route('lesson-plans.download', $lessonPlan) }}"
-                       @click="fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
+                       @click="engaged = true; showDetails = true; fetch('{{ route('lesson-plans.track-engagement', $lessonPlan) }}', {
                            method: 'POST',
                            headers: {
                                'Content-Type': 'application/json',
@@ -303,7 +302,7 @@
                                'Accept': 'application/json'
                            },
                            body: JSON.stringify({ type: 'download' })
-                       }).then(r => { if (r.ok) engaged = true; }).catch(() => {})"
+                       }).catch(() => {})"
                        class="flex flex-col items-center justify-center min-h-[3.5rem] flex-1 px-3 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors border border-gray-300 text-center">
                         <span>Download This Lesson Plan</span>
                         <span class="text-xs font-normal text-gray-500">(DOC/DOCX)</span>
@@ -427,7 +426,7 @@
                     @endif
 
                     {{-- View toggle --}}
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-sm text-gray-600">View:</span>
                         <button type="button" @click="sideBySide = false"
                                 :class="!sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
@@ -439,6 +438,14 @@
                                 class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
                             Side by Side
                         </button>
+                        @if ($isAuthorOfPlan && $targetPlan && $diffSummary &&
+                             $diffSummary['added'] == 0 && $diffSummary['removed'] == 0 && $diffSummary['changed'] == 0 &&
+                             version_compare($lessonPlan->semantic_version, $targetPlan->semantic_version, '>'))
+                            <button type="button" @click="confirmOpen = true"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-md bg-pink-100 text-pink-700 hover:bg-pink-200 border border-pink-300 transition-colors">
+                                Delete Your Revision (v{{ $lessonPlan->semantic_version }}) — Cannot Be Undone!
+                            </button>
+                        @endif
                     </div>
 
                     {{-- Inline diff --}}
@@ -502,6 +509,12 @@
                     <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-sm text-gray-500 italic">
                         No differences found between the selected versions.
                     </div>
+                    @if ($isAuthorOfPlan && version_compare($lessonPlan->semantic_version, $targetPlan->semantic_version, '>'))
+                        <button type="button" @click="confirmOpen = true"
+                                class="px-3 py-1.5 text-xs font-medium rounded-md bg-pink-100 text-pink-700 hover:bg-pink-200 border border-pink-300 transition-colors">
+                            Delete Your Revision (v{{ $lessonPlan->semantic_version }}) — Cannot Be Undone!
+                        </button>
+                    @endif
                 @endif
 
             </div>

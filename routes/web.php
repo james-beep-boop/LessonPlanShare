@@ -142,8 +142,8 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class, 'throttle:30,1'])
         ->middleware('throttle:6,1')
         ->name('users.send-verification');
 
-    // Send password-reset email on behalf of a user — admin-only; throttled
-    Route::post('/users/{user}/reset-password', [AdminController::class, 'sendPasswordReset'])
+    // Change a user's password directly — admin-only; throttled
+    Route::post('/users/{user}/reset-password', [AdminController::class, 'changePassword'])
         ->middleware('throttle:6,1')
         ->name('admin.users.reset-password');
 

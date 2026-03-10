@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 
 /**
@@ -443,18 +444,24 @@ class AdminController extends Controller
     }
 
     /**
-     * Send a password-reset link to a user on behalf of an admin.
+     * Change a user's password directly (admin action).
      *
-     * Uses Laravel's standard Password broker so the link is exactly the same
-     * as a self-initiated forgot-password request. Returns JSON so Alpine.js
-     * can update the button state without a page reload.
+     * Validates, hashes, and saves the new password, then emails the user
+     * a notification so they are aware of the change. Returns JSON so
+     * Alpine.js can update the inline form without a page reload.
      * Route is throttled at 6/minute (defined in routes/web.php).
      */
-    public function sendPasswordReset(User $user): JsonResponse
+    public function changePassword(Request $request, User $user): JsonResponse
     {
-        Password::sendResetLink(['email' => $user->email]);
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8'],
+        ]);
 
-        return response()->json(['sent' => true]);
+        $user->update(['password' => Hash::make($data['password'])]);
+
+        $user->notify(new \App\Notifications\PasswordChangedByAdminNotification());
+
+        return response()->json(['changed' => true]);
     }
 
     /**

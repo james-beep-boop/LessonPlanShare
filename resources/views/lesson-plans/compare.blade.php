@@ -12,10 +12,16 @@
                     {{ $lessonPlan->class_name }}, Grade {{ $lessonPlan->grade }}, Lesson {{ $lessonPlan->lesson_day }}
                 </p>
             </div>
-            <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors shrink-0">
-                &larr; Back to Lesson Plan
-            </a>
+            <div class="flex gap-2 flex-wrap shrink-0">
+                <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
+                    &larr; Back to Lesson Details
+                </a>
+                <a href="{{ route('dashboard') }}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
+                    &larr; Back to Dashboard
+                </a>
+            </div>
         </div>
 
         {{-- Current version info card --}}

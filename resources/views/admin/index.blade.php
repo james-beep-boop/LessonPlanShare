@@ -305,6 +305,7 @@
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
                                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Make Admin</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Password</th>
                                 @php
                                     $userCols = [
                                         'name'               => ['label' => 'Contributor',  'align' => 'left'],
@@ -403,6 +404,54 @@
                                         @endif
                                     </td>
 
+                                    {{-- Password (inline admin reset) --}}
+                                    <td class="px-3 py-2">
+                                        @if ($u->id !== auth()->id())
+                                            <div x-data="{ show: false, pwd: '', saving: false, saved: false, err: '' }" class="flex items-center gap-1 flex-wrap">
+                                                <button x-show="!show" @click="show = true"
+                                                        class="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded hover:bg-purple-200 transition-colors">
+                                                    Reset
+                                                </button>
+                                                <template x-if="show">
+                                                    <div class="flex items-center gap-1 flex-wrap">
+                                                        <input type="password" x-model="pwd" placeholder="New password (min 8)"
+                                                               class="border border-gray-300 rounded px-1.5 py-0.5 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-gray-400">
+                                                        <button type="button"
+                                                                @click="
+                                                                    if (!pwd || pwd.length < 8) { err = 'Min 8 chars'; return; }
+                                                                    saving = true; err = '';
+                                                                    fetch('{{ route('admin.users.reset-password', $u) }}', {
+                                                                        method: 'POST',
+                                                                        headers: {
+                                                                            'Content-Type': 'application/json',
+                                                                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                                            'Accept': 'application/json'
+                                                                        },
+                                                                        body: JSON.stringify({ password: pwd })
+                                                                    })
+                                                                    .then(r => r.ok ? r.json() : Promise.reject())
+                                                                    .then(() => { saved = true; show = false; pwd = ''; setTimeout(() => saved = false, 5000); })
+                                                                    .catch(() => { err = 'Error'; })
+                                                                    .finally(() => { saving = false; });
+                                                                "
+                                                                :disabled="saving"
+                                                                class="px-2 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors disabled:opacity-60">
+                                                            Save
+                                                        </button>
+                                                        <button type="button" @click="show = false; pwd = ''; err = ''"
+                                                                class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded hover:bg-gray-200 transition-colors">
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                                <span x-show="saved" x-cloak class="text-xs text-green-600 font-medium">Saved!</span>
+                                                <span x-show="err" x-cloak x-text="err" class="text-xs text-red-600"></span>
+                                            </div>
+                                        @else
+                                            <span class="text-gray-300 text-xs">—</span>
+                                        @endif
+                                    </td>
+
                                     {{-- Contributor, Email, Verified, Registered --}}
                                     <td class="px-3 py-2 text-gray-700">{{ $u->name }}</td>
                                     <td class="px-3 py-2 text-gray-700 text-xs">{{ $u->email }}</td>
@@ -415,66 +464,36 @@
                                     </td>
                                     <td class="px-3 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y') }}</td>
 
-                                    {{-- Actions: Verify (if unverified) + Reset Password (all non-self) --}}
+                                    {{-- Actions: Verify (if unverified) --}}
                                     <td class="px-3 py-2">
-                                        <div class="flex items-center gap-1.5 flex-wrap">
-
-                                            {{-- Verify button (unverified users only) --}}
-                                            @if (! $u->email_verified_at)
-                                                <div x-data="{ sent: false }" class="inline">
-                                                    <button type="button"
-                                                            @click="
-                                                                fetch('{{ route('users.send-verification', $u) }}', {
-                                                                    method: 'POST',
-                                                                    headers: {
-                                                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                                                        'Accept': 'application/json'
-                                                                    }
-                                                                }).then(r => {
-                                                                    if (r.ok) {
-                                                                        sent = true;
-                                                                        setTimeout(() => sent = false, 5000);
-                                                                    }
-                                                                });
-                                                            "
-                                                            :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                                            class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
-                                                            x-text="sent ? 'Email Sent' : 'Verify'">
-                                                    </button>
-                                                </div>
-                                            @endif
-
-                                            {{-- Reset Password button (all non-self users) --}}
-                                            @if ($u->id !== auth()->id())
-                                                <div x-data="{ sent: false }" class="inline">
-                                                    <button type="button"
-                                                            @click="
-                                                                fetch('{{ route('admin.users.reset-password', $u) }}', {
-                                                                    method: 'POST',
-                                                                    headers: {
-                                                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                                                        'Accept': 'application/json'
-                                                                    }
-                                                                }).then(r => {
-                                                                    if (r.ok) {
-                                                                        sent = true;
-                                                                        setTimeout(() => sent = false, 5000);
-                                                                    }
-                                                                });
-                                                            "
-                                                            :class="sent ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'"
-                                                            class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
-                                                            x-text="sent ? 'Email Sent' : 'Reset Pwd'">
-                                                    </button>
-                                                </div>
-                                            @endif
-
-                                        </div>
+                                        @if (! $u->email_verified_at)
+                                            <div x-data="{ sent: false }" class="inline">
+                                                <button type="button"
+                                                        @click="
+                                                            fetch('{{ route('users.send-verification', $u) }}', {
+                                                                method: 'POST',
+                                                                headers: {
+                                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                                    'Accept': 'application/json'
+                                                                }
+                                                            }).then(r => {
+                                                                if (r.ok) {
+                                                                    sent = true;
+                                                                    setTimeout(() => sent = false, 5000);
+                                                                }
+                                                            });
+                                                        "
+                                                        :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                                        class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
+                                                        x-text="sent ? 'Email Sent' : 'Verify'">
+                                                </button>
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="10" class="px-4 py-6 text-center text-gray-400">
                                         No users{{ $userSearch ? ' matching "' . e($userSearch) . '"' : '' }}.
                                     </td>
                                 </tr>
