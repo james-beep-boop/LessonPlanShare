@@ -154,12 +154,5 @@
         {{ $plans->count() }} of {{ $plans->total() }} {{ Str::plural('plan', $plans->total()) }} shown
     </div>
 
-    {{-- Upload New Lesson button --}}
-    <div class="mt-6 flex justify-center">
-        <a href="{{ route('lesson-plans.create') }}"
-           class="w-full sm:w-auto sm:min-w-[260px] text-center px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
-            Upload New Lesson
-        </a>
-    </div>
 
 </x-layout>

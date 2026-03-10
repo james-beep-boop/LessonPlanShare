@@ -126,15 +126,15 @@
             <p class="text-gray-400 text-sm italic font-semibold">No description provided.</p>
         @endif
 
-        {{-- Show Details checkbox --}}
-        <label class="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
+        {{-- Show Details checkbox (hidden while compare panel is open) --}}
+        <label x-show="!showCompare" x-cloak class="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700">
             <input type="checkbox" x-model="showDetails"
                    class="rounded border-gray-300 text-gray-900 shadow-sm focus:ring-gray-900">
             Show Details of this Lesson Plan
         </label>
 
-        {{-- Details Box (conditional on checkbox) --}}
-        <div x-show="showDetails" x-cloak class="border border-gray-200 rounded-lg p-6 space-y-4">
+        {{-- Details Box (conditional on checkbox; hidden while compare panel is open) --}}
+        <div x-show="showDetails && !showCompare" x-cloak class="border border-gray-200 rounded-lg p-6 space-y-4">
 
             {{-- Canonical filename --}}
             @if ($lessonPlan->file_name)
@@ -167,12 +167,12 @@
                 </div>
                 @if (!$isAuthorOfPlan)
                     <div x-show="engaged" x-cloak class="flex gap-1.5">
-                        {{-- Upvote: bold green when available; pale red + disabled when already upvoted --}}
+                        {{-- Upvote: bold green when available; pale green + disabled when already upvoted --}}
                         <button type="button"
                                 @click="castVote(1)"
                                 :disabled="userVote === 1 || voteLoading"
                                 :class="userVote === 1
-                                    ? 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'
+                                    ? 'bg-green-50 border-green-200 text-green-300 cursor-not-allowed'
                                     : 'bg-green-600 border-green-700 text-white hover:bg-green-700 font-bold'"
                                 class="px-3 py-1 border rounded text-xs transition-colors">
                             Upvote
@@ -187,12 +187,12 @@
                                 class="px-3 py-1 border rounded text-xs transition-colors">
                             Neutral
                         </button>
-                        {{-- Downvote: bold red when available; pale green + disabled when already downvoted --}}
+                        {{-- Downvote: bold red when available; pale red + disabled when already downvoted --}}
                         <button type="button"
                                 @click="castVote(-1)"
                                 :disabled="userVote === -1 || voteLoading"
                                 :class="userVote === -1
-                                    ? 'bg-green-50 border-green-200 text-green-300 cursor-not-allowed'
+                                    ? 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'
                                     : 'bg-red-600 border-red-700 text-white hover:bg-red-700 font-bold'"
                                 class="px-3 py-1 border rounded text-xs transition-colors">
                             Downvote
@@ -208,12 +208,10 @@
                 <span class="text-2xl leading-none select-none"
                       :class="favorited ? 'text-yellow-400' : 'text-gray-300'"
                       x-text="favorited ? '★' : '☆'"></span>
-                <div x-show="engaged" x-cloak>
-                    <button @click="toggleFavorite()" type="button" :disabled="favLoading"
-                            class="px-2.5 py-1 border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 rounded text-xs font-medium transition-colors disabled:opacity-60">
-                        Change
-                    </button>
-                </div>
+                <button @click="toggleFavorite()" type="button" :disabled="favLoading"
+                        class="px-2.5 py-1 border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 rounded text-xs font-medium transition-colors disabled:opacity-60">
+                    Change
+                </button>
             </div>
 
             {{-- 4. Original Credits --}}
@@ -261,10 +259,23 @@
 
         </div>
 
-        {{-- Document Viewer and Actions --}}
-        <div class="border border-gray-200 rounded-lg p-6 space-y-4">
+        {{-- Compare Two Versions toggle — always visible so user can open/close the panel --}}
+        @if ($versions->count() > 1)
+            <div>
+                <button type="button" @click="showCompare = !showCompare"
+                        class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors"
+                        :class="showCompare
+                            ? 'bg-gray-600 text-white'
+                            : 'bg-gray-900 text-white hover:bg-gray-700'">
+                    Compare Two Versions
+                </button>
+            </div>
+        @endif
 
-            {{-- Viewer buttons + optional Compare button in one row --}}
+        {{-- Document Viewer and Actions (hidden while compare panel is open) --}}
+        <div x-show="!showCompare" x-cloak class="border border-gray-200 rounded-lg p-6 space-y-4">
+
+            {{-- Viewer buttons --}}
             @if ($lessonPlan->file_path)
                 <div class="flex flex-wrap justify-center gap-3">
                     <button type="button" @click="useGoogleDocs = false; openViewer()"
@@ -275,15 +286,6 @@
                             class="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                         View with Google Docs
                     </button>
-                    @if ($versions->count() > 1)
-                        <button type="button" @click="showCompare = !showCompare"
-                                class="px-4 py-2.5 text-sm font-medium rounded-md transition-colors"
-                                :class="showCompare
-                                    ? 'bg-gray-600 text-white'
-                                    : 'bg-gray-900 text-white hover:bg-gray-700'">
-                            Compare Two Versions
-                        </button>
-                    @endif
                 </div>
             @endif
 
