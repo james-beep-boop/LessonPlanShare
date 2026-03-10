@@ -303,6 +303,8 @@
                                            class="rounded border-gray-300">
                                 </th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Make Admin</th>
                                 @php
                                     $userCols = [
                                         'name'               => ['label' => 'Contributor',  'align' => 'left'],
@@ -329,13 +331,14 @@
                                         </a>
                                     </th>
                                 @endforeach
-                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse ($users as $u)
                                 <tr class="hover:bg-red-50 {{ $u->id === auth()->id() ? 'bg-blue-50' : '' }}">
+
+                                    {{-- Checkbox --}}
                                     <td class="px-3 py-2 text-center">
                                         @if ($u->id !== auth()->id())
                                             <input type="checkbox"
@@ -345,6 +348,8 @@
                                                    class="user-cb rounded border-gray-300">
                                         @endif
                                     </td>
+
+                                    {{-- Del --}}
                                     <td class="px-3 py-2">
                                         @if ($u->id !== auth()->id())
                                             <form method="POST"
@@ -361,16 +366,8 @@
                                             <span class="text-xs text-gray-400 italic">you</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-gray-700">{{ $u->name }}</td>
-                                    <td class="px-3 py-2 text-gray-700 text-xs">{{ $u->email }}</td>
-                                    <td class="px-3 py-2 text-center">
-                                        @if ($u->email_verified_at)
-                                            <span class="text-green-600 text-xs font-medium">Yes</span>
-                                        @else
-                                            <span class="text-red-500 text-xs font-medium">No</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y') }}</td>
+
+                                    {{-- Admin (Yes / —) --}}
                                     <td class="px-3 py-2 text-center">
                                         @if ($u->is_admin)
                                             <span class="text-blue-600 text-xs font-medium">Yes</span>
@@ -378,35 +375,9 @@
                                             <span class="text-gray-400 text-xs">—</span>
                                         @endif
                                     </td>
+
+                                    {{-- Make Admin / Revoke Admin column --}}
                                     <td class="px-3 py-2">
-                                        <div class="flex items-center gap-1.5 flex-wrap">
-
-                                        {{-- Verify button (unverified users only) --}}
-                                        @if (! $u->email_verified_at)
-                                            <div x-data="{ sent: false }" class="inline">
-                                                <button type="button"
-                                                        @click="
-                                                            fetch('{{ route('users.send-verification', $u) }}', {
-                                                                method: 'POST',
-                                                                headers: {
-                                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                                                    'Accept': 'application/json'
-                                                                }
-                                                            }).then(r => {
-                                                                if (r.ok) {
-                                                                    sent = true;
-                                                                    setTimeout(() => sent = false, 5000);
-                                                                }
-                                                            });
-                                                        "
-                                                        :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                                        class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
-                                                        x-text="sent ? 'Email Sent' : 'Verify'">
-                                                </button>
-                                            </div>
-                                        @endif
-
-                                        {{-- Grant admin: any admin can promote a non-admin (not self) --}}
                                         @if ($u->id !== auth()->id() && ! $u->is_admin)
                                             <form method="POST"
                                                   action="{{ route('admin.users.toggle-admin', $u) }}"
@@ -417,10 +388,7 @@
                                                     Make Admin
                                                 </button>
                                             </form>
-                                        @endif
-
-                                        {{-- Revoke admin: only super-admin can demote (not self) --}}
-                                        @if ($u->id !== auth()->id() && $u->is_admin && auth()->user()->email === 'priority2@protonmail.ch')
+                                        @elseif ($u->id !== auth()->id() && $u->is_admin && auth()->user()->email === config('app.super_admin_email'))
                                             <form method="POST"
                                                   action="{{ route('admin.users.toggle-admin', $u) }}"
                                                   onsubmit="return confirm('Revoke admin privileges from {{ addslashes($u->name) }}?')">
@@ -430,14 +398,83 @@
                                                     Revoke Admin
                                                 </button>
                                             </form>
+                                        @else
+                                            <span class="text-gray-300 text-xs">—</span>
                                         @endif
+                                    </td>
+
+                                    {{-- Contributor, Email, Verified, Registered --}}
+                                    <td class="px-3 py-2 text-gray-700">{{ $u->name }}</td>
+                                    <td class="px-3 py-2 text-gray-700 text-xs">{{ $u->email }}</td>
+                                    <td class="px-3 py-2 text-center">
+                                        @if ($u->email_verified_at)
+                                            <span class="text-green-600 text-xs font-medium">Yes</span>
+                                        @else
+                                            <span class="text-red-500 text-xs font-medium">No</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs">{{ $u->created_at->format('M j, Y') }}</td>
+
+                                    {{-- Actions: Verify (if unverified) + Reset Password (all non-self) --}}
+                                    <td class="px-3 py-2">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+
+                                            {{-- Verify button (unverified users only) --}}
+                                            @if (! $u->email_verified_at)
+                                                <div x-data="{ sent: false }" class="inline">
+                                                    <button type="button"
+                                                            @click="
+                                                                fetch('{{ route('users.send-verification', $u) }}', {
+                                                                    method: 'POST',
+                                                                    headers: {
+                                                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                                        'Accept': 'application/json'
+                                                                    }
+                                                                }).then(r => {
+                                                                    if (r.ok) {
+                                                                        sent = true;
+                                                                        setTimeout(() => sent = false, 5000);
+                                                                    }
+                                                                });
+                                                            "
+                                                            :class="sent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                                            class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
+                                                            x-text="sent ? 'Email Sent' : 'Verify'">
+                                                    </button>
+                                                </div>
+                                            @endif
+
+                                            {{-- Reset Password button (all non-self users) --}}
+                                            @if ($u->id !== auth()->id())
+                                                <div x-data="{ sent: false }" class="inline">
+                                                    <button type="button"
+                                                            @click="
+                                                                fetch('{{ route('admin.users.reset-password', $u) }}', {
+                                                                    method: 'POST',
+                                                                    headers: {
+                                                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                                        'Accept': 'application/json'
+                                                                    }
+                                                                }).then(r => {
+                                                                    if (r.ok) {
+                                                                        sent = true;
+                                                                        setTimeout(() => sent = false, 5000);
+                                                                    }
+                                                                });
+                                                            "
+                                                            :class="sent ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'"
+                                                            class="px-2 py-1 text-xs font-medium rounded-md transition-colors"
+                                                            x-text="sent ? 'Email Sent' : 'Reset Pwd'">
+                                                    </button>
+                                                </div>
+                                            @endif
 
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="10" class="px-4 py-6 text-center text-gray-400">
                                         No users{{ $userSearch ? ' matching "' . e($userSearch) . '"' : '' }}.
                                     </td>
                                 </tr>
@@ -554,120 +591,116 @@
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <template x-for="(plan, idx) in allPlans" :key="plan.id">
-                                <template x-if="true">
-                                    {{-- Two-row fragment: data row + inline editor row --}}
-                                    <tbody>
-                                        {{-- Data row --}}
-                                        <tr class="border-t border-gray-100 cursor-pointer hover:bg-amber-50"
-                                            :class="expandedId === plan.id ? 'bg-amber-50' : ''"
-                                            @click="toggleExpand(plan)">
-                                            <td class="px-3 py-2 text-center">
-                                                <span x-show="plan.is_official" class="text-xl font-bold text-gray-900">✓</span>
-                                            </td>
-                                            <td class="px-3 py-2 text-gray-700" x-text="plan.class_name"></td>
-                                            <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.grade"></td>
-                                            <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.lesson_day"></td>
-                                            <td class="px-3 py-2 text-gray-700 text-xs" x-text="plan.author_name"></td>
-                                            <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs" x-text="plan.version"></td>
-                                            <td class="px-3 py-2 text-gray-500 text-xs font-mono truncate max-w-[160px]" x-text="plan.file_name || '—'"></td>
-                                        </tr>
+                        {{-- Each iteration produces a valid <tbody> (multiple <tbody> in a table is valid HTML).
+                             This avoids the nested-tbody bug that misaligned column headers. --}}
+                        <template x-for="(plan, idx) in allPlans" :key="plan.id">
+                            <tbody>
+                                {{-- Data row --}}
+                                <tr class="border-t border-gray-100 cursor-pointer hover:bg-amber-50"
+                                    :class="expandedId === plan.id ? 'bg-amber-50' : ''"
+                                    @click="toggleExpand(plan)">
+                                    <td class="px-3 py-2 text-center">
+                                        <span x-show="plan.is_official" class="text-xl font-bold text-gray-900">✓</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700" x-text="plan.class_name"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.grade"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.lesson_day"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-xs" x-text="plan.author_name"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs" x-text="plan.version"></td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs font-mono truncate max-w-[160px]" x-text="plan.file_name || '—'"></td>
+                                </tr>
 
-                                        {{-- Inline editor row (shown when this row is expanded) --}}
-                                        <tr x-show="expandedId === plan.id" x-cloak class="border-t border-amber-200 bg-amber-50">
-                                            <td colspan="7" class="px-4 py-4">
-                                                <div class="space-y-3">
-                                                    <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                                        Editing: <span class="normal-case font-normal" x-text="plan.class_name + ' G' + plan.grade + ' Lesson ' + plan.lesson_day + ' v' + plan.version"></span>
-                                                    </p>
+                                {{-- Inline editor row (shown when this row is expanded) --}}
+                                <tr x-show="expandedId === plan.id" x-cloak class="border-t border-amber-200 bg-amber-50">
+                                    <td colspan="7" class="px-4 py-4">
+                                        <div class="space-y-3">
+                                            <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                Editing: <span class="normal-case font-normal" x-text="plan.class_name + ' G' + plan.grade + ' Lesson ' + plan.lesson_day + ' v' + plan.version"></span>
+                                            </p>
 
-                                                    {{-- Change Class --}}
-                                                    <div class="flex items-start gap-3">
-                                                        <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
-                                                            <input type="checkbox" x-model="edit.changeClass" class="rounded border-gray-300">
-                                                            <span>Change Class?</span>
-                                                        </label>
-                                                        <div x-show="edit.changeClass" x-cloak class="flex items-center gap-2">
-                                                            <select x-model="edit.classValue"
-                                                                    class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
-                                                                <template x-for="cn in classNames" :key="cn">
-                                                                    <option :value="cn" x-text="cn"></option>
-                                                                </template>
-                                                                <option value="__new__">Add New Value…</option>
-                                                            </select>
-                                                            <input x-show="edit.classValue === '__new__'" x-cloak
-                                                                   x-model="edit.classNew"
-                                                                   type="text" placeholder="New class name"
-                                                                   class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 w-40">
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Change Grade --}}
-                                                    <div class="flex items-start gap-3">
-                                                        <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
-                                                            <input type="checkbox" x-model="edit.changeGrade" class="rounded border-gray-300">
-                                                            <span>Change Grade?</span>
-                                                        </label>
-                                                        <div x-show="edit.changeGrade" x-cloak class="flex items-center gap-2">
-                                                            <select x-model="edit.gradeValue"
-                                                                    class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
-                                                                <template x-for="g in grades" :key="g">
-                                                                    <option :value="String(g)" x-text="'Grade ' + g"></option>
-                                                                </template>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Change Day --}}
-                                                    <div class="flex items-start gap-3">
-                                                        <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
-                                                            <input type="checkbox" x-model="edit.changeDay" class="rounded border-gray-300">
-                                                            <span>Change Lesson?</span>
-                                                        </label>
-                                                        <div x-show="edit.changeDay" x-cloak class="flex items-center gap-2">
-                                                            <select x-model="edit.dayValue"
-                                                                    class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
-                                                                <template x-for="d in days" :key="d">
-                                                                    <option :value="String(d)" x-text="'Lesson ' + d"></option>
-                                                                </template>
-                                                                <option value="__new__">Add New Value…</option>
-                                                            </select>
-                                                            <input x-show="edit.dayValue === '__new__'" x-cloak
-                                                                   x-model="edit.dayNew"
-                                                                   type="number" min="1" max="999" placeholder="Lesson #"
-                                                                   class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 w-24">
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Status / error --}}
-                                                    <p x-show="edit.message" x-cloak
-                                                       class="text-sm"
-                                                       :class="edit.isError ? 'text-red-600' : 'text-green-600'"
-                                                       x-text="edit.message"></p>
-
-                                                    {{-- Action buttons --}}
-                                                    <div class="flex gap-2 pt-1">
-                                                        <button type="button"
-                                                                @click="saveRelocate(plan)"
-                                                                :disabled="edit.saving"
-                                                                class="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-700 transition-colors disabled:opacity-60">
-                                                            <span x-text="edit.saving ? 'Saving…' : 'Save and Update'"></span>
-                                                        </button>
-                                                        <button type="button"
-                                                                @click="discardEdit()"
-                                                                class="px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors">
-                                                            Discard Changes
-                                                        </button>
-                                                    </div>
+                                            {{-- Change Class --}}
+                                            <div class="flex items-start gap-3">
+                                                <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
+                                                    <input type="checkbox" x-model="edit.changeClass" class="rounded border-gray-300">
+                                                    <span>Change Class?</span>
+                                                </label>
+                                                <div x-show="edit.changeClass" x-cloak class="flex items-center gap-2">
+                                                    <select x-model="edit.classValue"
+                                                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                                        <template x-for="cn in classNames" :key="cn">
+                                                            <option :value="cn" x-text="cn"></option>
+                                                        </template>
+                                                        <option value="__new__">Add New Value…</option>
+                                                    </select>
+                                                    <input x-show="edit.classValue === '__new__'" x-cloak
+                                                           x-model="edit.classNew"
+                                                           type="text" placeholder="New class name"
+                                                           class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 w-40">
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </template>
-                            </template>
-                            {{-- Empty state (no JS fallback not needed since data is always present) --}}
-                        </tbody>
+                                            </div>
+
+                                            {{-- Change Grade --}}
+                                            <div class="flex items-start gap-3">
+                                                <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
+                                                    <input type="checkbox" x-model="edit.changeGrade" class="rounded border-gray-300">
+                                                    <span>Change Grade?</span>
+                                                </label>
+                                                <div x-show="edit.changeGrade" x-cloak class="flex items-center gap-2">
+                                                    <select x-model="edit.gradeValue"
+                                                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                                        <template x-for="g in grades" :key="g">
+                                                            <option :value="String(g)" x-text="'Grade ' + g"></option>
+                                                        </template>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {{-- Change Day --}}
+                                            <div class="flex items-start gap-3">
+                                                <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
+                                                    <input type="checkbox" x-model="edit.changeDay" class="rounded border-gray-300">
+                                                    <span>Change Lesson?</span>
+                                                </label>
+                                                <div x-show="edit.changeDay" x-cloak class="flex items-center gap-2">
+                                                    <select x-model="edit.dayValue"
+                                                            class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                                        <template x-for="d in days" :key="d">
+                                                            <option :value="String(d)" x-text="'Lesson ' + d"></option>
+                                                        </template>
+                                                        <option value="__new__">Add New Value…</option>
+                                                    </select>
+                                                    <input x-show="edit.dayValue === '__new__'" x-cloak
+                                                           x-model="edit.dayNew"
+                                                           type="number" min="1" max="999" placeholder="Lesson #"
+                                                           class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 w-24">
+                                                </div>
+                                            </div>
+
+                                            {{-- Status / error --}}
+                                            <p x-show="edit.message" x-cloak
+                                               class="text-sm"
+                                               :class="edit.isError ? 'text-red-600' : 'text-green-600'"
+                                               x-text="edit.message"></p>
+
+                                            {{-- Action buttons --}}
+                                            <div class="flex gap-2 pt-1">
+                                                <button type="button"
+                                                        @click="saveRelocate(plan)"
+                                                        :disabled="edit.saving"
+                                                        class="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-700 transition-colors disabled:opacity-60">
+                                                    <span x-text="edit.saving ? 'Saving…' : 'Save and Update'"></span>
+                                                </button>
+                                                <button type="button"
+                                                        @click="discardEdit()"
+                                                        class="px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors">
+                                                    Discard Changes
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </template>
                     </table>
                 </div>
             </div>

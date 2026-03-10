@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 
 /**
  * Admin panel controller.
@@ -437,6 +438,21 @@ class AdminController extends Controller
         if (! $user->hasVerifiedEmail()) {
             $user->sendEmailVerificationNotification();
         }
+
+        return response()->json(['sent' => true]);
+    }
+
+    /**
+     * Send a password-reset link to a user on behalf of an admin.
+     *
+     * Uses Laravel's standard Password broker so the link is exactly the same
+     * as a self-initiated forgot-password request. Returns JSON so Alpine.js
+     * can update the button state without a page reload.
+     * Route is throttled at 6/minute (defined in routes/web.php).
+     */
+    public function sendPasswordReset(User $user): JsonResponse
+    {
+        Password::sendResetLink(['email' => $user->email]);
 
         return response()->json(['sent' => true]);
     }
