@@ -124,6 +124,10 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class, 'throttle:30,1'])
         ->name('admin.lesson-plans.bulk-delete');
     Route::post('/lesson-plans/{lessonPlan}/set-official', [AdminController::class, 'setOfficial'])
         ->name('admin.lesson-plans.set-official');
+    Route::patch('/lesson-plans/{lessonPlan}/relocate', [AdminController::class, 'relocatePlan'])
+        ->name('admin.lesson-plans.relocate');
+    Route::post('/compare-plans', [AdminController::class, 'comparePlans'])
+        ->name('admin.compare-plans');
 
     // User management
     Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])

@@ -144,18 +144,17 @@
                                            class="rounded border-gray-300">
                                 </th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Del</th>
-                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Diff</th>
                                 @php
-                                    // Sortable plan column headers
+                                    // Sortable plan column headers — "Diff" column removed; "Main" renamed to "Official"
                                     $planCols = [
-                                        'is_official'      => ['label' => 'Main',        'align' => 'center'],
-                                        'class_name'       => ['label' => 'Class',       'align' => 'left'],
-                                        'grade'            => ['label' => 'Grade',       'align' => 'center'],
-                                        'lesson_day'       => ['label' => 'Lesson',      'align' => 'center'],
-                                        'description'      => ['label' => 'Description', 'align' => 'left'],
-                                        'author_name'      => ['label' => 'Contributor', 'align' => 'left'],
-                                        'semantic_version' => ['label' => 'Ver.',        'align' => 'center'],
-                                        'updated_at'       => ['label' => 'Update',      'align' => 'left'],
+                                        'is_official'      => ['label' => 'Official',     'align' => 'center'],
+                                        'class_name'       => ['label' => 'Class',        'align' => 'left'],
+                                        'grade'            => ['label' => 'Grade',        'align' => 'center'],
+                                        'lesson_day'       => ['label' => 'Lesson',       'align' => 'center'],
+                                        'description'      => ['label' => 'Description',  'align' => 'left'],
+                                        'author_name'      => ['label' => 'Contributor',  'align' => 'left'],
+                                        'semantic_version' => ['label' => 'Ver.',         'align' => 'center'],
+                                        'updated_at'       => ['label' => 'Update',       'align' => 'left'],
                                     ];
                                 @endphp
                                 @foreach ($planCols as $field => $col)
@@ -205,12 +204,6 @@
                                             </button>
                                         </form>
                                     </td>
-                                    <td class="px-3 py-2">
-                                        <a href="{{ route('admin.lesson-plans.compare', $plan) }}"
-                                           class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 transition-colors">
-                                            Diff
-                                        </a>
-                                    </td>
                                     {{-- Official: ✓ for official plans; "Set Official" button for others --}}
                                     <td class="px-3 py-2 text-center">
                                         @if ($plan->is_official)
@@ -240,7 +233,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="12" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="11" class="px-4 py-6 text-center text-gray-400">
                                         No lesson plans{{ $planSearch ? ' matching "' . e($planSearch) . '"' : '' }}.
                                     </td>
                                 </tr>
@@ -502,7 +495,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-4 py-6 text-center text-gray-400">
+                                    <td colspan="9" class="px-4 py-6 text-center text-gray-400">
                                         No Official lesson plans have been designated yet.
                                     </td>
                                 </tr>
@@ -513,5 +506,616 @@
             </div>
         </div>
 
+        {{-- ══════════════════════════════════════════════════════════
+             CHANGE LESSON PLAN FAMILY AND FILENAME
+        ══════════════════════════════════════════════════════════ --}}
+        <div class="mt-12" x-data="relocateTable(@js($allPlansFlat), @js($classNamesList), @js($gradesList), @js($daysList))">
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Change Lesson Plan Family and Filename</h2>
+            <p class="text-xs text-gray-500 mb-3">Click a row to expand the editor. Change class, grade, or lesson number and save to rename the file and update the database.</p>
+
+            {{-- Conflict resolution modal --}}
+            <div x-show="showConflict" x-cloak
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6" @click.away="showConflict = false">
+                    <p class="text-gray-900 font-semibold text-center mb-2">Family Conflict</p>
+                    <p class="text-sm text-gray-600 text-center mb-6">
+                        Plans already exist for
+                        <span class="font-medium" x-text="conflictTarget"></span>.
+                        How should this plan be saved?
+                    </p>
+                    <div class="flex flex-col gap-2">
+                        <button type="button" @click="resolveConflict('overwrite')"
+                                class="w-full px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors">
+                            Overwrite (join that family)
+                        </button>
+                        <button type="button" @click="resolveConflict('suffix')"
+                                class="w-full px-4 py-2 text-sm font-medium text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                            Save with suffix (.1, .2 …)
+                        </button>
+                        <button type="button" @click="showConflict = false; pendingPayload = null"
+                                class="w-full px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+                            Discard Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Official</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Grade</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lesson</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contributor</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Ver.</th>
+                                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(plan, idx) in allPlans" :key="plan.id">
+                                <template x-if="true">
+                                    {{-- Two-row fragment: data row + inline editor row --}}
+                                    <tbody>
+                                        {{-- Data row --}}
+                                        <tr class="border-t border-gray-100 cursor-pointer hover:bg-amber-50"
+                                            :class="expandedId === plan.id ? 'bg-amber-50' : ''"
+                                            @click="toggleExpand(plan)">
+                                            <td class="px-3 py-2 text-center">
+                                                <span x-show="plan.is_official" class="text-xl font-bold text-gray-900">✓</span>
+                                            </td>
+                                            <td class="px-3 py-2 text-gray-700" x-text="plan.class_name"></td>
+                                            <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.grade"></td>
+                                            <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.lesson_day"></td>
+                                            <td class="px-3 py-2 text-gray-700 text-xs" x-text="plan.author_name"></td>
+                                            <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs" x-text="plan.version"></td>
+                                            <td class="px-3 py-2 text-gray-500 text-xs font-mono truncate max-w-[160px]" x-text="plan.file_name || '—'"></td>
+                                        </tr>
+
+                                        {{-- Inline editor row (shown when this row is expanded) --}}
+                                        <tr x-show="expandedId === plan.id" x-cloak class="border-t border-amber-200 bg-amber-50">
+                                            <td colspan="7" class="px-4 py-4">
+                                                <div class="space-y-3">
+                                                    <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                        Editing: <span class="normal-case font-normal" x-text="plan.class_name + ' G' + plan.grade + ' Lesson ' + plan.lesson_day + ' v' + plan.version"></span>
+                                                    </p>
+
+                                                    {{-- Change Class --}}
+                                                    <div class="flex items-start gap-3">
+                                                        <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
+                                                            <input type="checkbox" x-model="edit.changeClass" class="rounded border-gray-300">
+                                                            <span>Change Class?</span>
+                                                        </label>
+                                                        <div x-show="edit.changeClass" x-cloak class="flex items-center gap-2">
+                                                            <select x-model="edit.classValue"
+                                                                    class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                                                <template x-for="cn in classNames" :key="cn">
+                                                                    <option :value="cn" x-text="cn"></option>
+                                                                </template>
+                                                                <option value="__new__">Add New Value…</option>
+                                                            </select>
+                                                            <input x-show="edit.classValue === '__new__'" x-cloak
+                                                                   x-model="edit.classNew"
+                                                                   type="text" placeholder="New class name"
+                                                                   class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 w-40">
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Change Grade --}}
+                                                    <div class="flex items-start gap-3">
+                                                        <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
+                                                            <input type="checkbox" x-model="edit.changeGrade" class="rounded border-gray-300">
+                                                            <span>Change Grade?</span>
+                                                        </label>
+                                                        <div x-show="edit.changeGrade" x-cloak class="flex items-center gap-2">
+                                                            <select x-model="edit.gradeValue"
+                                                                    class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                                                <template x-for="g in grades" :key="g">
+                                                                    <option :value="String(g)" x-text="'Grade ' + g"></option>
+                                                                </template>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Change Day --}}
+                                                    <div class="flex items-start gap-3">
+                                                        <label class="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer pt-1 whitespace-nowrap">
+                                                            <input type="checkbox" x-model="edit.changeDay" class="rounded border-gray-300">
+                                                            <span>Change Lesson?</span>
+                                                        </label>
+                                                        <div x-show="edit.changeDay" x-cloak class="flex items-center gap-2">
+                                                            <select x-model="edit.dayValue"
+                                                                    class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                                                <template x-for="d in days" :key="d">
+                                                                    <option :value="String(d)" x-text="'Lesson ' + d"></option>
+                                                                </template>
+                                                                <option value="__new__">Add New Value…</option>
+                                                            </select>
+                                                            <input x-show="edit.dayValue === '__new__'" x-cloak
+                                                                   x-model="edit.dayNew"
+                                                                   type="number" min="1" max="999" placeholder="Lesson #"
+                                                                   class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 w-24">
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Status / error --}}
+                                                    <p x-show="edit.message" x-cloak
+                                                       class="text-sm"
+                                                       :class="edit.isError ? 'text-red-600' : 'text-green-600'"
+                                                       x-text="edit.message"></p>
+
+                                                    {{-- Action buttons --}}
+                                                    <div class="flex gap-2 pt-1">
+                                                        <button type="button"
+                                                                @click="saveRelocate(plan)"
+                                                                :disabled="edit.saving"
+                                                                class="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-700 transition-colors disabled:opacity-60">
+                                                            <span x-text="edit.saving ? 'Saving…' : 'Save and Update'"></span>
+                                                        </button>
+                                                        <button type="button"
+                                                                @click="discardEdit()"
+                                                                class="px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors">
+                                                            Discard Changes
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </template>
+                            </template>
+                            {{-- Empty state (no JS fallback not needed since data is always present) --}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════════════════════
+             COMPARE TWO LESSON PLANS
+        ══════════════════════════════════════════════════════════ --}}
+        <div class="mt-12" x-data="compareTable(@js($allPlansFlat))">
+            <h2 class="text-lg font-semibold text-gray-900 mb-1">Compare Two Lesson Plans</h2>
+            <p class="text-xs text-gray-500 mb-3">
+                Check one plan to filter the table to its family. Check a second plan to see the diff below.
+            </p>
+
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    {{-- Clear checkboxes --}}
+                                    <button type="button" @click="clearSelection()"
+                                            title="Clear selection"
+                                            class="text-gray-400 hover:text-gray-700 text-xs">✕</button>
+                                </th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Official</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Grade</th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lesson</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contributor</th>
+                                <th class="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Ver.</th>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="plan in visiblePlans" :key="plan.id">
+                                <tr class="hover:bg-blue-50"
+                                    :class="{
+                                        'bg-blue-50': checkedIds.includes(plan.id),
+                                        'opacity-40': filterFamily && !familyMatch(plan)
+                                    }">
+                                    <td class="px-3 py-2 text-center">
+                                        <input type="checkbox"
+                                               :value="plan.id"
+                                               :checked="checkedIds.includes(plan.id)"
+                                               @change="toggleCheck(plan)"
+                                               :disabled="!checkedIds.includes(plan.id) && checkedIds.length >= 2"
+                                               class="rounded border-gray-300 disabled:opacity-40 cursor-pointer">
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <span x-show="plan.is_official" class="text-xl font-bold text-gray-900">✓</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-700" x-text="plan.class_name"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.grade"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-center" x-text="plan.lesson_day"></td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs truncate max-w-[120px]" x-text="plan.description || '—'"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-xs" x-text="plan.author_name"></td>
+                                    <td class="px-3 py-2 text-gray-700 text-center font-mono text-xs" x-text="plan.version"></td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs" x-text="plan.updated_at"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="visiblePlans.length === 0">
+                                <td colspan="9" class="px-4 py-6 text-center text-gray-400 text-sm">No plans in this family.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- Selection status hint --}}
+            <p class="mt-2 text-xs text-gray-500"
+               x-show="checkedIds.length === 1"
+               x-cloak>
+                One plan selected. Now check a second plan from the same family to compare.
+            </p>
+
+            {{-- Diff result area --}}
+            <div x-show="diffLoading" x-cloak class="mt-4 text-sm text-gray-500 italic">Loading diff…</div>
+            <div x-show="diffWarning" x-cloak class="mt-4 border border-amber-200 bg-amber-50 rounded-lg p-4 text-sm text-amber-800" x-text="diffWarning"></div>
+
+            <div x-show="diffOps.length > 0" x-cloak class="mt-4 space-y-4">
+
+                {{-- Plan labels --}}
+                <div class="text-sm text-gray-700">
+                    Comparing
+                    <span class="font-medium" x-text="diffPlanB ? diffPlanB.label : ''"></span>
+                    (baseline) → <span class="font-medium" x-text="diffPlanA ? diffPlanA.label : ''"></span>
+                    (current)
+                </div>
+
+                {{-- Summary stats --}}
+                <div class="grid grid-cols-3 gap-3 text-center text-sm">
+                    <div class="border border-green-200 bg-green-50 rounded-lg p-3">
+                        <p class="text-xl font-bold text-green-700" x-text="'+' + (diffSummary.added || 0)"></p>
+                        <p class="text-xs text-green-700 uppercase tracking-wider mt-0.5">Lines Added</p>
+                    </div>
+                    <div class="border border-red-200 bg-red-50 rounded-lg p-3">
+                        <p class="text-xl font-bold text-red-700" x-text="'-' + (diffSummary.removed || 0)"></p>
+                        <p class="text-xs text-red-700 uppercase tracking-wider mt-0.5">Lines Removed</p>
+                    </div>
+                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-3">
+                        <p class="text-xl font-bold text-gray-700" x-text="diffSummary.changed || 0"></p>
+                        <p class="text-xs text-gray-700 uppercase tracking-wider mt-0.5">Lines Changed</p>
+                    </div>
+                </div>
+
+                {{-- View toggle --}}
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-600">View:</span>
+                    <button type="button" @click="sideBySide = false"
+                            :class="!sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
+                        Inline
+                    </button>
+                    <button type="button" @click="sideBySide = true"
+                            :class="sideBySide ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors">
+                        Side by Side
+                    </button>
+                </div>
+
+                {{-- Inline diff --}}
+                <div x-show="!sideBySide" class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
+                        Baseline (left) → Current (right)
+                    </div>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <div class="font-mono text-xs">
+                            <template x-for="(op, i) in diffOps" :key="i">
+                                <div class="flex gap-3 px-4 py-0.5"
+                                     :class="{
+                                         'bg-green-50 text-green-900': op.type === 'add',
+                                         'bg-red-50 text-red-900':   op.type === 'remove',
+                                         'text-gray-600':             op.type === 'equal'
+                                     }">
+                                    <span class="select-none w-4 shrink-0 font-bold"
+                                          x-text="op.type === 'add' ? '+' : (op.type === 'remove' ? '−' : ' ')"></span>
+                                    <span class="whitespace-pre-wrap break-all" x-text="op.line"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Side-by-side diff --}}
+                <div x-show="sideBySide" x-cloak class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs text-gray-500">
+                        Left: baseline &nbsp;|&nbsp; Right: current
+                    </div>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table class="w-full font-mono text-xs border-collapse">
+                            <tbody>
+                                <template x-for="(row, i) in sideBySideRows" :key="i">
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-0.5 w-1/2 border-r border-gray-200 whitespace-pre-wrap break-all"
+                                            :class="{
+                                                'bg-red-50 text-red-900':   row.type === 'remove' || row.type === 'change',
+                                                'text-gray-600':            row.type === 'equal' || row.type === 'add'
+                                            }"
+                                            x-text="row.left"></td>
+                                        <td class="px-3 py-0.5 w-1/2 whitespace-pre-wrap break-all"
+                                            :class="{
+                                                'bg-green-50 text-green-900': row.type === 'add' || row.type === 'change',
+                                                'text-gray-600':              row.type === 'equal' || row.type === 'remove'
+                                            }"
+                                            x-text="row.right"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- No differences message --}}
+            <div x-show="checkedIds.length === 2 && !diffLoading && !diffWarning && diffOps.length === 0 && diffRan"
+                 x-cloak
+                 class="mt-4 border border-gray-200 bg-gray-50 rounded-lg p-4 text-sm text-gray-500 italic">
+                No differences found between the two selected versions.
+            </div>
+
+        </div>
+
     </div>
+
+    {{-- ══ Alpine.js component definitions ══ --}}
+    <script>
+    // ─── Relocate table ───────────────────────────────────────────────────────
+    function relocateTable(allPlansData, classNamesData, gradesData, daysData) {
+        return {
+            allPlans:      allPlansData,
+            classNames:    classNamesData,
+            grades:        gradesData,
+            days:          daysData,
+            expandedId:    null,
+            edit:          {},
+            showConflict:  false,
+            conflictTarget:'',
+            pendingPayload: null,
+
+            toggleExpand(plan) {
+                if (this.expandedId === plan.id) {
+                    this.expandedId = null;
+                    this.edit = {};
+                    return;
+                }
+                this.expandedId = plan.id;
+                this.edit = {
+                    changeClass: false,  classValue: plan.class_name, classNew: '',
+                    changeGrade: false,  gradeValue: String(plan.grade),
+                    changeDay:   false,  dayValue:   String(plan.lesson_day), dayNew: '',
+                    saving:      false,  message:    '',  isError: false,
+                };
+            },
+
+            discardEdit() {
+                this.expandedId = null;
+                this.edit = {};
+            },
+
+            resolvedClassName() {
+                if (!this.edit.changeClass) return null;
+                return this.edit.classValue === '__new__' ? this.edit.classNew.trim() : this.edit.classValue;
+            },
+            resolvedGrade() {
+                if (!this.edit.changeGrade) return null;
+                return parseInt(this.edit.gradeValue, 10);
+            },
+            resolvedDay() {
+                if (!this.edit.changeDay) return null;
+                return this.edit.dayValue === '__new__' ? parseInt(this.edit.dayNew, 10) : parseInt(this.edit.dayValue, 10);
+            },
+
+            async saveRelocate(plan, conflictResolution = null) {
+                const cn  = this.resolvedClassName();
+                const gr  = this.resolvedGrade();
+                const day = this.resolvedDay();
+
+                if (!this.edit.changeClass && !this.edit.changeGrade && !this.edit.changeDay) {
+                    this.edit.message = 'No changes selected.';
+                    this.edit.isError = true;
+                    return;
+                }
+                if (this.edit.changeClass && (!cn || cn.length === 0)) {
+                    this.edit.message = 'Please enter a class name.';
+                    this.edit.isError = true;
+                    return;
+                }
+                if (this.edit.changeDay && (!day || isNaN(day) || day < 1)) {
+                    this.edit.message = 'Please enter a valid lesson number.';
+                    this.edit.isError = true;
+                    return;
+                }
+
+                this.edit.saving  = true;
+                this.edit.message = '';
+                this.edit.isError = false;
+
+                const payload = {};
+                if (cn  !== null) payload.class_name  = cn;
+                if (gr  !== null) payload.grade        = gr;
+                if (day !== null) payload.lesson_day   = day;
+                if (conflictResolution) payload.conflict_resolution = conflictResolution;
+
+                try {
+                    const resp = await fetch(`/admin/lesson-plans/${plan.id}/relocate`, {
+                        method:  'PATCH',
+                        headers: {
+                            'Content-Type':  'application/json',
+                            'X-CSRF-TOKEN':  document.querySelector('meta[name=csrf-token]').content,
+                            'Accept':        'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const json = await resp.json().catch(() => ({}));
+
+                    if (resp.status === 409 && json.conflict) {
+                        // Show conflict modal
+                        this.edit.saving   = false;
+                        this.pendingPayload = { plan, payload };
+                        const targetClass = cn  || plan.class_name;
+                        const targetGrade = gr  || plan.grade;
+                        const targetDay   = day || plan.lesson_day;
+                        this.conflictTarget = `${targetClass} Grade ${targetGrade} Lesson ${targetDay}`;
+                        this.showConflict  = true;
+                        return;
+                    }
+
+                    if (!resp.ok) {
+                        this.edit.message = json.message || 'Save failed. Please try again.';
+                        this.edit.isError = true;
+                        this.edit.saving  = false;
+                        return;
+                    }
+
+                    // Success — update local data row
+                    const idx = this.allPlans.findIndex(p => p.id === plan.id);
+                    if (idx !== -1) {
+                        if (json.class_name !== undefined) this.allPlans[idx].class_name = json.class_name;
+                        if (json.grade      !== undefined) this.allPlans[idx].grade      = json.grade;
+                        if (json.lesson_day !== undefined) this.allPlans[idx].lesson_day = json.lesson_day;
+                        if (json.file_name  !== undefined) this.allPlans[idx].file_name  = json.file_name;
+                    }
+
+                    this.edit.message = '✓ Saved successfully.';
+                    this.edit.isError = false;
+                    this.edit.saving  = false;
+                    setTimeout(() => this.discardEdit(), 1500);
+
+                } catch (e) {
+                    this.edit.message = 'Network error. Please try again.';
+                    this.edit.isError = true;
+                    this.edit.saving  = false;
+                }
+            },
+
+            resolveConflict(resolution) {
+                this.showConflict = false;
+                if (!this.pendingPayload) return;
+                const { plan, payload } = this.pendingPayload;
+                this.pendingPayload = null;
+                this.saveRelocate(plan, resolution);
+            },
+        };
+    }
+
+    // ─── Compare table ────────────────────────────────────────────────────────
+    function compareTable(allPlansData) {
+        return {
+            allPlans:      allPlansData,
+            checkedIds:    [],
+            filterFamily:  false,
+            sideBySide:    false,
+            diffLoading:   false,
+            diffRan:       false,
+            diffWarning:   '',
+            diffOps:       [],
+            diffSummary:   {},
+            sideBySideRows:[],
+            diffPlanA:     null,
+            diffPlanB:     null,
+
+            get visiblePlans() {
+                if (!this.filterFamily || this.checkedIds.length === 0) {
+                    return this.allPlans;
+                }
+                const anchor = this.allPlans.find(p => p.id === this.checkedIds[0]);
+                if (!anchor) return this.allPlans;
+                return this.allPlans.filter(p =>
+                    p.class_name === anchor.class_name &&
+                    p.grade      === anchor.grade      &&
+                    p.lesson_day === anchor.lesson_day
+                );
+            },
+
+            familyMatch(plan) {
+                if (this.checkedIds.length === 0) return true;
+                const anchor = this.allPlans.find(p => p.id === this.checkedIds[0]);
+                if (!anchor) return true;
+                return plan.class_name === anchor.class_name &&
+                       plan.grade      === anchor.grade      &&
+                       plan.lesson_day === anchor.lesson_day;
+            },
+
+            toggleCheck(plan) {
+                const idx = this.checkedIds.indexOf(plan.id);
+                if (idx !== -1) {
+                    // Uncheck
+                    this.checkedIds.splice(idx, 1);
+                    if (this.checkedIds.length === 0) {
+                        this.filterFamily = false;
+                        this.resetDiff();
+                    } else if (this.checkedIds.length === 1) {
+                        this.resetDiff();
+                    }
+                    return;
+                }
+                if (this.checkedIds.length >= 2) return; // max 2
+
+                this.checkedIds.push(plan.id);
+
+                if (this.checkedIds.length === 1) {
+                    // First check: filter to family
+                    this.filterFamily = true;
+                    this.resetDiff();
+                } else {
+                    // Second check: run diff
+                    this.runDiff();
+                }
+            },
+
+            clearSelection() {
+                this.checkedIds   = [];
+                this.filterFamily = false;
+                this.resetDiff();
+            },
+
+            resetDiff() {
+                this.diffOps       = [];
+                this.diffSummary   = {};
+                this.sideBySideRows= [];
+                this.diffWarning   = '';
+                this.diffPlanA     = null;
+                this.diffPlanB     = null;
+                this.diffRan       = false;
+            },
+
+            async runDiff() {
+                if (this.checkedIds.length !== 2) return;
+                this.diffLoading = true;
+                this.diffWarning = '';
+                this.diffOps     = [];
+                this.diffRan     = false;
+
+                try {
+                    const resp = await fetch('/admin/compare-plans', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                            'Accept':       'application/json',
+                        },
+                        body: JSON.stringify({ plan_a: this.checkedIds[0], plan_b: this.checkedIds[1] }),
+                    });
+
+                    const json = await resp.json().catch(() => ({}));
+
+                    if (json.warning) {
+                        this.diffWarning = json.warning;
+                    } else {
+                        this.diffOps        = json.diffOps    || [];
+                        this.diffSummary    = json.diffSummary || {};
+                        this.sideBySideRows = json.sideBySide  || [];
+                        this.diffPlanA      = json.planA || null;
+                        this.diffPlanB      = json.planB || null;
+                    }
+                } catch (e) {
+                    this.diffWarning = 'Network error loading diff.';
+                } finally {
+                    this.diffLoading = false;
+                    this.diffRan     = true;
+                }
+            },
+        };
+    }
+    </script>
+
 </x-layout>

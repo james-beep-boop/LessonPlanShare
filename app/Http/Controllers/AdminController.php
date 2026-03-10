@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
 use App\Models\User;
+use App\Traits\DiffHelperTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Admin panel controller.
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class AdminController extends Controller
 {
+    use DiffHelperTrait;
+
     /** Display the admin panel with searchable/sortable tables and counters. */
     public function index(Request $request)
     {
@@ -99,6 +102,52 @@ class AdminController extends Controller
             ->orderBy('lesson_plans.lesson_day', 'asc')
             ->get();
 
+        // ── All plans (non-paginated) for client-side relocate + compare tables ──
+        $allPlansFlat = LessonPlan::query()
+            ->leftJoin('users', 'users.id', '=', 'lesson_plans.author_id')
+            ->select(
+                'lesson_plans.id', 'lesson_plans.class_name', 'lesson_plans.grade',
+                'lesson_plans.lesson_day', 'lesson_plans.is_official',
+                'lesson_plans.file_name', 'lesson_plans.file_path',
+                'lesson_plans.version_major', 'lesson_plans.version_minor',
+                'lesson_plans.version_patch', 'lesson_plans.original_id',
+                'lesson_plans.description', 'lesson_plans.updated_at',
+                'users.name as author_name'
+            )
+            ->orderByDesc('lesson_plans.is_official')
+            ->orderBy('lesson_plans.class_name')
+            ->orderBy('lesson_plans.grade')
+            ->orderBy('lesson_plans.lesson_day')
+            ->orderByDesc('lesson_plans.version_minor')
+            ->orderByDesc('lesson_plans.version_patch')
+            ->get()
+            ->map(fn ($p) => [
+                'id'          => $p->id,
+                'class_name'  => $p->class_name,
+                'grade'       => $p->grade,
+                'lesson_day'  => $p->lesson_day,
+                'is_official' => (bool) $p->is_official,
+                'file_name'   => $p->file_name,
+                'file_path'   => $p->file_path,
+                'version'     => "{$p->version_major}.{$p->version_minor}.{$p->version_patch}",
+                'original_id' => $p->original_id,
+                'description' => $p->description,
+                'updated_at'  => $p->updated_at ? Carbon::parse($p->updated_at)->format('d M Y') : '—',
+                'author_name' => $p->author_name ?? 'Anonymous',
+            ])
+            ->values()
+            ->all();
+
+        // ── Dropdown options for relocate feature — derived from $allPlansFlat ──
+        $classNamesList = array_values(array_unique(array_merge(
+            LessonPlan::CLASS_NAMES,
+            array_column($allPlansFlat, 'class_name')
+        )));
+        sort($classNamesList);
+        $gradesList = [10, 11, 12];
+        $daysList   = array_values(array_unique(array_column($allPlansFlat, 'lesson_day')));
+        sort($daysList);
+
         // ── Summary counters ──
         $uniqueClassCount = LessonPlan::distinct('class_name')->count('class_name');
         $totalPlanCount   = LessonPlan::count();
@@ -155,7 +204,8 @@ class AdminController extends Controller
             'planSearch', 'planSort', 'planOrder',
             'userSearch', 'userSort', 'userOrder',
             'chartLabels', 'userCumulative', 'loginCumulative',
-            'allPlansCumulative', 'officialCumulative', 'downloadCumulative'
+            'allPlansCumulative', 'officialCumulative', 'downloadCumulative',
+            'allPlansFlat', 'classNamesList', 'gradesList', 'daysList'
         ));
     }
 
@@ -428,16 +478,152 @@ class AdminController extends Controller
             "Version {$lessonPlan->semantic_version} of {$lessonPlan->class_name} Lesson {$lessonPlan->lesson_day} is now the Official version.");
     }
 
+    /**
+     * Relocate a lesson plan to a new class / grade / lesson_day.
+     *
+     * Updates the DB fields and renames the file on disk to reflect the new
+     * canonical name. If the target slot already has plans (conflict), returns
+     * HTTP 409 with conflict details so the client can prompt the user.
+     *
+     * conflict_resolution:
+     *   'overwrite' — proceed despite the conflict (plan joins the target family).
+     *   'suffix'    — append .1/.2/… to file_name to avoid filename collision.
+     */
+    public function relocatePlan(Request $request, LessonPlan $lessonPlan): JsonResponse
+    {
+        $data = $request->validate([
+            'class_name'          => ['nullable', 'string', 'max:100'],
+            'grade'               => ['nullable', 'integer', 'between:10,12'],
+            'lesson_day'          => ['nullable', 'integer', 'min:1', 'max:999'],
+            'conflict_resolution' => ['nullable', 'string', 'in:overwrite,suffix'],
+        ]);
+
+        $newClass  = $data['class_name'] ?? $lessonPlan->class_name;
+        $newGrade  = isset($data['grade'])      ? (int) $data['grade']      : $lessonPlan->grade;
+        $newDay    = isset($data['lesson_day']) ? (int) $data['lesson_day'] : $lessonPlan->lesson_day;
+
+        // Nothing actually changed — no-op.
+        if ($newClass === $lessonPlan->class_name
+            && $newGrade  === $lessonPlan->grade
+            && $newDay    === $lessonPlan->lesson_day) {
+            return response()->json(['message' => 'No changes.'], 200);
+        }
+
+        // Conflict check: another plan already exists in the target slot.
+        $resolution = $data['conflict_resolution'] ?? null;
+        $conflictExists = LessonPlan::where('class_name', $newClass)
+            ->where('grade', $newGrade)
+            ->where('lesson_day', $newDay)
+            ->where('id', '!=', $lessonPlan->id)
+            ->exists();
+
+        if ($conflictExists && ! $resolution) {
+            return response()->json(['conflict' => true], 409);
+        }
+
+        // Compute the new canonical name.
+        $authorName = $lessonPlan->author?->name ?? 'Unknown';
+        $ts         = Carbon::parse($lessonPlan->created_at, 'UTC');
+        $newName    = LessonPlan::generateCanonicalName(
+            $newClass, $newGrade, $newDay, $authorName, $ts,
+            [$lessonPlan->version_major, $lessonPlan->version_minor, $lessonPlan->version_patch]
+        );
+
+        // If 'suffix' resolution, append .1/.2/… until the name is unique.
+        if ($resolution === 'suffix') {
+            $base   = $newName;
+            $suffix = 1;
+            while (LessonPlan::where('name', $newName)->where('id', '!=', $lessonPlan->id)->exists()) {
+                $newName = $base . '.' . $suffix++;
+            }
+        }
+
+        // Build new file_name (adds original extension).
+        $ext         = $lessonPlan->file_name
+            ? strtolower(pathinfo($lessonPlan->file_name, PATHINFO_EXTENSION))
+            : null;
+        $newFileName = $ext ? "{$newName}.{$ext}" : $newName;
+        $newFilePath = $lessonPlan->file_path ? "lessons/{$newFileName}" : null;
+
+        // Rename the file on disk (file-first: if disk move fails, the DB update below
+        // is not reached and the record continues pointing to the original path).
+        if ($lessonPlan->file_path && $newFilePath && $lessonPlan->file_path !== $newFilePath) {
+            $this->resolveFileDisk($lessonPlan->file_path)?->move($lessonPlan->file_path, $newFilePath);
+        }
+
+        $lessonPlan->update([
+            'class_name' => $newClass,
+            'grade'      => $newGrade,
+            'lesson_day' => $newDay,
+            'name'       => $newName,
+            'file_name'  => $newFileName,
+            'file_path'  => $newFilePath ?? $lessonPlan->file_path,
+        ]);
+
+        return response()->json([
+            'success'   => true,
+            'class_name' => $lessonPlan->class_name,
+            'grade'      => $lessonPlan->grade,
+            'lesson_day' => $lessonPlan->lesson_day,
+            'file_name'  => $lessonPlan->file_name,
+        ]);
+    }
+
+    /**
+     * AJAX endpoint: compute a diff between two arbitrary lesson plan files.
+     *
+     * Returns JSON suitable for Alpine.js rendering in the admin compare panel.
+     * plan_a is treated as "current"; plan_b as "baseline".
+     */
+    public function comparePlans(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'plan_a' => ['required', 'integer', 'exists:lesson_plans,id'],
+            'plan_b' => ['required', 'integer', 'exists:lesson_plans,id'],
+        ]);
+
+        $planA = LessonPlan::with('author')->find($data['plan_a']);
+        $planB = LessonPlan::with('author')->find($data['plan_b']);
+
+        [$aOk, $aLines, $aErr] = $this->readPlanLinesForDiff($planA);
+        [$bOk, $bLines, $bErr] = $this->readPlanLinesForDiff($planB);
+
+        if (! $aOk || ! $bOk) {
+            return response()->json(['warning' => $aErr ?: $bErr]);
+        }
+
+        if (count($aLines) > 500 || count($bLines) > 500) {
+            return response()->json(['warning' => 'Files are too large for inline diff (limit: 500 lines).']);
+        }
+
+        // plan_b is baseline (old), plan_a is current (new).
+        $diffOps     = $this->buildLineDiffOperations($bLines, $aLines);
+        $diffSummary = $this->buildDiffSummary($diffOps);
+        $sideBySide  = $this->buildSideBySideDiff($diffOps);
+
+        return response()->json([
+            'planA'       => [
+                'id'      => $planA->id,
+                'label'   => "v{$planA->semantic_version} — {$planA->class_name} G{$planA->grade} D{$planA->lesson_day}",
+                'author'  => $planA->author?->name ?? 'Anonymous',
+            ],
+            'planB'       => [
+                'id'      => $planB->id,
+                'label'   => "v{$planB->semantic_version} — {$planB->class_name} G{$planB->grade} D{$planB->lesson_day}",
+                'author'  => $planB->author?->name ?? 'Anonymous',
+            ],
+            'diffOps'     => $diffOps,
+            'diffSummary' => $diffSummary,
+            'sideBySide'  => $sideBySide,
+            'warning'     => null,
+        ]);
+    }
+
     /** Delete the stored file for a lesson plan, if one exists. */
     private function deletePlanFile(LessonPlan $plan): void
     {
         if ($plan->file_path) {
-            // Try local (private) disk first; fall back to public for legacy files.
-            if (Storage::disk('local')->exists($plan->file_path)) {
-                Storage::disk('local')->delete($plan->file_path);
-            } elseif (Storage::disk('public')->exists($plan->file_path)) {
-                Storage::disk('public')->delete($plan->file_path);
-            }
+            $this->resolveFileDisk($plan->file_path)?->delete($plan->file_path);
         }
     }
 
@@ -445,12 +631,7 @@ class AdminController extends Controller
     private function deleteFiles(array $paths): void
     {
         foreach ($paths as $path) {
-            // Try local (private) disk first; fall back to public for legacy files.
-            if (Storage::disk('local')->exists($path)) {
-                Storage::disk('local')->delete($path);
-            } elseif (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
+            $this->resolveFileDisk($path)?->delete($path);
         }
     }
 }

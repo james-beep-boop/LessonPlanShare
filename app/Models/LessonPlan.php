@@ -34,6 +34,9 @@ class LessonPlan extends Model
 {
     use HasFactory;
 
+    /** Seed list of valid class names (shown in upload dropdowns). */
+    public const CLASS_NAMES = ['English', 'History', 'Mathematics', 'Science'];
+
     protected $casts = [
         'is_official' => 'boolean',
         'grade'       => 'integer',
@@ -274,6 +277,20 @@ class LessonPlan extends Model
     // ══════════════════════════════════════════════════════════════
     //  Business Logic
     // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Return a sorted list of class names merging the seed list with distinct
+     * values already stored in the DB. Used by upload and edit form dropdowns.
+     *
+     * @return array<int, string>
+     */
+    public static function classNames(): array
+    {
+        $dbClasses = static::distinct()->orderBy('class_name')->pluck('class_name')->toArray();
+        $merged    = array_values(array_unique(array_merge(static::CLASS_NAMES, $dbClasses)));
+        sort($merged);
+        return $merged;
+    }
 
     /**
      * Generate a canonical name from the structured fields.

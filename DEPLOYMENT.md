@@ -91,6 +91,8 @@ app/Models/LessonPlanDownload.php    →  app/Models/LessonPlanDownload.php (NEW
 app/Http/Controllers/Auth/AuthenticatedSessionController.php  →  (REPLACE Breeze's)
 app/Http/Controllers/Auth/RegisteredUserController.php        →  (REPLACE Breeze's)
 app/Http/Controllers/Auth/VerifyEmailController.php           →  (REPLACE Breeze's)
+app/Traits/DiffHelperTrait.php                          →  (NEW)
+
 app/Http/Controllers/AdminController.php                →  (NEW)
 app/Http/Controllers/DashboardController.php            →  (NEW)
 app/Http/Controllers/FavoriteController.php             →  (NEW)
