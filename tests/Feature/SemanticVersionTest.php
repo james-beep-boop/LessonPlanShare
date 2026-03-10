@@ -79,6 +79,7 @@ class SemanticVersionTest extends TestCase
 
         $response = $this->post(route('lesson-plans.store'), [
             'class_name'  => 'English',
+            'grade'       => 10,
             'lesson_day'  => 1,
             'description' => 'First upload',
             'file'        => UploadedFile::fake()->create('lesson.docx', 100),
@@ -98,6 +99,7 @@ class SemanticVersionTest extends TestCase
         // Seed an existing plan at 1.0.0
         LessonPlan::factory()->create([
             'class_name'    => 'Science',
+            'grade'         => 10,
             'lesson_day'    => 3,
             'version_major' => 1,
             'version_minor' => 0,
@@ -108,6 +110,7 @@ class SemanticVersionTest extends TestCase
 
         $this->post(route('lesson-plans.store'), [
             'class_name'  => 'Science',
+            'grade'       => 10,
             'lesson_day'  => 3,
             'description' => 'Second upload (standalone)',
             'file'        => UploadedFile::fake()->create('lesson.docx', 100),
@@ -128,6 +131,7 @@ class SemanticVersionTest extends TestCase
         $parent = LessonPlan::factory()->create([
             'author_id'     => $this->user->id,
             'class_name'    => 'History',
+            'grade'         => 10,
             'lesson_day'    => 7,
             'version_major' => 1,
             'version_minor' => 0,
@@ -138,6 +142,7 @@ class SemanticVersionTest extends TestCase
 
         $this->post(route('lesson-plans.store-version', $parent), [
             'class_name'    => 'History',
+            'grade'         => 10,
             'lesson_day'    => 7,
             'revision_type' => 'major',
             'file'          => UploadedFile::fake()->create('lesson.docx', 100),
@@ -158,6 +163,7 @@ class SemanticVersionTest extends TestCase
         $parent = LessonPlan::factory()->create([
             'author_id'     => $this->user->id,
             'class_name'    => 'Mathematics',
+            'grade'         => 10,
             'lesson_day'    => 10,
             'version_major' => 1,
             'version_minor' => 1,
@@ -168,6 +174,7 @@ class SemanticVersionTest extends TestCase
 
         $this->post(route('lesson-plans.store-version', $parent), [
             'class_name'    => 'Mathematics',
+            'grade'         => 10,
             'lesson_day'    => 10,
             'revision_type' => 'minor',
             'file'          => UploadedFile::fake()->create('lesson.docx', 100),
@@ -187,6 +194,7 @@ class SemanticVersionTest extends TestCase
         $parent = LessonPlan::factory()->create([
             'author_id'     => $this->user->id,
             'class_name'    => 'English',
+            'grade'         => 10,
             'lesson_day'    => 5,
             'version_major' => 1,
             'version_minor' => 2,
@@ -198,6 +206,7 @@ class SemanticVersionTest extends TestCase
         // Create new version but switch to a completely different class/day
         $this->post(route('lesson-plans.store-version', $parent), [
             'class_name'    => 'History', // no existing plans for History/day 20
+            'grade'         => 10,
             'lesson_day'    => 20,
             'revision_type' => 'major',
             'file'          => UploadedFile::fake()->create('lesson.docx', 100),
@@ -237,6 +246,7 @@ class SemanticVersionTest extends TestCase
 
         $this->post(route('lesson-plans.store'), [
             'class_name'  => 'Science',
+            'grade'       => 10,
             'lesson_day'  => 2,
             'file'        => UploadedFile::fake()->create('lesson.docx', 100),
         ]);

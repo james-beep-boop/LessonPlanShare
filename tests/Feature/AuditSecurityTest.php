@@ -260,12 +260,14 @@ class AuditSecurityTest extends TestCase
         LessonPlan::factory()->create([
             'author_id'  => $author->id,
             'class_name' => 'Biology',
+            'grade'      => 10,
             'lesson_day' => 3,
         ]);
 
         $response = $this->actingAs($outsider)
             ->postJson(route('lesson-plans.retire'), [
                 'class_name' => 'Biology',
+                'grade'      => 10,
                 'lesson_day' => 3,
             ]);
 
@@ -281,12 +283,14 @@ class AuditSecurityTest extends TestCase
         LessonPlan::factory()->create([
             'author_id'  => $author->id,
             'class_name' => 'Biology',
+            'grade'      => 10,
             'lesson_day' => 4,
         ]);
 
         $response = $this->actingAs($author)
             ->postJson(route('lesson-plans.retire'), [
                 'class_name' => 'Biology',
+                'grade'      => 10,
                 'lesson_day' => 4,
             ]);
 
@@ -306,12 +310,14 @@ class AuditSecurityTest extends TestCase
         LessonPlan::factory()->create([
             'author_id'  => $author->id,
             'class_name' => 'Physics',
+            'grade'      => 10,
             'lesson_day' => 2,
         ]);
 
         $response = $this->actingAs($admin)
             ->postJson(route('lesson-plans.retire'), [
                 'class_name' => 'Physics',
+                'grade'      => 10,
                 'lesson_day' => 2,
             ]);
 
@@ -325,22 +331,25 @@ class AuditSecurityTest extends TestCase
         $author   = User::factory()->create(['email_verified_at' => now()]);
         $other    = User::factory()->create(['email_verified_at' => now()]);
 
-        // $author owns one plan; $other owns a second plan in the same class/day
+        // $author owns one plan; $other owns a second plan in the same class/grade/day
         $ownPlan   = LessonPlan::factory()->create([
             'author_id'  => $author->id,
             'class_name' => 'Geography',
+            'grade'      => 10,
             'lesson_day' => 1,
         ]);
         $otherPlan = LessonPlan::factory()->create([
             'author_id'     => $other->id,
             'class_name'    => 'Geography',
+            'grade'         => 10,
             'lesson_day'    => 1,
-            'version_minor' => 1, // avoids unique(class_name, lesson_day, version) conflict with $ownPlan's 1.0.0
+            'version_minor' => 1, // avoids unique(class_name, grade, lesson_day, version) conflict with $ownPlan's 1.0.0
         ]);
 
         $response = $this->actingAs($author)
             ->postJson(route('lesson-plans.retire'), [
                 'class_name' => 'Geography',
+                'grade'      => 10,
                 'lesson_day' => 1,
             ]);
 
@@ -435,11 +444,15 @@ class AuditSecurityTest extends TestCase
         $blockedUser = User::factory()->create(['email_verified_at' => now()]);
 
         LessonPlan::factory()->create([
-            'author_id'  => $blockedUser->id,
+            'author_id'   => $blockedUser->id,
             'is_official' => true,
+            'lesson_day'  => 97, // unique day to avoid class/grade/day/version collision with safeUser's plan
         ]);
         // $safeUser has no official plans — should be deleted
-        LessonPlan::factory()->create(['author_id' => $safeUser->id]);
+        LessonPlan::factory()->create([
+            'author_id'  => $safeUser->id,
+            'lesson_day' => 98, // different day to avoid unique constraint collision
+        ]);
 
         $response = $this->actingAs($admin)
             ->post(route('admin.users.bulk-delete'), [
@@ -464,6 +477,7 @@ class AuditSecurityTest extends TestCase
         $plan = LessonPlan::factory()->create([
             'author_id'  => $author->id,
             'class_name' => 'Chemistry',
+            'grade'      => 10,
             'lesson_day' => 2,
             'file_path'  => $originalPath,
             'file_name'  => 'original_file.pdf',
@@ -475,6 +489,7 @@ class AuditSecurityTest extends TestCase
         $response = $this->actingAs($author)
             ->postJson(route('lesson-plans.retire'), [
                 'class_name' => 'Chemistry',
+                'grade'      => 10,
                 'lesson_day' => 2,
             ]);
 
@@ -498,6 +513,7 @@ class AuditSecurityTest extends TestCase
 
         $response = $this->actingAs($author)->post(route('lesson-plans.store'), [
             'class_name'  => 'Mathematics',
+            'grade'       => 10,
             'lesson_day'  => 5,
             'description' => 'First plan',
             'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.docx', 100),
@@ -518,14 +534,16 @@ class AuditSecurityTest extends TestCase
         // First plan uploaded by $first — should become Official
         $this->actingAs($first)->post(route('lesson-plans.store'), [
             'class_name'  => 'History',
+            'grade'       => 10,
             'lesson_day'  => 3,
             'description' => 'First plan',
             'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson.docx', 100),
         ]);
 
-        // Second teacher uploads a brand-new plan for the same class/day via store()
+        // Second teacher uploads a brand-new plan for the same class/grade/day via store()
         $this->actingAs($second)->post(route('lesson-plans.store'), [
             'class_name'  => 'History',
+            'grade'       => 10,
             'lesson_day'  => 3,
             'description' => 'Second plan',
             'file'        => \Illuminate\Http\UploadedFile::fake()->create('lesson2.docx', 100),

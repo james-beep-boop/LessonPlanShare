@@ -24,6 +24,7 @@ class LessonPlanFactory extends Factory
 
         return [
             'class_name'     => $className,
+            'grade'          => 10,
             'lesson_day'     => $lessonDay,
             'description'    => $this->faker->optional()->sentence(),
             'name'           => $name,

@@ -114,19 +114,23 @@ class AuditCommandTest extends TestCase
         $author = User::factory()->create();
         $hash   = hash('sha256', 'duplicate-content-with-children');
 
-        // The "duplicate" plan has children pointing to it via parent_id
+        // The "duplicate" plan has children pointing to it via parent_id.
+        // Use explicit unique lesson_days to avoid hitting the unique(class,grade,day,version) constraint.
         LessonPlan::factory()->create([
-            'author_id' => $author->id,
-            'file_hash' => $hash,
+            'author_id'  => $author->id,
+            'file_hash'  => $hash,
+            'lesson_day' => 91,
         ]);
         $withChild = LessonPlan::factory()->create([
-            'author_id' => $author->id,
-            'file_hash' => $hash,
+            'author_id'  => $author->id,
+            'file_hash'  => $hash,
+            'lesson_day' => 92,
         ]);
         // A child plan that references $withChild as its parent
         LessonPlan::factory()->create([
-            'author_id' => $author->id,
-            'parent_id' => $withChild->id,
+            'author_id'  => $author->id,
+            'parent_id'  => $withChild->id,
+            'lesson_day' => 93,
         ]);
 
         $exitCode = Artisan::call('lessons:detect-duplicates');

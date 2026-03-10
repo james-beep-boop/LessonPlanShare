@@ -301,9 +301,10 @@ class LessonPlanController extends Controller
                         // writing a new path to the DB when no rename happened would desync
                         // the DB from the filesystem.
                         DB::table('lesson_plans')->where('id', $plan->id)->update([
-                            'file_name' => $newName,
-                            'file_path' => $newPath,
-                            'name'      => $plan->name . $suffix,
+                            'file_name'   => $newName,
+                            'file_path'   => $newPath,
+                            'name'        => $plan->name . $suffix,
+                            'is_official' => false,
                         ]);
                     } else {
                         // File missing from disk (e.g. manually removed).
@@ -314,7 +315,8 @@ class LessonPlanController extends Controller
                             . "(path: {$plan->file_path}) – name marked retired, file_path unchanged."
                         );
                         DB::table('lesson_plans')->where('id', $plan->id)->update([
-                            'name' => $plan->name . $suffix,
+                            'name'        => $plan->name . $suffix,
+                            'is_official' => false,
                         ]);
                     }
                 } catch (\Exception $e) {
@@ -326,7 +328,8 @@ class LessonPlanController extends Controller
             } else {
                 // No file — just append the suffix to the display name.
                 DB::table('lesson_plans')->where('id', $plan->id)->update([
-                    'name' => $plan->name . $suffix,
+                    'name'        => $plan->name . $suffix,
+                    'is_official' => false,
                 ]);
             }
 
@@ -391,11 +394,14 @@ class LessonPlanController extends Controller
         try {
             $attrs = $this->buildPlanAttributes($data, $canonicalName, $author, $upload, $major, $minor, $patch);
             // Only the very first plan for a class/day becomes Official automatically.
-            // If plans already exist (another teacher uploaded first), the existing
-            // Official designation is preserved — admin must manually reassign if needed.
+            // Become Official only if no active Official plan exists for this class/grade/day.
+            // Retired plans are cleared to is_official=false by retireForClassDay(), so
+            // this check correctly returns false for retired-only families, allowing the
+            // new upload to auto-become Official.
             $attrs['is_official'] = !LessonPlan::where('class_name', $data['class_name'])
                 ->where('grade', $grade)
                 ->where('lesson_day', $data['lesson_day'])
+                ->where('is_official', true)
                 ->exists();
             $plan = LessonPlan::create($attrs);
         } catch (\Illuminate\Database\QueryException $e) {

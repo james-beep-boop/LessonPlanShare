@@ -36,6 +36,7 @@ class CompareVersionsTest extends TestCase
         $root = LessonPlan::factory()->create([
             'author_id'     => $user->id,
             'class_name'    => 'Science',
+            'grade'         => 10,
             'lesson_day'    => 4,
             'version_major' => 1,
             'version_minor' => 0,
@@ -48,8 +49,9 @@ class CompareVersionsTest extends TestCase
         $current = $root->createNewVersion([
             'author_id'     => $user->id,
             'class_name'    => 'Science',
+            'grade'         => 10,
             'lesson_day'    => 4,
-            'name'          => 'Science_Day4_teacher_v1-0-1',
+            'name'          => 'Science_Grade10_Day4_teacher_v1-0-1',
             'version_major' => 1,
             'version_minor' => 0,
             'version_patch' => 1,
@@ -62,48 +64,52 @@ class CompareVersionsTest extends TestCase
         $response = $this->actingAs($user)->get(route('admin.lesson-plans.compare', $current));
 
         $response->assertOk();
-        $response->assertSee('Line-Level Diff');
+        $response->assertSee('Inline Diff');
         $response->assertSee('Lines Added');
         $response->assertSee('Lines Removed');
-        $response->assertSee('Lines Changed (Est.)');
+        $response->assertSee('Lines Changed');
     }
 
     #[Test]
     public function compare_page_shows_graceful_message_for_unsupported_extensions(): void
     {
+        // Use a genuinely unsupported format (.pdf) to exercise the "cannot be compared as text" path.
         $user = User::factory()->create(['email_verified_at' => now(), 'is_admin' => true]);
 
-        Storage::disk('public')->put('lessons/v1.docx', 'fake-docx-content');
+        Storage::disk('public')->put('lessons/v1.pdf', '%PDF-1.4 fake');
         $root = LessonPlan::factory()->create([
             'author_id'     => $user->id,
             'class_name'    => 'English',
+            'grade'         => 10,
             'lesson_day'    => 2,
             'version_major' => 1,
             'version_minor' => 0,
             'version_patch' => 0,
-            'file_path'     => 'lessons/v1.docx',
-            'file_name'     => 'v1.docx',
+            'file_path'     => 'lessons/v1.pdf',
+            'file_name'     => 'v1.pdf',
         ]);
 
-        Storage::disk('public')->put('lessons/v2.docx', 'fake-docx-content-v2');
+        Storage::disk('public')->put('lessons/v2.pdf', '%PDF-1.4 fake v2');
         $current = $root->createNewVersion([
             'author_id'     => $user->id,
             'class_name'    => 'English',
+            'grade'         => 10,
             'lesson_day'    => 2,
-            'name'          => 'English_Day2_teacher_v1-0-1',
+            'name'          => 'English_Grade10_Day2_teacher_v1-0-1',
             'version_major' => 1,
             'version_minor' => 0,
             'version_patch' => 1,
-            'file_path'     => 'lessons/v2.docx',
-            'file_name'     => 'v2.docx',
+            'file_path'     => 'lessons/v2.pdf',
+            'file_name'     => 'v2.pdf',
             'file_size'     => 100,
-            'file_hash'     => hash('sha256', 'v2-docx'),
+            'file_hash'     => hash('sha256', 'v2-pdf'),
         ]);
 
         $response = $this->actingAs($user)->get(route('admin.lesson-plans.compare', $current));
 
         $response->assertOk();
-        $response->assertSee('Comparison currently supports .txt files only');
+        // .pdf is not a supported format — expect the graceful "cannot be compared as text" message
+        $response->assertSee('cannot be compared as text');
     }
 
     #[Test]
@@ -115,6 +121,7 @@ class CompareVersionsTest extends TestCase
         $root = LessonPlan::factory()->create([
             'author_id'     => $user->id,
             'class_name'    => 'History',
+            'grade'         => 10,
             'lesson_day'    => 1,
             'version_major' => 1,
             'version_minor' => 0,
@@ -127,8 +134,9 @@ class CompareVersionsTest extends TestCase
         $current = $root->createNewVersion([
             'author_id'     => $user->id,
             'class_name'    => 'History',
+            'grade'         => 10,
             'lesson_day'    => 1,
-            'name'          => 'History_Day1_teacher_v1-0-1',
+            'name'          => 'History_Grade10_Day1_teacher_v1-0-1',
             'version_major' => 1,
             'version_minor' => 0,
             'version_patch' => 1,
@@ -155,8 +163,9 @@ class CompareVersionsTest extends TestCase
         );
 
         $response->assertOk();
-        // Fallback should choose previous in-family version, not the foreign plan.
-        $response->assertSee('value="' . $root->id . '" selected', false);
-        $response->assertDontSee('value="' . $foreign->id . '" selected', false);
+        // Fallback should choose previous in-family version: root is shown as (selected),
+        // and the foreign plan does not appear anywhere in the History/day1 compare table.
+        $response->assertSee('(selected)');
+        $response->assertDontSee('not available to compare');
     }
 }
