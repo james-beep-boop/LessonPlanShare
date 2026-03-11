@@ -116,9 +116,13 @@
             <h1 class="text-2xl font-bold text-gray-900">
                 {{ $lessonPlan->class_name }}, Grade {{ $lessonPlan->grade }}, Lesson {{ $lessonPlan->lesson_day }}
             </h1>
-            <a href="{{ route('dashboard') }}"
+            <a x-show="!showCompare" href="{{ route('dashboard') }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors shrink-0">
                 &larr; Back to Dashboard
+            </a>
+            <a x-show="showCompare" x-cloak href="{{ route('lesson-plans.show', $lessonPlan) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors shrink-0">
+                &larr; Back to Details of This Plan
             </a>
         </div>
 
@@ -262,8 +266,8 @@
 
         </div>
 
-        {{-- Document Viewer and Actions --}}
-        <div class="border border-gray-200 rounded-lg p-6 space-y-4">
+        {{-- Document Viewer and Actions — hidden while compare panel is open --}}
+        <div x-show="!showCompare" class="border border-gray-200 rounded-lg p-6 space-y-4">
 
             {{-- Viewer buttons (Compare + View options all same size) --}}
             @if ($lessonPlan->file_path)
@@ -326,36 +330,36 @@
 
             </div>
 
-            {{-- Delete confirmation modal --}}
-            @if ($isAuthorOfPlan)
-                <div x-show="confirmOpen" x-cloak
-                     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6"
-                         @click.away="confirmOpen = false">
-                        <p class="text-gray-900 font-medium text-center mb-6">
-                            Are you sure? This action cannot be undone
-                        </p>
-                        <div class="flex gap-3">
-                            <button type="button" @click="confirmOpen = false"
-                                    class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                Cancel
+        </div>
+
+        {{-- Delete confirmation modal — outside the action box so it works in compare mode too --}}
+        @if ($isAuthorOfPlan)
+            <div x-show="confirmOpen" x-cloak
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6"
+                     @click.away="confirmOpen = false">
+                    <p class="text-gray-900 font-medium text-center mb-6">
+                        Are you sure? This action cannot be undone
+                    </p>
+                    <div class="flex gap-3">
+                        <button type="button" @click="confirmOpen = false"
+                                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        <form method="POST"
+                              action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
+                              class="flex-1">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
+                                Yes, Delete
                             </button>
-                            <form method="POST"
-                                  action="{{ route('lesson-plans.destroy', $lessonPlan) }}"
-                                  class="flex-1">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit"
-                                        class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
-                                    Yes, Delete
-                                </button>
-                            </form>
-                        </div>
+                        </form>
                     </div>
                 </div>
-            @endif
-
-        </div>
+            </div>
+        @endif
 
         {{-- Inline compare panel — toggled by the Compare button above --}}
         @if ($versions->count() > 1)

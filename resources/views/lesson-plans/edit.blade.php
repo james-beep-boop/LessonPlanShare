@@ -250,29 +250,24 @@
                     </p>
                 </div>
 
-                {{-- File Upload — single "Upload Revision" button --}}
-                {{-- Clicking when no file is selected opens the file picker.    --}}
-                {{-- After a valid file is chosen, clicking submits the form.    --}}
+                {{-- File Upload + Submit --}}
                 <div x-data="fileValidator()">
+                    <label for="file" class="block text-sm font-medium text-gray-700 mb-1">Lesson Plan File *</label>
                     <input type="file" name="file" id="file" required
                            accept=".doc,.docx,.txt,.rtf,.odt"
                            @change="validate($event)"
-                           class="sr-only">
+                           class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0
+                                  file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                    <p class="text-xs text-gray-500 mt-1">Max 1 MB. Accepted: DOC, DOCX, TXT, RTF, ODT.</p>
+                    <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mt-1"></p>
+                    @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
 
-                    <p x-show="fileName" x-cloak class="text-sm text-gray-600 font-mono mb-2 truncate max-w-xs"
-                       x-text="'Selected: ' + fileName"></p>
-                    <p class="text-xs text-gray-500 mb-3">Max 1 MB. Accepted: .doc, .docx, .txt, .rtf, .odt</p>
-                    <p x-show="error" x-text="error" x-cloak class="text-red-600 text-xs mb-2"></p>
-                    @error('file') <p class="text-red-600 text-xs mb-2">{{ $message }}</p> @enderror
-
-                    <div class="flex items-center gap-3">
-                        {{-- Single button: opens picker first, submits after file selected --}}
-                        <button type="button" @click="handleUpload()"
-                                :class="fileSelected
-                                    ? 'bg-gray-900 hover:bg-gray-700 cursor-pointer'
-                                    : 'bg-gray-600 hover:bg-gray-500 cursor-pointer'"
+                    <div class="flex items-center gap-3 pt-4">
+                        <button type="submit"
+                                :disabled="!fileSelected"
+                                :class="fileSelected ? 'bg-gray-900 hover:bg-gray-700 cursor-pointer' : 'bg-gray-400 cursor-not-allowed'"
                                 class="px-5 py-2 text-white text-sm font-medium rounded-md transition-colors">
-                            Upload Revision
+                            Upload Your Revision
                         </button>
                         <a href="{{ route('lesson-plans.show', $lessonPlan) }}"
                            class="text-sm text-gray-500 hover:text-gray-900">Cancel</a>
@@ -286,7 +281,7 @@
     <script>
         /**
          * Client-side file validation (size + type check before upload).
-         * Single-button pattern: first click opens file picker, second click submits.
+         * Enables the submit button only after a valid file is chosen.
          */
         function fileValidator() {
             const maxSize = 1 * 1024 * 1024; // 1 MB
@@ -294,22 +289,9 @@
             return {
                 error: '',
                 fileSelected: false,
-                fileName: '',
-
-                // If no file selected yet, open the picker.
-                // Once a valid file is staged, submit the form.
-                handleUpload() {
-                    if (!this.fileSelected) {
-                        document.getElementById('file').click();
-                    } else {
-                        this.$el.closest('form').submit();
-                    }
-                },
-
                 validate(event) {
                     this.fileSelected = false;
                     this.error = '';
-                    this.fileName = '';
                     const file = event.target.files[0];
                     if (!file) return;
                     const ext = file.name.split('.').pop().toLowerCase();
@@ -325,7 +307,6 @@
                         return;
                     }
                     this.fileSelected = true;
-                    this.fileName = file.name;
                 }
             };
         }

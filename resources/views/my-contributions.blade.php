@@ -19,7 +19,7 @@
             <div class="w-48">
                 <label for="class_name" class="block text-xs font-medium text-gray-500 mb-1">Class</label>
                 <select name="class_name" id="class_name"
-                        onchange="this.form.submit()"
+                        onchange="this.form.requestSubmit()"
                         class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     <option value="">All Classes</option>

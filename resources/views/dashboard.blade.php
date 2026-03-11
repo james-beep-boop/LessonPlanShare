@@ -62,7 +62,7 @@
             <div class="w-48">
                 <label for="class_name" class="block text-xs font-medium text-gray-500 mb-1">Class</label>
                 <select name="class_name" id="class_name"
-                        onchange="this.form.submit()"
+                        onchange="this.form.requestSubmit()"
                         class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm
                                focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent">
                     <option value="">All Classes</option>
@@ -97,7 +97,7 @@
             <label class="flex items-center gap-1.5 cursor-pointer select-none">
                 <input type="checkbox" name="official_only" value="1"
                        {{ request('official_only') ? 'checked' : '' }}
-                       onchange="this.form.submit()"
+                       onchange="this.form.requestSubmit()"
                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
                 <span class="text-sm text-gray-600">Official</span>
             </label>
@@ -106,7 +106,7 @@
             <label class="flex items-center gap-1.5 cursor-pointer select-none">
                 <input type="checkbox" name="latest_only" value="1"
                        {{ request('latest_only') ? 'checked' : '' }}
-                       onchange="this.form.submit()"
+                       onchange="this.form.requestSubmit()"
                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
                 <span class="text-sm text-gray-600">Latest</span>
             </label>
@@ -116,14 +116,14 @@
                 <label class="flex items-center gap-1.5 cursor-pointer select-none">
                     <input type="checkbox" name="favorites_only" value="1"
                            {{ request('favorites_only') ? 'checked' : '' }}
-                           onchange="this.form.submit()"
+                           onchange="this.form.requestSubmit()"
                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
                     <span class="text-sm text-gray-600">My Faves</span>
                 </label>
                 <label class="flex items-center gap-1.5 cursor-pointer select-none">
                     <input type="checkbox" name="my_plans_only" value="1"
                            {{ request('my_plans_only') ? 'checked' : '' }}
-                           onchange="this.form.submit()"
+                           onchange="this.form.requestSubmit()"
                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-400">
                     <span class="text-sm text-gray-600">My Contributions</span>
                 </label>
