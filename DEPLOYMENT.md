@@ -111,6 +111,8 @@ tests/Feature/Auth/PasswordConfirmationTest.php         →  (REPLACE Breeze's)
 
 resources/views/auth/confirm-password.blade.php         →  (REPLACE Breeze's — use <x-layout>, no Vite)
 
+bootstrap/app.php                                        →  (MODIFY — uses validateCsrfTokens(['logout']) to exclude logout from CSRF in Laravel 12)
+
 app/Http/Middleware/AdminMiddleware.php                  →  (NEW)
 app/Http/Middleware/VerifyCsrfToken.php                 →  (NEW — excludes logout from CSRF to fix double-logout 419)
 
@@ -124,8 +126,6 @@ app/Policies/LessonPlanPolicy.php                       →  (NEW)
 
 app/Mail/LessonPlanUploaded.php                         →  (NEW)
 app/Mail/DuplicateContentRemoved.php                    →  (NEW)
-
-app/Notifications/PasswordChangedByAdminNotification.php →  (NEW)
 
 app/Console/Commands/DetectDuplicateContent.php         →  (NEW)
 app/Console/Commands/BackfillGradeInFilenames.php       →  (NEW)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonPlan;
 use App\Models\User;
+use App\Notifications\PasswordChangedByAdminNotification;
 use App\Traits\DiffHelperTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -12,7 +13,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rules\Password as PasswordRules;
 
 /**
  * Admin panel controller.
@@ -217,7 +220,7 @@ class AdminController extends Controller
         // Official plans must have their designation reassigned before deletion.
         if ($lessonPlan->is_official) {
             return redirect()->route('admin.index')
-                ->with('error', 'Cannot delete the Official version. Mark another plan as Official first.');
+                ->with('plans_error', 'Cannot delete the Official version. Mark another plan as Official first.');
         }
 
         try {
@@ -230,10 +233,10 @@ class AdminController extends Controller
                 . "\n" . $e->getTraceAsString()
             );
             return redirect()->route('admin.index')
-                ->with('error', 'Could not delete the lesson plan. Details have been logged.');
+                ->with('plans_error', 'Could not delete the lesson plan. Details have been logged.');
         }
 
-        return redirect()->route('admin.index')->with('success', 'Lesson plan deleted.');
+        return redirect()->route('admin.index')->with('plans_success', 'Lesson plan deleted.');
     }
 
     /** Bulk-delete multiple lesson plans by ID array. */
@@ -261,7 +264,7 @@ class AdminController extends Controller
             $message .= ' ' . $officialIds->count() . ' Official plan(s) were skipped — reassign Official first.';
         }
 
-        return redirect()->route('admin.index')->with('success', $message);
+        return redirect()->route('admin.index')->with('plans_success', $message);
     }
 
     /**
@@ -274,18 +277,18 @@ class AdminController extends Controller
     public function toggleAdmin(User $user): RedirectResponse
     {
         if ($user->id === Auth::id()) {
-            return back()->with('error', 'You cannot change your own admin status.');
+            return back()->with('users_error', 'You cannot change your own admin status.');
         }
 
         // Revoking admin is restricted to the super-admin (configured in config/app.php or SUPER_ADMIN_EMAIL env)
         if ($user->is_admin && Auth::user()->email !== config('app.super_admin_email')) {
-            return back()->with('error', 'Only the super-administrator can revoke admin privileges.');
+            return back()->with('users_error', 'Only the super-administrator can revoke admin privileges.');
         }
 
         $newStatus = ! $user->is_admin;
         $user->update(['is_admin' => $newStatus]);
 
-        return back()->with('success', $newStatus
+        return back()->with('users_success', $newStatus
             ? "Admin privileges granted to {$user->name}."
             : "Admin privileges revoked from {$user->name}.");
     }
@@ -313,7 +316,7 @@ class AdminController extends Controller
     {
         // Prevent self-deletion
         if ($user->id === auth()->id()) {
-            return redirect()->route('admin.index')->with('error', 'You cannot delete your own account.');
+            return redirect()->route('admin.index')->with('users_error', 'You cannot delete your own account.');
         }
 
         $blocked      = false;
@@ -345,7 +348,7 @@ class AdminController extends Controller
 
         if ($blocked) {
             return redirect()->route('admin.index')->with(
-                'error',
+                'users_error',
                 "Cannot delete {$user->name}: they own {$officialCount} Official plan(s). "
                 . 'Reassign Official to another version first.'
             );
@@ -354,7 +357,7 @@ class AdminController extends Controller
         // Delete files only after the DB transaction has committed successfully.
         $this->deleteFiles($filesToDelete);
 
-        return redirect()->route('admin.index')->with('success', 'User deleted.');
+        return redirect()->route('admin.index')->with('users_success', 'User deleted.');
     }
 
     /**
@@ -378,7 +381,7 @@ class AdminController extends Controller
         );
 
         if (empty($ids)) {
-            return redirect()->route('admin.index')->with('error', 'No users selected (or only yourself).');
+            return redirect()->route('admin.index')->with('users_error', 'No users selected (or only yourself).');
         }
 
         $deletedCount    = 0;
@@ -424,7 +427,7 @@ class AdminController extends Controller
                 . ' user(s) who own Official plans (reassign Official first): ' . $skippedNames . '.';
         }
 
-        return redirect()->route('admin.index')->with('success', $message);
+        return redirect()->route('admin.index')->with('users_success', $message);
     }
 
     /**
@@ -454,12 +457,16 @@ class AdminController extends Controller
     public function changePassword(Request $request, User $user): JsonResponse
     {
         $data = $request->validate([
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['required', 'string', PasswordRules::defaults()],
         ]);
 
         $user->update(['password' => Hash::make($data['password'])]);
 
-        $user->notify(new \App\Notifications\PasswordChangedByAdminNotification());
+        try {
+            $user->notify(new PasswordChangedByAdminNotification());
+        } catch (\Exception $e) {
+            Log::warning("Admin password change: notification failed for user {$user->id}: {$e->getMessage()}");
+        }
 
         return response()->json(['changed' => true]);
     }
@@ -497,7 +504,7 @@ class AdminController extends Controller
                 ->update(['is_official' => true]);
         });
 
-        return back()->with('success',
+        return back()->with('plans_success',
             "Version {$lessonPlan->semantic_version} of {$lessonPlan->class_name} Lesson {$lessonPlan->lesson_day} is now the Official version.");
     }
 

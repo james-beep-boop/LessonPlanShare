@@ -98,6 +98,18 @@
         <div class="mb-12">
             <h2 class="text-lg font-semibold text-gray-900 mb-3">Lesson Plans ({{ $plans->total() }})</h2>
 
+            {{-- Plans table flash messages --}}
+            @if (session('plans_success'))
+                <div class="mb-3 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md text-sm">
+                    {{ session('plans_success') }}
+                </div>
+            @endif
+            @if (session('plans_error'))
+                <div class="mb-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm">
+                    {{ session('plans_error') }}
+                </div>
+            @endif
+
             {{-- Search form for plans --}}
             <form method="GET" action="{{ route('admin.index') }}" class="mb-3 flex gap-2 flex-wrap">
                 {{-- Preserve user table state --}}
@@ -257,6 +269,18 @@
         <div>
             <h2 class="text-lg font-semibold text-gray-900 mb-3">Registered Users ({{ $users->total() }})</h2>
 
+            {{-- Users table flash messages --}}
+            @if (session('users_success'))
+                <div class="mb-3 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md text-sm">
+                    {{ session('users_success') }}
+                </div>
+            @endif
+            @if (session('users_error'))
+                <div class="mb-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm">
+                    {{ session('users_error') }}
+                </div>
+            @endif
+
             {{-- Search form for users --}}
             <form method="GET" action="{{ route('admin.index') }}" class="mb-3 flex gap-2 flex-wrap">
                 {{-- Preserve plan table state --}}
@@ -350,12 +374,16 @@
                                         @endif
                                     </td>
 
-                                    {{-- Del --}}
+                                    {{-- Del (requires checkbox to be checked first) --}}
                                     <td class="px-3 py-2">
                                         @if ($u->id !== auth()->id())
                                             <form method="POST"
                                                   action="{{ route('admin.users.destroy', $u) }}"
-                                                  onsubmit="return confirm('Delete user {{ addslashes($u->email) }}? This cannot be undone.')">
+                                                  onsubmit="
+                                                      var cb = document.querySelector('.user-cb[value=\'{{ $u->id }}\']');
+                                                      if (!cb || !cb.checked) { alert('Check the checkbox for this user first.'); return false; }
+                                                      return confirm('Delete user {{ addslashes($u->email) }}? This cannot be undone.');
+                                                  ">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
@@ -429,9 +457,13 @@
                                                                         },
                                                                         body: JSON.stringify({ password: pwd })
                                                                     })
-                                                                    .then(r => r.ok ? r.json() : Promise.reject())
+                                                                    .then(r => {
+                                                                        if (r.status === 419) throw new Error('Session expired — refresh the page.');
+                                                                        if (!r.ok) return r.json().then(j => { throw new Error(j.message || 'Save failed.'); });
+                                                                        return r.json();
+                                                                    })
                                                                     .then(() => { saved = true; show = false; pwd = ''; setTimeout(() => saved = false, 5000); })
-                                                                    .catch(() => { err = 'Error'; })
+                                                                    .catch(e => { err = e.message || 'Error'; })
                                                                     .finally(() => { saving = false; });
                                                                 "
                                                                 :disabled="saving"
@@ -899,8 +931,9 @@
             {{-- No differences message --}}
             <div x-show="checkedIds.length === 2 && !diffLoading && !diffWarning && diffOps.length === 0 && diffRan"
                  x-cloak
-                 class="mt-4 border border-gray-200 bg-gray-50 rounded-lg p-4 text-sm text-gray-500 italic">
-                No differences found between the two selected versions.
+                 class="mt-4 border border-amber-200 bg-amber-50 rounded-lg p-4 text-sm text-amber-800">
+                <p class="font-medium mb-1">These versions have identical content.</p>
+                <p>The files are byte-for-byte the same. You can delete the duplicate from the <strong>Lesson Plans</strong> table above — check the box next to the unwanted version and click <strong>Del</strong>.</p>
             </div>
 
         </div>
@@ -1012,7 +1045,9 @@
                     }
 
                     if (!resp.ok) {
-                        this.edit.message = json.message || 'Save failed. Please try again.';
+                        this.edit.message = resp.status === 419
+                            ? 'Session expired — please refresh the page.'
+                            : (json.message || 'Save failed. Please try again.');
                         this.edit.isError = true;
                         this.edit.saving  = false;
                         return;

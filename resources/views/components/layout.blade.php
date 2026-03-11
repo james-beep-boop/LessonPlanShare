@@ -52,10 +52,10 @@
                     {{-- ── Desktop nav — hidden on mobile, horizontal row on md+ ── --}}
                     <div class="hidden md:flex items-center gap-5">
                         @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                            {{-- Admin users go to admin panel; others go to My Contributions --}}
-                            <a href="{{ auth()->user()->is_admin ? route('admin.index') : route('my-contributions') }}"
+                            {{-- Username always goes to the main dashboard --}}
+                            <a href="{{ route('dashboard') }}"
                                class="text-lg text-gray-600 hover:text-gray-900 underline underline-offset-2"
-                               title="{{ auth()->user()->is_admin ? 'Admin panel' : 'My Contributions' }}">{{ auth()->user()->name }}</a>
+                               title="Dashboard">{{ auth()->user()->name }}</a>
                         @endif
 
                         @if(auth()->check() && auth()->user()->is_admin)
@@ -98,9 +98,9 @@
                          class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200
                                 rounded-lg shadow-lg py-2 z-20 md:hidden">
 
-                        {{-- Teacher name header — admins go to admin panel; others go to My Contributions --}}
+                        {{-- Teacher name header — always goes to dashboard --}}
                         @if(auth()->check() && auth()->user()->hasVerifiedEmail())
-                            <a href="{{ auth()->user()->is_admin ? route('admin.index') : route('my-contributions') }}"
+                            <a href="{{ route('dashboard') }}"
                                class="block px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-100 mb-1 hover:text-gray-600"
                                @click="menuOpen = false">
                                 {{ auth()->user()->name }}
